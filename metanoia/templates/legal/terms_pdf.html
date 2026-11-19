@@ -1,0 +1,26 @@
+{% load static %}<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>{{ brand.name }} — {{ doc_title }}</title>
+<style>
+  @page { size: a4 portrait; margin: 2cm 1.8cm 2.2cm 1.8cm;
+          @frame footer { -pdf-frame-content: pdf-footer; bottom: .8cm; margin-left: 1.8cm; margin-right: 1.8cm; height: 1cm; } }
+  body { font-family: Helvetica; font-size: 9.5pt; color: #1d2433; line-height: 1.4; }
+  h1 { font-size: 18pt; color: #3E2415; margin: 0 0 4pt 0; }
+  h3 { font-size: 11pt; color: #3E2415; margin: 12pt 0 4pt 0; -pdf-keep-with-next: true; }
+  p { margin: 0 0 5pt 0; }
+  ul { margin: 0 0 5pt 0; }
+  li { margin-bottom: 2pt; }
+  .terms-meta { color: #5b6478; font-size: 8.5pt; }
+  .terms-key { border-left: 3pt solid #0B5FC6; background-color: #EEF4FC; padding: 6pt 8pt; margin: 6pt 0; }
+  .terms-key__title { font-weight: bold; }
+  .terms-table { width: 100%; margin: 4pt 0 8pt 0; }
+  .terms-table td { border: .5pt solid #c9cfdb; padding: 3pt 5pt; vertical-align: top; }
+  .logo { height: 40pt; margin-bottom: 8pt; }
+  #pdf-footer { font-size: 7.5pt; color: #A48E80; text-align: center; }
+</style></head>
+<body>
+  <img class="logo" src="{% static 'images/brand/metanoia-mark.png' %}" alt="">
+  <h1>{{ doc_title }}</h1>
+  <p class="terms-meta">{{ brand.registered_name|default:brand.name }} · {{ subtitle }}</p>
+  {% include body_template %}
+  <div id="pdf-footer">{{ brand.name }} {{ doc_title }} · Version {{ version }} · Page <pdf:pagenumber> of <pdf:pagecount></div>
+</body></html>

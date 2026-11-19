@@ -1,0 +1,26 @@
+{% load static %}
+
+{% comment %}First-paint theme, before any CSS draws.
+
+The server stamps <html data-bs-theme> from the user's saved choice (light or
+dark), so when it is there it is the truth: a user who chose dark always gets
+dark. With no stamp ("auto", or signed out) the browser's last choice from the
+theme switch applies (js/theme.js keeps it under "metanoiahub.theme"); "auto"
+follows the device; and with no choice at all the platform is light.
+
+When the script decides the theme it also sets ``data-theme-client="1"``, marking the
+theme as chosen in the browser rather than by the server.
+
+Reading ``localStorage`` is wrapped in ``try``: it throws in private mode.{% endcomment %}
+<script>
+  (function () {
+    var root = document.documentElement;
+    if (root.hasAttribute('data-bs-theme')) return;
+    root.setAttribute('data-theme-client', '1');
+    var choice = null;
+    try { choice = localStorage.getItem('metanoiahub.theme'); } catch (e) {  }
+    var dark = choice === 'dark' ||
+      (choice === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+  })();
+</script>

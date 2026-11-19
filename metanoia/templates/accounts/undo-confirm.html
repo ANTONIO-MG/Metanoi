@@ -1,0 +1,66 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}Confirmation page behind every "Undo" link (apps.accounts.views.undo_action).
+PayFast payments need an explicit acknowledgement.{% endcomment %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid">
+
+  <div class="row page-titles mx-0">
+    <div class="col-sm-6 p-md-0"><div class="welcome-text"><h4>Undo · {{ action.get_kind_display }}</h4></div></div>
+  </div>
+
+  <div class="row justify-content-center"><div class="col-lg-8">
+  <div class="card">
+    <div class="card-body">
+      <h5 class="mb-1">{{ action.summary }}</h5>
+      <p class="text-muted small mb-3">
+        {{ action.get_kind_display }} on {{ action.created_at|date:"d M Y H:i" }}{% if action.actor %} by {{ action.actor.get_full_name|default:action.actor.email }}{% endif %}.
+      </p>
+
+      {% if action.undone_at %}
+        <div class="alert alert-secondary mb-0">
+          <i class="bi bi-check2-circle me-1"></i>
+          Already undone on {{ action.undone_at|date:"d M Y H:i" }}{% if action.undone_by %} by {{ action.undone_by.get_full_name|default:action.undone_by.email }}{% endif %}.
+          {% if action.undo_reason %}<div class="small mt-1">Reason: {{ action.undo_reason }}</div>{% endif %}
+        </div>
+      {% elif blocked %}
+        <div class="alert alert-warning mb-0"><i class="bi bi-slash-circle me-1"></i>{{ blocked }}</div>
+      {% else %}
+        {% if lines %}
+        <p class="mb-1 fw-semibold">Undoing this will:</p>
+        <ul class="mb-3">{% for line in lines %}<li>{{ line }}</li>{% endfor %}</ul>
+        {% endif %}
+
+        {% if warning %}
+        <div class="alert alert-danger d-flex gap-2"><i class="bi bi-exclamation-octagon-fill mt-1"></i><div>{{ warning }}</div></div>
+        {% endif %}
+        {% if error %}
+        <div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>{{ error }}</div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next }}">
+          <div class="mb-3">
+            <label for="undo-reason" class="form-label">Why is this being undone? <span class="text-danger">*</span></label>
+            <textarea id="undo-reason" name="reason" class="form-control" rows="2" required
+                      placeholder="e.g. Recorded against the wrong student">{{ reason }}</textarea>
+            <div class="form-text">Kept in the audit log with your name and the time.</div>
+          </div>
+          {% if warning %}
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="acknowledge" value="1" id="undo-ack" required>
+            <label class="form-check-label" for="undo-ack">I understand — reverse it anyway.</label>
+          </div>
+          {% endif %}
+          <button type="submit" class="btn {% if warning %}btn-danger{% else %}btn-warning{% endif %}">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>{% if warning %}Reverse payment{% else %}Undo{% endif %}</button>
+          <a href="{{ next|default:'javascript:history.back()' }}" class="btn btn-light ms-2">Cancel</a>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+  </div></div>
+
+</div></div>
+{% endblock %}

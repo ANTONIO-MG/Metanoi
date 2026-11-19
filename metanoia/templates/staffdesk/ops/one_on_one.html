@@ -1,0 +1,84 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load people %}
+{% comment %}
+One-on-one requests: made at registration for any institution / programme.
+Staff assign an educator and mark the enrolment done.
+
+Context: page (paginated requests), tab, counts, search, coaches.
+
+Blocks: overrides ``additional_css`` and ``content``.
+{% endcomment %}
+{% block additional_css %}{% include 'staffdesk/ops/_head.html' %}
+<style>
+  .o2o-form{ display:grid; grid-template-columns:minmax(0,1fr); gap:.4rem; min-width:220px; }
+  .o2o-form textarea{ min-height:2.4rem; }
+  .o2o-meta{ font-size:.78rem; }
+  @media (min-width: 992px){ .o2o-form{ min-width:260px; } }
+</style>{% endblock %}
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3 tc">
+  <div class="tc-head">
+    <div><span class="tc-eyebrow">Staff desk</span><h3>One-on-one requests</h3>
+      <p>Asked for at registration, for any institution and programme. Assign an educator, then mark the enrolment done.</p></div>
+    <div class="tc-head__actions">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin:accounts_oneononerequest_changelist' %}"><i class="bi bi-table me-1"></i>In admin</a>
+    </div>
+  </div>
+
+  <nav class="tc-aisles" aria-label="Request status">
+    <a class="tc-aisle {% if tab == 'open' %}is-active{% endif %}" href="?tab=open">Open<span class="tc-count">{{ counts.open }}</span></a>
+    <a class="tc-aisle {% if tab == 'enrolled' %}is-active{% endif %}" href="?tab=enrolled">Enrolled<span class="tc-count">{{ counts.enrolled }}</span></a>
+    <a class="tc-aisle {% if tab == 'declined' %}is-active{% endif %}" href="?tab=declined">Declined<span class="tc-count">{{ counts.declined }}</span></a>
+    <a class="tc-aisle {% if tab == 'all' %}is-active{% endif %}" href="?tab=all">All<span class="tc-count">{{ counts.all }}</span></a>
+  </nav>
+
+  <form method="get" class="tc-toolbar"><input type="hidden" name="tab" value="{{ tab }}">
+    <label class="visually-hidden" for="o2oSearch">Search</label>
+    <input id="o2oSearch" class="form-control form-control-sm tc-search" type="search" name="q" value="{{ search }}" placeholder="Student, institution or programme">
+    <button class="btn btn-sm btn-primary"><i class="bi bi-search"></i><span class="visually-hidden">Search</span></button>
+  </form>
+
+  <div class="tc-card"><div class="tc-table-wrap">
+    <table class="tc-table">
+      <thead><tr><th>Student</th><th>Studying</th><th>Dates</th><th>Status</th><th class="r">Educator &amp; notes</th></tr></thead>
+      <tbody>
+      {% for r in page %}
+        <tr>
+          <td>{% person_chip r.person.user %}<div class="small text-muted mt-1">{{ r.created_at|date:"j M Y" }} · {{ r.created_at|timesince }} ago</div></td>
+          <td class="o2o-meta"><b>{{ r.programme }}</b><div>{{ r.institution }}{% if r.cohort %} · {{ r.cohort }}{% endif %}</div>
+            {% if r.modules %}<div class="text-muted">{{ r.modules }}</div>{% endif %}
+            {% if r.notes %}<div class="text-muted fst-italic mt-1">“{{ r.notes|truncatechars:160 }}”</div>{% endif %}</td>
+          <td class="small text-nowrap">{{ r.start_date|date:"j M Y" }}<div class="text-muted">to {{ r.end_date|date:"j M Y" }}</div></td>
+          <td class="text-nowrap">
+            {% if r.status == 'enrolled' %}<span class="tc-chip tc-chip--success">Enrolled</span>
+            {% elif r.status == 'declined' %}<span class="tc-chip">Declined</span>
+            {% elif r.status == 'in_progress' %}<span class="tc-chip tc-chip--cyan">In progress</span>
+            {% else %}<span class="tc-chip tc-chip--primary">New</span>{% endif %}
+            {% if r.educator %}<div class="mt-2">{% person_chip r.educator.user %}</div>{% endif %}
+          </td>
+          <td class="r">
+            <form method="post" action="{% url 'staffdesk:ops-one-on-one-action' r.pk %}" class="o2o-form">{% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <label class="visually-hidden" for="o2oEd{{ r.pk }}">Educator</label>
+              <select id="o2oEd{{ r.pk }}" name="educator" class="form-select form-select-sm">
+                <option value="">Assign an educator…</option>
+                {% for c in coaches %}<option value="{{ c.pk }}" {% if r.educator_id == c.pk %}selected{% endif %}>{{ c.user|person_name }}</option>{% endfor %}
+              </select>
+              <label class="visually-hidden" for="o2oNote{{ r.pk }}">Admin notes</label>
+              <textarea id="o2oNote{{ r.pk }}" name="admin_notes" rows="2" class="form-control form-control-sm" placeholder="Admin notes">{{ r.admin_notes }}</textarea>
+              <div class="sd-actions">
+                <button class="btn btn-sm tc-btn-soft" name="action" value="save"><i class="bi bi-check2 me-1"></i>Save</button>
+                {% if r.status != 'enrolled' %}<button class="btn btn-sm btn-success" name="action" value="enrol"><i class="bi bi-person-check me-1"></i>Mark enrolled</button>{% endif %}
+                {% if r.is_open %}<button class="btn btn-sm btn-outline-danger" name="action" value="decline" onclick="return confirm('Decline this request?');"><i class="bi bi-x-circle me-1"></i>Decline</button>{% endif %}
+              </div>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5"><div class="tc-empty"><i class="bi bi-person-video3"></i><h5>No one-on-one requests here</h5></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  {% include 'staffdesk/ops/_pager.html' %}
+</div></div>
+{% endblock %}

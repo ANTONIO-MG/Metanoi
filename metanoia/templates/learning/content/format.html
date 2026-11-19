@@ -1,0 +1,42 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+The metanoia-upload/1 format, with a downloadable sample for every document type.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``additional_css``, ``content``.
+{% endcomment %}
+{% block additional_css %}
+<style>.fmt-code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.74rem; white-space:pre-wrap; max-height:360px; overflow:auto; background:var(--bs-tertiary-bg); padding:.75rem; border-radius:.4rem; }</style>
+{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap justify-content-between gap-3">
+    <div>
+      <h1 class="h4 mb-1"><i class="bi bi-file-earmark-code text-primary me-2"></i>Upload format &amp; samples</h1>
+      <p class="small text-muted mb-0">Every upload is the document plus two files with the same name: a <code>.json</code> sidecar that says
+        <strong>where it goes</strong> and a <code>.md</code> that says <strong>what it says</strong>. Follow a sample below and the
+        system converts it into a lesson or quiz exactly — no guessing. Copy a sample, change the values, upload.</p>
+    </div>
+    <div><a class="btn btn-primary btn-sm" href="{% url 'learning:content-samples' %}"><i class="bi bi-download me-1"></i>Download every sample (.zip)</a></div>
+  </div>
+</div>
+
+{% if readme %}
+<details class="card mb-3"><summary class="card-header small fw-semibold">The rules (README)</summary>
+  <div class="card-body"><div class="fmt-code">{{ readme }}</div></div></details>
+{% endif %}
+
+{% for s in samples %}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div><h2 class="h6 mb-0">{{ s.label }} <code class="small">doc_type: "{{ s.key }}"</code></h2><small class="text-muted">{{ s.what }}</small></div>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'learning:content-sample' s.key %}"><i class="bi bi-download me-1"></i>{{ s.files|length }} file{{ s.files|pluralize }}</a>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-lg-5"><div class="small fw-semibold mb-1">Sidecar (.json)</div><div class="fmt-code">{{ s.json }}</div></div>
+      <div class="col-lg-7"><div class="small fw-semibold mb-1">Text (.md)</div><div class="fmt-code">{{ s.md|default:'— this type needs only the document and its sidecar —' }}</div></div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

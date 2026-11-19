@@ -1,0 +1,16 @@
+{
+  "format": "metanoia-upload/1",
+  "doc_type": "study_guide",
+  "title": "Week 1 · Topic 3 Study Guide — Controls",
+  "institution": "MILPARK",
+  "programme": "BCTA",
+  "module": "CGAU",
+  "cohort": "B26S",
+  "assessment": {"kind": "test", "sequence": 1},
+  "week": 1,
+  "week_title": "Week 1 · Conduct, risk and controls",
+  "topic": {"code": "T3", "title": "Controls"},
+  "audience": "students",
+  "used_on": "2026-08-04",
+  "notes": "Sample. Replace every value."
+}

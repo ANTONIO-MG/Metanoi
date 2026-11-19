@@ -1,0 +1,103 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+Support / help centre — a searchable user manual. Content and role scoping
+come from apps.communication.support; only the articles for the viewer's role are shown.
+The jump links at the top give one link per section the viewer has, and a link to
+``#help-<id>`` opens that article and scrolls to it (also after an HTMX swap).
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``content``.
+{% endcomment %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <div class="text-center mb-4">
+    <div class="icon-shape bg-gradient-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width:52px;height:52px">
+      <i class="bi bi-life-preserver" style="font-size:1.4rem"></i>
+    </div>
+    <h4 class="mb-1">Support &amp; help</h4>
+    <p class="text-sm text-muted mb-0">How-to guides and answers for using Metanoia Group.
+      {% if audience_label %}<span class="badge bg-gradient-secondary ms-1">{{ audience_label }}</span>{% endif %}</p>
+  </div>
+
+  <div class="row justify-content-center mb-4">
+    <div class="col-lg-7 col-md-9">
+      <form method="get" role="search">
+        <div class="input-group input-group-lg">
+          <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+          <input type="search" name="q" value="{{ query }}" class="form-control"
+                 placeholder="Search help — e.g. “unlock”, “one-on-one”, “time zone”, “bcc”" autofocus>
+          <button class="btn bg-gradient-info mb-0" type="submit">Search</button>
+        </div>
+      </form>
+      {% if query %}<p class="text-xs text-muted text-center mt-2">{{ total }} result{{ total|pluralize }} for “{{ query }}”.
+        <a href="{% url 'communication:support' %}">Clear</a></p>{% endif %}
+    </div>
+  </div>
+
+  {% if sections|length > 1 %}
+  <nav class="d-flex flex-wrap justify-content-center gap-2 mb-2" aria-label="Help sections">
+    {% for section in sections %}
+    <a class="badge rounded-pill bg-light text-dark border text-decoration-none fw-semibold px-3 py-2" href="#sec-{{ section.slug }}">
+      <i class="bi {{ section.icon }} text-info me-1"></i>{{ section.name }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  <div class="row justify-content-center">
+    <div class="col-lg-9">
+      {% for section in sections %}
+      <h6 class="text-uppercase text-muted mt-4 mb-2" id="sec-{{ section.slug }}" style="letter-spacing:.06em; font-size:.72rem; scroll-margin-top:5rem;">{{ section.name }}</h6>
+      <div class="accordion" id="acc-{{ forloop.counter }}">
+        {% for a in section.articles %}
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button{% if not expand_all %} collapsed{% endif %}" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#help-{{ a.id }}" aria-expanded="{{ expand_all|yesno:'true,false' }}" aria-controls="help-{{ a.id }}">
+              <i class="bi {{ a.icon }} me-2 text-info"></i>{{ a.title }}
+            </button>
+          </h2>
+          <div id="help-{{ a.id }}" class="accordion-collapse collapse{% if expand_all %} show{% endif %}"{% if not expand_all %} data-bs-parent="#acc-{{ forloop.parentloop.counter }}"{% endif %}>
+            <div class="accordion-body text-sm">{{ a.body|safe }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% empty %}
+      <div class="card"><div class="card-body text-center py-6">
+        <i class="bi bi-search text-muted" style="font-size:2rem"></i>
+        <h6 class="mt-3 mb-1">No help articles match “{{ query }}”.</h6>
+        <p class="text-sm text-muted mb-3">Try a different word, or browse everything.</p>
+        <a href="{% url 'communication:support' %}" class="btn btn-sm bg-gradient-info">Show all help</a>
+      </div></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="row justify-content-center mt-4">
+    <div class="col-lg-9">
+      <div class="alert alert-light border text-sm d-flex align-items-center">
+        <i class="bi bi-headset text-info me-2"></i>
+        <span>Still stuck? Questions about your studies — message your educator from
+          <a href="{% url 'communication:chat-home' %}">Messages</a>. Payments, your account or the platform —
+          message the team, or e-mail info@metanoiagroup.co.za.</span>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  function openFromHash() {
+    var id = (location.hash || '').slice(1);
+    if (id.indexOf('help-') !== 0) return;
+    var panel = document.getElementById(id);
+    if (!panel || !window.bootstrap) return;
+    window.bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
+    var head = panel.previousElementSibling;
+    if (head && head.scrollIntoView) head.scrollIntoView({ block: 'start' });
+  }
+  openFromHash();
+  if (!window.__metanoiaHelpHash) { window.__metanoiaHelpHash = true; window.addEventListener('hashchange', openFromHash); }
+})();
+</script>
+{% endblock %}

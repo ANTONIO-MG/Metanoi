@@ -1,0 +1,13 @@
+{% load org_branding %}{% org_brand as brand %}Welcome to {{ brand.name|default:"Metanoia Group" }}!
+
+Hi,
+
+Please confirm your e-mail address to finish setting up your account:
+
+{{ activate_url }}
+
+If you didn't deliberately sign up, please ignore this e-mail — no account
+will be activated and nothing else will happen.
+
+--
+{{ brand.copyright|default:"Metanoia Group" }}

@@ -1,0 +1,10 @@
+{% comment %}"Join the community" call-out for the sign-in and sign-up pages.{% endcomment %}
+<div class="join-cta mt-4 p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-3"
+     style="background:rgba(242,169,0,.10);border:1px solid rgba(242,169,0,.35)">
+  <div class="small">
+    <strong class="d-block" style="color:#3E2415">Not ready to register?</strong>
+    <span class="text-muted">Join the free Metanoia Community — no confirmation e-mail, straight in.</span>
+  </div>
+  <a class="t-btn t-btn--sm" href="{% url 'community-join' %}" style="background:#F2A900;border-color:#F2A900">
+    <i class="bi bi-people-fill me-1"></i>Join the community</a>
+</div>

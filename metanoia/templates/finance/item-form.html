@@ -1,0 +1,105 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static commerce %}
+{% comment %}
+Add / edit one product or service for invoicing. Context: form, item,
+creating, module_prices ({module id: monthly fee}).
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``additional_css``, ``content``.
+Includes ``shop/_field.html``.
+{% endcomment %}
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/commerce.css' %}">{% endblock %}
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3 tc">
+  <div class="tc-head">
+    <div><a class="small" href="{% url 'finance:items' %}"><i class="bi bi-arrow-left me-1"></i>Products &amp; services</a>
+      <h3 class="mt-1">{{ page_title }}</h3>
+      <p>What you bill on invoices and estimates.{% if item.pk and item.fulfilment != 'none' %} Files, sizes, photos and booking rules are on the <a href="{% url 'shop:edit-product' item.pk %}">shop editor</a>.{% endif %}</p></div>
+  </div>
+  <form method="post" novalidate id="itemForm">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="tc-alert tc-alert--danger mb-3"><i class="bi bi-exclamation-circle"></i><div>{{ form.non_field_errors }}</div></div>{% endif %}
+    <div class="tc-card">
+      <div class="tc-section">
+        <div class="tc-section__title"><i class="bi bi-ui-radios-grid"></i><h6>{{ form.kind.label }}</h6></div>
+        <div class="tc-types" role="radiogroup" aria-label="{{ form.kind.label }}">
+          {% for radio in form.kind %}
+            <div class="tc-type">{{ radio.tag }}
+              <label for="{{ radio.id_for_label }}">
+                <i class="bi {% if radio.data.value == 'service' %}bi-person-video3{% else %}bi-box-seam{% endif %}"></i>
+                <b>{{ radio.choice_label }}</b>
+                <small>{% if radio.data.value == 'service' %}Time or access you provide — tuition, 1-on-1 sessions, workshops.{% else %}Something the customer gets — merchandise, printed material, a pack.{% endif %}</small>
+              </label></div>
+          {% endfor %}
+        </div>
+        {% if form.kind.help_text %}<div class="form-text">{{ form.kind.help_text }}</div>{% endif %}
+      </div>
+
+      <div class="tc-section">
+        <div class="tc-section__title"><i class="bi bi-card-text"></i><h6>Details</h6></div>
+        <div class="row g-3">
+          <div class="col-md-8">{% include 'shop/_field.html' with field=form.name %}</div>
+          <div class="col-md-4">{% include 'shop/_field.html' with field=form.sku %}</div>
+          <div class="col-12">{% include 'shop/_field.html' with field=form.summary %}</div>
+          <div class="col-md-6">{% include 'shop/_field.html' with field=form.category %}</div>
+          <div class="col-md-6">{% include 'shop/_field.html' with field=form.new_category %}</div>
+        </div>
+      </div>
+
+      <div class="tc-section">
+        <div class="tc-section__title"><i class="bi bi-tag"></i><h6>Price</h6>{% if vat_registered %}<small>VAT included</small>{% endif %}</div>
+        <div class="row g-3">
+          <div class="col-sm-6 col-md-4">{% include 'shop/_field.html' with field=form.price %}</div>
+          <div class="col-sm-6 col-md-4">{% include 'shop/_field.html' with field=form.unit %}
+            <datalist id="unitOptions"><option value="month"><option value="hour"><option value="session"><option value="each"><option value="year"></datalist></div>
+        </div>
+      </div>
+
+      <div class="tc-section">
+        <div class="tc-section__title"><i class="bi bi-building"></i><h6>Who it is for</h6><small>Used to filter when you search</small></div>
+        <div class="row g-3">
+          <div class="col-md-4">{% include 'shop/_field.html' with field=form.institution %}</div>
+          <div class="col-md-4">{% include 'shop/_field.html' with field=form.programme %}</div>
+          <div class="col-md-4">{% include 'shop/_field.html' with field=form.module %}</div>
+          <div class="col-md-6">{% include 'shop/_field.html' with field=form.unlocks %}</div>
+          <div class="col-md-6 d-flex align-items-end">
+            <div class="form-check">{{ form.price_from_modules }}
+              <label class="form-check-label" for="{{ form.price_from_modules.id_for_label }}">{{ form.price_from_modules.label }}</label>
+              <div class="form-text">{{ form.price_from_modules.help_text }}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tc-section">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6"><div class="form-check">{{ form.shop_listed }}
+            <label class="form-check-label" for="{{ form.shop_listed.id_for_label }}">{{ form.shop_listed.label }}</label>
+            <div class="form-text">{{ form.shop_listed.help_text }}</div></div></div>
+          <div class="col-md-3">{% include 'shop/_field.html' with field=form.status %}</div>
+        </div>
+        {% if item.unlocks %}<div class="form-text mt-2"><i class="bi bi-info-circle"></i> A module or programme fee is active exactly while its module is — change that on the module.</div>{% endif %}
+      </div>
+
+      <div class="tc-savebar">
+        <a class="btn btn-link" href="{% url 'finance:items' %}">Cancel</a>
+        <button class="btn btn-primary">{% if creating %}Add item{% else %}Save changes{% endif %}</button>
+      </div>
+    </div>
+  </form>
+</div></div>
+{{ module_prices|json_script:"modulePrices" }}
+<script>
+(function () {
+  var form = document.getElementById('itemForm'); if (!form) { return; }
+  var prices = JSON.parse(document.getElementById('modulePrices').textContent);
+  var unlocks = form.querySelector('[name="unlocks"]'), auto = form.querySelector('[name="price_from_modules"]');
+  var module = form.querySelector('[name="module"]'), price = form.querySelector('[name="price"]');
+  function sync() {
+    auto.disabled = !unlocks.value;
+    if (!unlocks.value) { auto.checked = false; }
+    price.readOnly = auto.checked;
+    if (auto.checked && unlocks.value === 'module' && prices[module.value]) { price.value = prices[module.value]; }
+  }
+  [unlocks, auto, module].forEach(function (el) { el.addEventListener('change', sync); });
+  sync();
+})();
+</script>
+{% endblock %}

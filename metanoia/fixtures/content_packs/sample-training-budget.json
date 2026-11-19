@@ -1,0 +1,215 @@
+{
+  "pack": "metanoia-pack/1",
+  "module": "INTRO",
+  "programme": "METANOIA-SAMPLE",
+  "cohort": "SAMPLE1",
+  "topic": {
+    "code": "T1",
+    "title": "Sample topic: planning a training budget",
+    "description": "Sample content that shows the shape of a content pack: a study guide and a marked practice paper. Replace it with your own material."
+  },
+  "items": [
+    {
+      "type": "study_guide",
+      "source_ref": "INTRO/T1/guide",
+      "title": "Topic 1 — Planning a training budget (sample)",
+      "subtitle": "A short worked example of the study-guide layout",
+      "author_name": "Metanoia Learning Hub",
+      "sections": [
+        {
+          "heading": "How to use this guide",
+          "summary": "Read this before you attempt the practice paper.",
+          "body_html": "<p>This is <strong>sample content</strong>. It shows how a study guide is laid out in sections, each with a heading and some text. Replace it with your own material.</p>"
+        },
+        {
+          "heading": "Section 1 — The idea",
+          "body_html": "<p>A budget adds up what each part of a programme costs, then divides the total by the number of people it serves.</p>"
+        },
+        {
+          "heading": "Section 2 — The method",
+          "body_html": "<ol><li>List every cost line.</li><li>Add them up.</li><li>Divide by the number of learners.</li></ol>"
+        },
+        {
+          "heading": "Section 3 — Quick reference",
+          "body_html": "<table><tr><th>Step</th><th>What you do</th></tr><tr><td>1</td><td>List the costs</td></tr><tr><td>2</td><td>Total them</td></tr><tr><td>3</td><td>Divide per learner</td></tr></table>"
+        }
+      ]
+    },
+    {
+      "type": "mock",
+      "source_ref": "INTRO/T1/mock",
+      "title": "Sample practice paper — Topic 1: planning a training budget",
+      "total_marks": "50",
+      "minutes": "90",
+      "release_solution": "on_submit",
+      "instructions": "Sample paper. Attempt it under timed conditions (90 minutes). All amounts are in rand.",
+      "scenario_html": "<p>A sample organisation plans a training programme for 20 learners. The facilitator costs R40 000, the venue R15 000, materials R8 000, catering R12 000 and assessment R5 000. A contingency of 10% is added to the total.</p>",
+      "solution_notes": {
+        "recap": "Five cost lines, a 10% contingency and 20 learners.",
+        "triggers": "Total the lines before the contingency is added.",
+        "traps": "Adding the contingency to one line instead of the total.",
+        "answers": "Total budget R88 000; cost per learner R4 400."
+      },
+      "parts": [
+        {
+          "ref": "a",
+          "required": "Calculate the total budget, including the contingency.",
+          "marks": "18",
+          "marking": "auto",
+          "lines": [
+            {
+              "label": "Facilitator",
+              "authority": "",
+              "amount": "40000",
+              "marks": "2"
+            },
+            {
+              "label": "Venue",
+              "authority": "",
+              "amount": "15000",
+              "marks": "2"
+            },
+            {
+              "label": "Materials",
+              "authority": "",
+              "amount": "8000",
+              "marks": "2"
+            },
+            {
+              "label": "Catering",
+              "authority": "",
+              "amount": "12000",
+              "marks": "2"
+            },
+            {
+              "label": "Assessment",
+              "authority": "",
+              "amount": "5000",
+              "marks": "2"
+            },
+            {
+              "label": "Subtotal",
+              "authority": "",
+              "amount": "80000",
+              "marks": "3"
+            },
+            {
+              "label": "Contingency at 10%",
+              "authority": "",
+              "amount": "8000",
+              "marks": "3"
+            },
+            {
+              "label": "Total budget",
+              "authority": "",
+              "amount": "88000",
+              "marks": "2"
+            }
+          ]
+        },
+        {
+          "ref": "b",
+          "required": "Calculate the cost per learner, before and after the contingency.",
+          "marks": "14",
+          "marking": "auto",
+          "lines": [
+            {
+              "label": "Number of learners",
+              "authority": "",
+              "amount": "20",
+              "marks": "2"
+            },
+            {
+              "label": "Cost per learner before contingency",
+              "authority": "",
+              "amount": "4000",
+              "marks": "4"
+            },
+            {
+              "label": "Contingency per learner",
+              "authority": "",
+              "amount": "400",
+              "marks": "4"
+            },
+            {
+              "label": "Cost per learner",
+              "authority": "",
+              "amount": "4400",
+              "marks": "4"
+            }
+          ]
+        },
+        {
+          "ref": "c",
+          "required": "Explain why a contingency is added to a budget.",
+          "marks": "10",
+          "marking": "ai_assisted",
+          "rubric": [
+            {
+              "point": "Costs can turn out higher than planned.",
+              "authority": "",
+              "marks": "3"
+            },
+            {
+              "point": "A contingency keeps the programme running when they do.",
+              "authority": "",
+              "marks": "3"
+            },
+            {
+              "point": "It is a percentage of the total, not of one line.",
+              "authority": "",
+              "marks": "2"
+            },
+            {
+              "point": "Concludes with a clear recommendation.",
+              "authority": "",
+              "marks": "1"
+            },
+            {
+              "point": "Communication: clear, well-structured answer.",
+              "authority": "",
+              "marks": "1",
+              "professional_skill": true
+            }
+          ]
+        },
+        {
+          "ref": "d",
+          "required": "Name two ways to reduce the cost per learner.",
+          "marks": "4",
+          "marking": "ai_assisted",
+          "rubric": [
+            {
+              "point": "Train more learners with the same fixed costs.",
+              "authority": "",
+              "marks": "2"
+            },
+            {
+              "point": "Reduce or share one of the cost lines.",
+              "authority": "",
+              "marks": "2"
+            }
+          ]
+        },
+        {
+          "ref": "e",
+          "required": "Explain which costs are fixed and which change with the number of learners.",
+          "marks": "4",
+          "marking": "ai_assisted",
+          "rubric": [
+            {
+              "point": "The facilitator and venue are fixed for the programme.",
+              "authority": "",
+              "marks": "2"
+            },
+            {
+              "point": "Materials and catering change with the number of learners.",
+              "authority": "",
+              "marks": "2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

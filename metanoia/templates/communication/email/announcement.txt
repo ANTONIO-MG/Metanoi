@@ -1,0 +1,20 @@
+{% load org_branding %}{% org_brand as brand %}{{ announcement.title }}
+{% if announcement.is_important %}Important · {% endif %}Announcement{% if announcement.sender %} from {{ announcement.sender|greeting_name:"" }}{% endif %}
+
+{{ announcement.body }}
+{% if announcement.media_url %}
+Watch the video: {{ announcement.media_url|email_url }}
+{% endif %}{% if link_url %}
+{{ announcement.url_label|default:"Details" }}: {{ link_url|email_url }}
+{% endif %}{% if attachment_list %}
+Files{% if not attached %} (open the notification to download){% endif %}:
+{% for f in attachment_list %}  - {{ f.original_name }}
+{% endfor %}{% endif %}{% if open_url %}
+Open in Metanoia: {{ open_url }}
+{% endif %}
+--
+{{ brand.copyright|default:"Metanoia Group" }}
+{% if footer.unsubscribe_url %}
+Unsubscribe: {{ footer.unsubscribe_url }}
+E-mail preferences: {{ footer.preferences_url }}{% endif %}{% if brand.terms_url %}
+Terms: {{ brand.terms_url }}{% endif %}{% if brand.privacy_url %} · Privacy: {{ brand.privacy_url }}{% endif %}

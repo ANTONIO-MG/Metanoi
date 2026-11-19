@@ -1,0 +1,33 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}Community member → student, step 1: verify the e-mail address
+(apps.accounts.community_views.become_student). Context: `sent` (the link has been
+e-mailed). Overrides `content`.{% endcomment %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body p-4">
+        <span class="badge bg-primary bg-opacity-10 text-primary mb-2">Metanoia Community → Student</span>
+        <h4>Become a Metanoia student</h4>
+        <p class="text-muted">As a student you get your modules, the week-by-week schedule, live classes and recordings,
+          mock exams and assessments, your progress and your module chats — and you stay in the community.</p>
+        <ol class="small">
+          <li><strong>Confirm your e-mail.</strong> We send a link to <strong>{{ request.user.email }}</strong>.</li>
+          <li><strong>Choose a new password</strong> for your student account.</li>
+          <li><strong>Register</strong> like every other student: your details, your programme and modules, then pay or start your free week.</li>
+        </ol>
+        {% if sent %}
+          <div class="alert alert-info small"><i class="bi bi-envelope-check me-1"></i>
+            We have e-mailed a verification link to {{ request.user.email }}. Open it to carry on — check your spam folder if it does not arrive in a few minutes.</div>
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <button class="btn btn-primary mb-0">{% if sent %}Send the link again{% else %}Send my verification link{% endif %}</button>
+          <a class="btn btn-light mb-0" href="{% url 'pages:dashboard' %}">Back to the community</a>
+        </form>
+        <p class="small text-muted mt-3 mb-0">Wrong e-mail address? <a href="{% url 'communication:message-metanoia' %}">Message Metanoia</a> and we will fix it for you.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

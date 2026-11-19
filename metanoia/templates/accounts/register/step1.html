@@ -1,0 +1,185 @@
+{% extends 'layouts/auth.html' %}
+{% comment %}Registration wizard, step 1 — "Tell us about you". One accordion section per
+entry in `sections` (each with `key`, `title`, `open` and its own `form`):
+- ``basics`` (About you): profile picture with live preview, then the personal fields;
+- ``contact`` (Contact & address): phone with country picker, WhatsApp verification, city,
+  suburb, province;
+- ``consent`` (POPIA): one switch per consent; the first two are required.
+Also uses `person` (the saved profile picture) and `staff` (the button says Finish rather
+than Continue). Overrides `title`, `card_col`, `oblique`, `auth_card`, `extra_css` and
+`extra_js`.
+
+The picture preview shows the saved picture to begin with; a newly chosen file replaces
+it in the preview straight away. Cancelling the file dialog goes back to the saved picture
+rather than blanking the circle. A file that is not an image, or is over 2 MB (the
+server's limit), is refused here with the reason. The address is three plain fields.
+{% endcomment %}
+{% load static %}
+{% block title %}Registration · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+{% block card_col %}col-xl-9 col-lg-11{% endblock %}
+{% block oblique %}{% endblock %}
+
+{% block auth_card %}
+<div class="card mt-7 mb-4 shadow-lg">
+  <div class="card-body p-4">
+    {% include 'accounts/register/_steps.html' with step=1 %}
+
+    <div class="text-center mb-4">
+      <h4 class="font-weight-bolder text-info text-gradient mb-1">Tell us about you</h4>
+      <p class="text-sm text-muted mb-0">
+        Fields marked <span class="text-danger">*</span> are required — the rest you can
+        complete anytime from your profile. Your progress is saved as you go.
+      </p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="regForm" novalidate>
+      {% csrf_token %}
+      <div class="accordion wz-accordion" id="regAcc">
+        {% for section in sections %}
+        <div class="accordion-item rf-sec border rounded-3 mb-2 overflow-hidden" data-sec="{{ section.key }}">
+          <h2 class="accordion-header">
+            <button class="accordion-button {% if not section.open %}collapsed{% endif %} py-3" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#sec-{{ section.key }}"
+                    aria-expanded="{{ section.open|yesno:'true,false' }}">
+              <span class="sec-chev" aria-hidden="true"></span>
+              <span class="sec-title">{{ section.title }}</span>
+              <span class="sec-check" title="Complete when required fields are filled"></span>
+            </button>
+          </h2>
+          <div id="sec-{{ section.key }}" class="accordion-collapse collapse {% if section.open %}show{% endif %}"
+               data-bs-parent="#regAcc">
+            <div class="accordion-body rf-body">
+
+              {% if section.key == 'basics' %}
+              {% with current=person.profile_picture %}
+              <div class="pfp-wrap mb-3">
+                <div class="pfp-preview{% if current %} has-img{% endif %}" id="pfpPreview">
+                  <img id="pfpImg" alt="Profile preview" {% if current %}src="{{ current.url }}"{% endif %}
+                       data-saved="{% if current %}{{ current.url }}{% endif %}">
+                  <img class="pfp-ph" src="{% static 'images/reg/about.png' %}" alt="">
+                </div>
+                <div class="flex-grow-1">
+                  <label class="rf-label" for="id_basics-profile_picture">Profile picture</label>
+                  {{ section.form.profile_picture }}
+                  <div class="rf-help" id="pfpName" data-empty="{% if current %}Your current picture is shown. Choose a new photo to replace it.{% else %}No file selected — a round preview appears here.{% endif %}">
+                    {% if current %}Your current picture is shown. Choose a new photo to replace it.{% else %}No file selected — a round preview appears here.{% endif %}</div>
+                  {% for e in section.form.profile_picture.errors %}<div class="rf-err">{{ e }}</div>{% endfor %}
+                </div>
+              </div>
+              {% endwith %}
+              <div class="row g-2">
+                {% include 'accounts/register/_field.html' with field=section.form.title col="col-md-2" %}
+                {% include 'accounts/register/_field.html' with field=section.form.first_name col="col-md-5" %}
+                {% include 'accounts/register/_field.html' with field=section.form.last_name col="col-md-5" %}
+                {% include 'accounts/register/_field.html' with field=section.form.gender col="col-md-6" %}
+                {% include 'accounts/register/_field.html' with field=section.form.date_of_birth col="col-md-6" %}
+              </div>
+              {% if not staff %}
+              <div class="rf-subhead">Parent / guardian / sponsor <span class="text-muted fw-normal">(optional)</span></div>
+              <div class="row g-2 align-items-start">
+                <div class="col-md-5">
+                  <label class="rf-label">They are my</label>
+                  {% include 'accounts/register/_pillradios.html' with field=section.form.guardian_relationship %}
+                </div>
+                {% include 'accounts/register/_field.html' with field=section.form.guardian_email col="col-md-7" %}
+              </div>
+              <div class="rf-note mt-2" role="note">
+                <i class="bi bi-shield-lock me-1"></i>
+                <strong>Privacy notice:</strong> a linked parent, guardian or sponsor can view and settle your
+                invoices and payments, and view your academic reports — results, progress and attendance.
+                They cannot read your messages or see your other activity on the Learning Hub.
+              </div>
+              {% endif %}
+              <div class="row g-2 mt-1">
+                {% include 'accounts/register/_field.html' with field=section.form.funding_source col="col-md-6" %}
+              </div>
+
+              {% elif section.key == 'contact' %}
+              <div class="row g-2">
+                {% include 'accounts/register/_phonefield.html' with field=section.form.primary_phone country=section.form.phone_country col="col-md-6" %}
+                {% include 'accounts/register/_field.html' with field=section.form.city col="col-md-6" %}
+                {% include 'accounts/register/_whatsapp_verify.html' %}
+                {% include 'accounts/register/_field.html' with field=section.form.suburb col="col-md-6" %}
+                {% include 'accounts/register/_field.html' with field=section.form.province col="col-md-6" %}
+              </div>
+
+              {% elif section.key == 'consent' %}
+              <p class="text-sm text-muted mb-3">
+                In line with the Protection of Personal Information Act (POPIA), please confirm how we
+                may use your information. The first two are required to run your learning account;
+                the rest are optional — toggle green for yes, red for no.
+              </p>
+              {% for e in section.form.non_field_errors %}<div class="alert alert-danger py-2 text-sm">{{ e }}</div>{% endfor %}
+              <div class="switch-list">
+                {% for field in section.form %}
+                <label class="switch-row" for="{{ field.id_for_label }}">
+                  <span class="form-check form-switch rf-switch mb-0">{{ field }}</span>
+                  <span class="switch-meta">
+                    <span class="switch-title">{{ field.label }}{% if field.field.required %} <span class="req">*</span>{% endif %}</span>
+                    {% if field.help_text %}<span class="switch-desc">{{ field.help_text }}</span>{% endif %}
+                    {% if field.errors %}<span class="rf-err">{{ field.errors|striptags }}</span>{% endif %}
+                  </span>
+                </label>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-4">
+        <a href="{% url 'myhub:page-login' %}" class="btn btn-link text-secondary mb-0">Cancel</a>
+        <button type="submit" class="btn bg-gradient-info mb-0">
+          {% if staff %}Finish<i class="bi bi-check2-circle ms-2"></i>{% else %}Continue<i class="bi bi-arrow-right-circle ms-2"></i>{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+  {% include 'accounts/register/_reg_styles.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% include 'accounts/register/_reg_scripts.html' %}
+<script>
+(function () {
+  var pfp = document.getElementById('id_basics-profile_picture');
+  if (pfp) {
+    var box = document.getElementById('pfpPreview');
+    var img = document.getElementById('pfpImg');
+    var name = document.getElementById('pfpName');
+    var saved = img.getAttribute('data-saved') || '';
+    var objectUrl = null;
+    function showSaved(message) {
+      if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+      if (saved) { img.src = saved; box.classList.add('has-img'); }
+      else { img.removeAttribute('src'); box.classList.remove('has-img'); }
+      name.textContent = message || name.getAttribute('data-empty');
+      name.classList.toggle('text-danger', !!message);
+    }
+    pfp.addEventListener('change', function () {
+      var f = pfp.files && pfp.files[0];
+      if (!f) { showSaved(); return; }
+      if (!/^image\//.test(f.type)) {
+        pfp.value = ''; showSaved('That file is not a picture — choose a JPG, PNG or WebP photo.'); return;
+      }
+      if (f.size > 2 * 1024 * 1024) {
+        pfp.value = ''; showSaved('That photo is larger than 2 MB — choose a smaller one.'); return;
+      }
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(f);
+      img.src = objectUrl;
+      box.classList.add('has-img');
+      name.classList.remove('text-danger');
+      name.textContent = f.name + (saved ? ' — replaces your current picture when you continue.' : '');
+    });
+  }
+})();
+</script>
+{% endblock %}

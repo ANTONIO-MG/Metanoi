@@ -1,0 +1,34 @@
+{% extends "layouts/base.html" %}
+{% load i18n l10n admin_urls %}
+{% comment %}Delete the records ticked on a list (the "Delete selected" action) —
+OVERRIDES the old admin theme's. Same layout as delete_confirmation.html.{% endcomment %}
+{% block content %}
+<div id="content-main" class="card ta-delete">
+  <div class="card-body">
+  {% if perms_lacking %}
+    <h2 class="ta-h2"><i class="bi bi-shield-lock"></i>{% translate "You can’t delete these" %}</h2>
+    <p>{% blocktranslate %}Deleting the selected {{ objects_name }} would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:{% endblocktranslate %}</p>
+    <ul class="ta-delete__list">{{ perms_lacking|unordered_list }}</ul>
+  {% elif protected %}
+    <h2 class="ta-h2"><i class="bi bi-shield-lock"></i>{% translate "Protected by other records" %}</h2>
+    <p>{% blocktranslate %}Deleting the selected {{ objects_name }} would require deleting the following protected related objects:{% endblocktranslate %}</p>
+    <ul class="ta-delete__list">{{ protected|unordered_list }}</ul>
+  {% else %}
+    <div class="ta-delete__warn"><i class="bi bi-exclamation-triangle"></i>
+      <p>{% blocktranslate %}Are you sure you want to delete the selected {{ objects_name }}? All of the following objects and their related items will be deleted:{% endblocktranslate %}</p>
+    </div>
+    {% include "admin/includes/object_delete_summary.html" %}
+    {% for deletable_object in deletable_objects %}<ul class="ta-delete__list">{{ deletable_object|unordered_list }}</ul>{% endfor %}
+    <form method="post">{% csrf_token %}
+      {% for obj in queryset %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk|unlocalize }}">{% endfor %}
+      <input type="hidden" name="action" value="delete_selected">
+      <input type="hidden" name="post" value="yes">
+      <div class="ta-submit ta-submit--static">
+        <button type="submit" class="ta-danger ta-danger--solid"><i class="bi bi-trash3"></i>{% translate 'Yes, delete them' %}</button>
+        <a class="ta-ghost" href="{% url opts|admin_urlname:'changelist' %}">{% translate "No, take me back" %}</a>
+      </div>
+    </form>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% for a in attachments %}
+<span class="mb-att mb-att--draft">
+  <i class="bi {{ a.icon }}"></i>
+  <a href="{% url 'mailbox:draft-attachment' draft.pk a.pk %}"><span class="mb-att__name">{{ a.filename }}</span><span class="mb-att__size">{{ a.size|filesizeformat }}</span></a>
+  <button type="button" class="mb-att__x" data-mb="remove-att" data-url="{% url 'mailbox:draft-attach-delete' draft.pk a.pk %}" title="Remove"><i class="bi bi-x-lg"></i></button>
+</span>
+{% endfor %}

@@ -1,0 +1,15 @@
+{% extends 'layouts/auth.html' %}
+{% load static %}{% load org_branding %}
+{% comment %}allauth's sign-in-side pages (2FA prompt, reauth, social confirm) in the
+hub's sign-in layout. Maps allauth's blocks onto layouts/auth.html: `head_title` → `title`,
+`extra_head` → `extra_css` (plus allauth/_hub_styles.html), `content` → inside
+`auth_card`, `extra_body` → `extra_js`; `auth_image` is the sign-in picture.{% endcomment %}
+{% block title %}{% block head_title %}{% endblock %} · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+{% block extra_css %}{% block extra_head %}{% endblock %}{% include 'allauth/_hub_styles.html' %}{% endblock %}
+{% block auth_image %}{% static 'images/auth/sign-in.jpg' %}{% endblock %}
+{% block auth_card %}
+<div class="card card-plain mt-8 allauth-hub">
+  <div class="card-body px-0">{% block content %}{% endblock %}</div>
+</div>
+{% endblock %}
+{% block extra_js %}{% block extra_body %}{% endblock %}{% endblock %}

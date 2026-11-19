@@ -1,0 +1,51 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+Who read what, for how long, and how they scored. apps.learning.course_analytics
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``content``.
+{% endcomment %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap justify-content-between gap-2 align-items-center">
+    <div>
+      <h1 class="h5 mb-1"><i class="bi bi-clipboard-data text-primary me-2"></i>Course report — {{ offering }}</h1>
+      <div class="small text-muted">{{ student_count }} student{{ student_count|pluralize }}{% if cohort %} in {{ cohort.code }}{% endif %} · reading time from lesson sessions · best attempt per quiz</div>
+    </div>
+    <form class="d-flex gap-2" method="get">
+      <select name="cohort" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Every intake</option>{% for c in cohorts %}<option value="{{ c.pk }}" {% if c == cohort %}selected{% endif %}>{{ c.code }}</option>{% endfor %}
+      </select>
+      <a class="btn btn-sm btn-outline-secondary text-nowrap" href="{% url 'learning:module-feed' offering.pk %}">Module page</a>
+    </form>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header"><h2 class="h6 mb-0">Lessons and quizzes</h2></div>
+  <div class="table-responsive"><table class="table table-sm align-middle small mb-0">
+    <thead><tr><th>Block · week</th><th>Item</th><th>Reached</th><th>Reading time</th><th>Completion</th><th>Average mark</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}<tr>
+      <td class="text-muted text-nowrap">{{ r.material.phase.short_label }}{% if r.material.phase.cohort %} {{ r.material.phase.cohort.code }}{% endif %} · {{ r.material.week.display_title|default:'—'|truncatechars:32 }}</td>
+      <td><span class="badge bg-light text-dark me-1">{{ r.kind }}</span>{{ r.material.title|truncatechars:70 }}</td>
+      <td>{{ r.reach }}%</td>
+      <td>{% if r.minutes is not None %}{{ r.minutes }} min <span class="text-muted">/ {{ r.expected }} est.</span>{% elif r.expected %}<span class="text-muted">{{ r.expected }} min est.</span>{% else %}—{% endif %}</td>
+      <td>{% if r.completion is not None %}{{ r.completion }}%{% else %}—{% endif %}</td>
+      <td>{% if r.mean is not None %}<strong>{{ r.mean }}%</strong> <span class="text-muted">({{ r.attempts }})</span>{% elif r.attempts == 0 %}<span class="text-muted">no attempts</span>{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.material.assessment_id %}<a href="{% url 'assessments:analytics' r.material.assessment_id %}">Analytics</a>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="7" class="text-muted text-center py-4">No published lessons or quizzes on this module yet.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2 class="h6 mb-0">Students</h2></div>
+  <div class="table-responsive"><table class="table table-sm align-middle small mb-0">
+    <thead><tr><th>Student</th><th>Lessons opened</th><th>Reading time</th><th>Quizzes sat</th><th>Average mark</th></tr></thead>
+    <tbody>{% for p in people %}<tr>
+      <td>{{ p.person }}</td><td>{{ p.lessons }} / {{ p.lessons_total }}</td><td>{{ p.minutes }} min</td>
+      <td>{{ p.quizzes }} / {{ p.quizzes_total }}</td><td>{% if p.mean is not None %}<strong>{{ p.mean }}%</strong>{% else %}—{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="5" class="text-muted text-center py-4">No students on this module{% if cohort %} in {{ cohort.code }}{% endif %}.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

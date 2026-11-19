@@ -1,0 +1,300 @@
+{% load links %}{% load people %}{% load static %}
+{% comment %}Unified activity feed — one loop over feed_items (dicts from
+apps.communication.feed.build_feed).
+
+Each item carries its own presentation (`icon`, `color`, `open_label`);
+`can_react` is true only for social posts. Posts can be shared (#feedShareModal)
+and reported (#feedReportModal); staff get Remove / Restore, authors Delete.
+
+Attachments render one full-width (``partials/_feed_media_full.html``), or as a
+tiled gallery showing four with a "+N" overlay; extras beyond the first four are
+hidden lightbox items so the close/prev/next viewer can page through every
+attachment after "+N". Like / Comment appear only for the things you can
+actually react to. Both work in place over fetch — a like updates its count and
+a comment is appended to that card's thread — so the reader never leaves the feed.{% endcomment %}
+<div class="vstack gap-4" id="activityFeed">
+  {% for item in feed_items %}
+  <div class="card app-fade-in feed-item feed-{{ item.type }}{% if item.extra.is_removed %} feed-removed{% endif %}" data-type="{{ item.type }}"
+       {% if item.extra.pk %}id="post-{{ item.extra.pk }}"{% endif %}
+       style="border-left:3px solid {{ item.color }}">
+    <div class="card-header border-0 pb-0">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center min-w-0">
+          <div class="avatar me-2">
+            {% if item.actor_url %}<a href="{{ item.actor_url }}" title="{{ item.actor_name }}">{% endif %}
+            {% if item.avatar %}
+              <img class="avatar-img rounded-circle" src="{{ item.avatar }}" alt="{{ item.actor_name }}" style="object-fit:cover">
+            {% elif item.actor %}
+              <span class="avatar-img rounded-circle d-flex align-items-center justify-content-center fw-bold text-white" style="background:{{ item.color }}">{{ item.initials }}</span>
+            {% else %}
+              <span class="avatar-img rounded-circle d-flex align-items-center justify-content-center text-white" style="background:{{ item.color }}"><i class="bi bi-{{ item.icon }}"></i></span>
+            {% endif %}
+            {% if item.actor_url %}</a>{% endif %}
+          </div>
+          <div class="min-w-0">
+            <div class="nav nav-divider">
+              <h6 class="nav-item card-title mb-0 text-truncate">{% if item.actor %}{% if item.actor_url %}<a href="{{ item.actor_url }}" class="text-reset text-decoration-none">{{ item.actor_name }}</a>{% else %}{{ item.actor_name }}{% endif %}{% else %}{{ item.title|default:"System" }}{% endif %}</h6>
+              <span class="nav-item small">{{ item.when|timesince }} ago</span>
+            </div>
+            <p class="mb-0 small">
+              <span class="badge rounded-pill" style="background:{{ item.color }}1a;color:{{ item.color }}">
+                <i class="bi bi-{{ item.icon }} me-1"></i>{{ item.label|default:item.type }}</span>
+              {% if item.community %}<a class="text-muted ms-1 text-decoration-none" href="?c={{ item.community.slug }}"><i class="bi bi-people me-1"></i>{{ item.community.name }}</a>{% endif %}
+              {% if item.module_name %}<span class="text-muted ms-1"><i class="bi bi-bookmark me-1"></i>{{ item.module_name }}</span>{% endif %}
+              {% if item.extra.visibility %}<span class="text-muted ms-1">· {{ item.extra.visibility }}</span>{% endif %}
+            </p>
+          </div>
+        </div>
+        {% if item.url %}
+        <a class="btn btn-sm btn-secondary-soft-hover text-secondary py-1 px-2 text-nowrap" href="{{ item.url }}">
+          <i class="bi bi-box-arrow-up-right me-1"></i><span class="d-none d-sm-inline">{{ item.open_label }}</span></a>
+        {% endif %}
+        {% if item.type == "post" and item.extra.pk %}
+        <div class="dropdown">
+          <button class="btn btn-sm btn-link text-secondary py-1 px-2" type="button" data-bs-toggle="dropdown"
+                  aria-expanded="false" aria-label="Post options"><i class="bi bi-three-dots"></i></button>
+          <ul class="dropdown-menu dropdown-menu-end small">
+            {% if item.extra.can_report %}
+            <li><button type="button" class="dropdown-item feed-report-open" data-report-url="{% url 'communication:feed-report' item.extra.pk %}">
+              <i class="bi bi-flag me-2"></i>Report post</button></li>
+            {% endif %}
+            {% if item.extra.can_delete %}
+            <li><form method="post" action="{% url 'communication:feed-delete' item.extra.pk %}" onsubmit="return confirm('Delete this post?');">
+              {% csrf_token %}<button class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Delete post</button></form></li>
+            {% endif %}
+            {% if item.extra.can_remove %}
+              {% if item.extra.is_removed %}
+              <li><form method="post" action="{% url 'communication:feed-restore' item.extra.pk %}">
+                {% csrf_token %}<button class="dropdown-item"><i class="bi bi-arrow-counterclockwise me-2"></i>Restore post</button></form></li>
+              {% else %}
+              <li><form method="post" action="{% url 'communication:feed-remove' item.extra.pk %}"
+                        onsubmit="var r = prompt('Why is this post being removed? (shown to staff only)', 'Breaks the community guidelines'); if (r === null) return false; this.reason.value = r; return true;">
+                {% csrf_token %}<input type="hidden" name="reason">
+                <button class="dropdown-item text-danger"><i class="bi bi-slash-circle me-2"></i>Remove from community</button></form></li>
+              {% endif %}
+              <li><a class="dropdown-item" href="{% url 'staffdesk:ops-moderation' %}?tab=community"><i class="bi bi-shield-check me-2"></i>Moderation queue</a></li>
+            {% endif %}
+            {% if not item.extra.can_report and not item.extra.can_delete and not item.extra.can_remove %}
+            <li><span class="dropdown-item-text text-muted">No actions</span></li>
+            {% endif %}
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      {% if item.title and item.type != "post" and item.type != "message-direct" %}<h6 class="mb-2">{{ item.title }}</h6>{% endif %}
+      {% if item.extra.is_removed %}
+        <div class="alert alert-warning py-2 small mb-2"><i class="bi bi-eye-slash me-1"></i>
+          Hidden from the community{% if item.extra.removal_reason %} — {{ item.extra.removal_reason }}{% endif %}. Only staff can see this.</div>
+      {% endif %}
+      {% if item.extra.report_count %}
+        <div class="small text-danger mb-2"><i class="bi bi-flag-fill me-1"></i>{{ item.extra.report_count }} open report{{ item.extra.report_count|pluralize }}
+          · <a href="{% url 'staffdesk:ops-moderation' %}?tab=community">review</a></div>
+      {% endif %}
+      {% if item.body_html %}<p class="mb-0 feed-body" data-link-host>{{ item.body_html }}</p>
+      {% elif item.body %}<p class="mb-0" data-link-host>{{ item.body|truncatewords:60|linkify }}</p>{% endif %}
+      {% with orig=item.extra.shared_from %}{% if orig %}
+        <div class="feed-shared border rounded p-3 mt-2">
+          <div class="d-flex align-items-center mb-1 small">
+            <img class="rounded-circle me-2" src="{{ orig.author.profile.avatar_url }}" alt="" width="24" height="24" style="object-fit:cover">
+            <strong class="me-1">{{ orig.author|person_name }}</strong>
+            <span class="text-muted">· {{ orig.created_at|timesince }} ago{% if orig.community %} · {{ orig.community.name }}{% endif %}</span>
+          </div>
+          {% if item.extra.shared_from_html %}<p class="mb-0 small feed-body" data-link-host>{{ item.extra.shared_from_html }}</p>{% endif %}
+          {% for m in item.extra.shared_from_media %}{% if m.kind == "image" %}
+            <a class="flb-item d-inline-block mt-2 me-1" href="{{ m.url }}" data-flb-group="flb-share-{{ item.extra.pk }}" data-flb-type="image"
+               data-flb-src="{{ m.url }}" data-flb-name="{{ m.name }}"><img src="{{ m.url }}" alt="" style="max-height:160px;border-radius:.4rem"></a>
+          {% else %}
+            <a class="d-block small mt-1" href="{{ m.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip me-1"></i>{{ m.name|default:"Attachment" }}</a>
+          {% endif %}{% endfor %}
+        </div>
+      {% endif %}{% endwith %}
+      {% if item.location %}<p class="small text-muted mb-0 mt-1"><i class="bi bi-geo-alt me-1"></i>{{ item.location }}</p>{% endif %}
+      {% if item.extra.status %}<span class="badge text-bg-light mt-2">{{ item.extra.status }}</span>{% endif %}
+      {% if item.media_list %}
+        {% if item.media_list|length == 1 %}
+          {% include 'partials/_feed_media_full.html' with m=item.media_list.0 group=forloop.counter %}
+        {% else %}
+          {% with total=item.media_list|length %}
+          <div class="feed-gallery feed-gallery--{% if total == 2 %}2{% elif total == 3 %}3{% elif total == 4 %}4{% else %}more{% endif %} mt-2">
+            {% for m in item.media_list|slice:":4" %}
+              {% if m.kind == "image" %}
+                <a class="feed-tile flb-item" href="{{ m.url }}"
+                   data-flb-group="flb-card-{{ forloop.parentloop.counter }}" data-flb-type="image"
+                   data-flb-src="{{ m.url }}" data-flb-name="{{ m.name|default:'image' }}">
+                  <img src="{{ m.url }}" alt="{{ m.name|default:'Shared image' }}">
+                  {% if forloop.last and total > 4 %}<span class="feed-more">+{{ total|add:"-4" }}</span>{% endif %}
+                </a>
+              {% elif m.kind == "video" %}
+                <a class="feed-tile feed-tile--video flb-item" href="{{ m.url }}"
+                   data-flb-group="flb-card-{{ forloop.parentloop.counter }}" data-flb-type="video"
+                   data-flb-src="{{ m.url }}" data-flb-name="{{ m.name|default:'video' }}">
+                  <video src="{{ m.url }}" preload="metadata" muted></video>
+                  <span class="feed-play"><i class="bi bi-play-circle-fill"></i></span>
+                  {% if forloop.last and total > 4 %}<span class="feed-more">+{{ total|add:"-4" }}</span>{% endif %}
+                </a>
+              {% else %}
+                <a class="feed-tile feed-tile--doc flb-item" href="{{ m.url }}" title="{{ m.name }}"
+                   data-flb-group="flb-card-{{ forloop.parentloop.counter }}" data-flb-type="doc"
+                   data-flb-src="{{ m.url }}" data-flb-name="{{ m.name|default:'Document' }}">
+                  <i class="bi bi-file-earmark-text-fill"></i>
+                  <span class="fname text-truncate">{{ m.name|default:"Document" }}</span>
+                  {% if forloop.last and total > 4 %}<span class="feed-more">+{{ total|add:"-4" }}</span>{% endif %}
+                </a>
+              {% endif %}
+            {% endfor %}
+            {% for m in item.media_list|slice:"4:" %}
+              <a class="d-none flb-item" href="{{ m.url }}"
+                 data-flb-group="flb-card-{{ forloop.parentloop.counter }}"
+                 data-flb-type="{{ m.kind }}" data-flb-src="{{ m.url }}" data-flb-name="{{ m.name|default:'file' }}"></a>
+            {% endfor %}
+          </div>
+          {% endwith %}
+        {% endif %}
+      {% elif item.media %}
+        {% include 'partials/_feed_media_full.html' with m=item.media group=forloop.counter %}
+      {% endif %}
+    </div>
+
+    {% if item.can_react and item.extra.pk %}
+    <div class="card-footer border-0 pt-0">
+      <ul class="nav nav-stack small">
+        <li class="nav-item">
+          <button type="button" class="nav-link border-0 bg-transparent p-0 feed-like {% if item.extra.liked %}text-primary fw-semibold{% endif %}"
+                  data-like-url="{% url 'communication:feed-like' item.extra.pk %}" data-liked="{{ item.extra.liked|yesno:'1,0' }}">
+            <i class="bi bi-hand-thumbs-up{% if item.extra.liked %}-fill{% endif %} pe-1"></i>Like
+            <span class="like-count">{% if item.extra.likes %}({{ item.extra.likes }}){% endif %}</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-bs-toggle="collapse" href="#feedComments{{ item.extra.pk }}" role="button">
+            <i class="bi bi-chat-fill pe-1"></i>Comment
+            <span class="comment-count">{% if item.extra.comments %}({{ item.extra.comments|length }}){% endif %}</span></a>
+        </li>
+        {% if item.extra.can_share and communities|length > 1 %}
+        <li class="nav-item">
+          <button type="button" class="nav-link border-0 bg-transparent p-0 feed-share-open"
+                  data-share-url="{% url 'communication:feed-share' item.extra.pk %}"
+                  data-from="{% if item.community %}{{ item.community.slug }}{% endif %}">
+            <i class="bi bi-share-fill pe-1"></i>Share</button>
+        </li>
+        {% endif %}
+      </ul>
+
+      <div class="collapse" id="feedComments{{ item.extra.pk }}">
+        <ul class="list-unstyled comment-list mb-2 mt-2" data-comment-list>
+          {% for c in item.extra.comments %}
+          <li class="d-flex mb-2">
+            <div class="avatar avatar-xs me-2">
+              {% if c.author.profile %}
+                <img class="avatar-img rounded-circle" src="{{ c.author.profile.avatar_url }}" alt="" style="object-fit:cover">
+              {% else %}
+                <span class="avatar-img rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white small">{{ c.author|person_name|slice:":1"|upper }}</span>
+              {% endif %}
+            </div>
+            <div class="bg-light rounded p-2 flex-grow-1">
+              <div class="d-flex justify-content-between">
+                <h6 class="mb-0 small">{% person_link c.author %}</h6>
+                <small class="text-muted ms-2">{{ c.created_at|timesince }} ago</small>
+              </div>
+              <p class="small mb-0 feed-body" data-link-host>{% if c.html %}{{ c.html }}{% else %}{{ c.body|linkify }}{% endif %}</p>
+              {% if is_moderator or c.author_id == request.user.pk %}
+              <form method="post" action="{% url 'communication:feed-comment-remove' c.pk %}" class="d-inline"
+                    onsubmit="return confirm('Remove this comment?');">{% csrf_token %}
+                <button class="btn btn-link btn-sm p-0 text-muted small">Remove</button></form>
+              {% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        <form class="d-flex gap-2 feed-comment-form" method="post" action="{% url 'communication:feed-comment' item.extra.pk %}">
+          {% csrf_token %}
+          <textarea name="body" rows="1" class="form-control form-control-sm bg-light" placeholder="Write a comment… (type @ to tag someone)"
+                    aria-label="Write a comment" data-autosize data-enter-submits
+                    data-mention-input data-community="{% if item.community %}{{ item.community.slug }}{% endif %}" autocomplete="off" required></textarea>
+          <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-send"></i></button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="card">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-rss display-6 text-primary"></i>
+      <h6 class="mt-3">Nothing here yet</h6>
+      <p class="text-muted mb-0">Be the first to post in this community — say hello, ask a question or share a study tip.</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+(function(){
+  var feed = document.getElementById('activityFeed');
+  if(!feed) return;
+  function csrf(){
+    var el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  feed.addEventListener('click', function(e){
+    var btn = e.target.closest('.feed-like');
+    if(!btn) return;
+    e.preventDefault();
+    btn.disabled = true;
+    fetch(btn.dataset.likeUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest'}
+    }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      if(!d || !d.ok) return;
+      btn.dataset.liked = d.liked ? '1' : '0';
+      btn.classList.toggle('text-primary', d.liked);
+      btn.classList.toggle('fw-semibold', d.liked);
+      var icon = btn.querySelector('i');
+      if(icon) icon.className = 'bi bi-hand-thumbs-up' + (d.liked ? '-fill' : '') + ' pe-1';
+      var count = btn.querySelector('.like-count');
+      if(count) count.textContent = d.likes ? '(' + d.likes + ')' : '';
+    }).finally(function(){ btn.disabled = false; });
+  });
+
+  feed.addEventListener('submit', function(e){
+    var form = e.target.closest('.feed-comment-form');
+    if(!form) return;
+    e.preventDefault();
+    var input = form.querySelector('input[name=body]');
+    var body = (input.value || '').trim();
+    if(!body) return;
+    fetch(form.action, {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest'},
+      body: new FormData(form)
+    }).then(function(r){ return r.json().catch(function(){ return null; }); }).then(function(d){
+      if(!d) return;
+      if(!d.ok){ if(d.error && d.error !== 'empty') alert(d.error); return; }
+      input.value = '';
+      form.querySelectorAll('input[name=mentions]').forEach(function(m){ m.remove(); });
+      var list = form.parentElement.querySelector('[data-comment-list]');
+      var li = document.createElement('li');
+      li.className = 'd-flex mb-2';
+      var avatar = d.comment.avatar
+        ? '<img class="avatar-img rounded-circle" src="' + d.comment.avatar + '" alt="" style="object-fit:cover">'
+        : '<span class="avatar-img rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white small">'
+          + d.comment.author.slice(0,1).toUpperCase() + '</span>';
+      li.innerHTML = '<div class="avatar avatar-xs me-2">' + avatar + '</div>'
+        + '<div class="bg-light rounded p-2 flex-grow-1">'
+        + '<div class="d-flex justify-content-between"><h6 class="mb-0 small"></h6>'
+        + '<small class="text-muted ms-2">just now</small></div>'
+        + '<p class="small mb-0"></p></div>';
+      li.querySelector('h6').textContent = d.comment.author;
+      if(d.comment.html){ li.querySelector('p').innerHTML = d.comment.html; }
+      else { li.querySelector('p').textContent = d.comment.body; }
+      list.appendChild(li);
+      var card = form.closest('.feed-item');
+      var counter = card && card.querySelector('.comment-count');
+      if(counter) counter.textContent = d.count ? '(' + d.count + ')' : '';
+    });
+  });
+})();
+</script>

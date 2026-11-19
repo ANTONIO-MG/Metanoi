@@ -1,0 +1,86 @@
+{% load i18n admin_urls metanoia_admin %}
+{% comment %}
+The admin's header, above every admin page (layouts/base.html → block message).
+
+The app / model / record come from Django's own context (opts, cl, original
+on edit pages, object on delete / history, add) and the menu from admin.site.get_app_list via {% templatetag openblock %} metanoia_admin_menu {% templatetag closeblock %}.
+
+Below the header sits the full menu (the ``#taApps`` drawer); its links are also the data
+the "Find a table" box searches.
+{% endcomment %}
+{% metanoia_admin_menu as menu %}
+{% with cur=menu.current o=menu.opts rec=menu.record %}
+<section class="ta-head">
+  <nav class="ta-crumbs" aria-label="Breadcrumb">
+    <a href="{% url 'admin:index' %}"><i class="bi bi-shield-check"></i>Admin</a>
+    {% if cur %}<i class="bi bi-chevron-right"></i><a href="{{ cur.app_url }}">{{ cur.name }}</a>{% endif %}
+    {% if o and rec or o and add %}<i class="bi bi-chevron-right"></i><a href="{% url o|admin_urlname:'changelist' %}">{{ o.verbose_name_plural|capfirst }}</a>{% endif %}
+    {% if o and rec and not change or o and rec and add %}<i class="bi bi-chevron-right"></i><a href="{% url o|admin_urlname:'change' rec.pk|admin_urlquote %}">{{ rec|truncatechars:40 }}</a>{% endif %}
+  </nav>
+
+  <div class="ta-head__row">
+    <div class="min-w-0">
+      <p class="ta-eyebrow">Administration{% if cur %} &middot; {{ cur.name }}{% endif %}</p>
+      <h1 class="ta-title">{% spaceless %}
+        {% if cl %}{{ cl.opts.verbose_name_plural|capfirst }}
+        {% elif original and add %}Password for {{ original|truncatechars:70 }}
+        {% elif add and o %}{% blocktranslate with name=o.verbose_name %}Add {{ name }}{% endblocktranslate %}
+        {% elif original %}{{ original|truncatechars:90 }}
+        {% elif rec and o %}{% if title == 'Delete' %}Delete {{ rec|truncatechars:80 }}{% else %}{{ title }}{% endif %}
+        {% elif cur and not o %}{{ cur.name }}
+        {% elif title and title != site_title and title != 'Site administration' %}{{ title }}
+        {% else %}Site administration{% endif %}
+      {% endspaceless %}</h1>
+      {% if cl %}<p class="ta-sub">{{ cl.result_count }} record{{ cl.result_count|pluralize }}{% if cl.has_active_filters or cl.query %} match{{ cl.result_count|pluralize:"es," }} this view{% endif %}</p>
+      {% elif rec and o %}<p class="ta-sub">{{ o.verbose_name|capfirst }}</p>
+      {% elif not cur %}<p class="ta-sub">Every table on the platform, with Django's permissions. Changes here are live.</p>{% endif %}
+    </div>
+
+    <div class="ta-head__tools">
+      <div class="ta-find" data-ta-find>
+        <i class="bi bi-search"></i>
+        <input type="search" class="form-control" placeholder="Find a table…" aria-label="Find a table" autocomplete="off" data-ta-find-input>
+        <div class="ta-find__results" data-ta-find-results hidden></div>
+      </div>
+      <button class="ta-iconbtn" type="button" data-bs-toggle="offcanvas" data-bs-target="#taApps" aria-controls="taApps">
+        <i class="bi bi-grid-3x3-gap"></i><span>All apps</span>
+      </button>
+    </div>
+  </div>
+
+  {% if cur and cur.models|length > 1 %}
+  <div class="ta-pills">
+    <nav class="t-nav" data-t-nav aria-label="{{ cur.name }} tables">
+      {% for m in cur.models %}
+        {% if m.admin_url %}<a href="{{ m.admin_url }}"{% if m.active %} class="is-on" aria-current="page"{% endif %}>{{ m.name }}</a>{% endif %}
+      {% endfor %}
+    </nav>
+  </div>
+  {% endif %}
+</section>
+
+<div class="offcanvas offcanvas-end ta-drawer" tabindex="-1" id="taApps" aria-labelledby="taAppsLabel">
+  <div class="offcanvas-header">
+    <div>
+      <p class="ta-eyebrow mb-1">Administration</p>
+      <h5 class="offcanvas-title" id="taAppsLabel">All apps</h5>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <ul class="ta-menu" data-ta-menu>
+      {% for app in menu.apps %}
+      <li class="ta-menu__app{% if app.active %} is-active{% endif %}">
+        <a class="ta-menu__head" href="{{ app.app_url }}"><i class="bi {{ app.icon }}"></i><span>{{ app.name }}</span><small>{{ app.models|length }}</small></a>
+        <ul>
+          {% for m in app.models %}{% if m.admin_url %}
+          <li><a href="{{ m.admin_url }}" data-ta-model="{{ m.name }}" data-ta-app="{{ app.name }}" data-ta-icon="{{ app.icon }}"{% if m.active %} aria-current="page"{% endif %}>{{ m.name }}</a>
+            {% if m.add_url %}<a class="ta-menu__add" href="{{ m.add_url }}" title="Add {{ m.name }}"><i class="bi bi-plus-lg"></i></a>{% endif %}</li>
+          {% endif %}{% endfor %}
+        </ul>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endwith %}

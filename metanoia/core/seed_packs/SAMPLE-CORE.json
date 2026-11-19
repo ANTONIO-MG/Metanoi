@@ -1,0 +1,85 @@
+{
+  "pack": "metanoia-pack/1",
+  "module": "CORE",
+  "programme": "METANOIA-SAMPLE",
+  "cohort": "",
+  "week": 1,
+  "topic": {
+    "code": "CORE-S1",
+    "title": "Sample topic: core concepts",
+    "description": "Bundled sample content, re-laid on every fresh install. Replace it with your own."
+  },
+  "items": [
+    {
+      "type": "study_guide",
+      "title": "Core concepts — sample study guide",
+      "subtitle": "A placeholder guide that shows the layout",
+      "author_name": "Metanoia Learning Hub",
+      "sections": [
+        {
+          "heading": "About this sample",
+          "body_html": "<p>This is <strong>sample content</strong> shipped with the platform so a new install has something to look at. Replace it with your own material.</p>"
+        },
+        {
+          "heading": "Key ideas",
+          "body_html": "<ul><li>One idea per section.</li><li>Short paragraphs.</li><li>A summary at the end.</li></ul>"
+        }
+      ]
+    },
+    {
+      "type": "mock",
+      "title": "Core concepts — sample check-in quiz",
+      "total_marks": "10",
+      "minutes": "20",
+      "release_solution": "on_submit",
+      "instructions": "Sample quiz. Answer both questions.",
+      "scenario_html": "<p>A learner attends 8 of the 10 sessions of a sample programme.</p>",
+      "parts": [
+        {
+          "ref": "a",
+          "required": "Calculate the attendance rate as a percentage.",
+          "marks": "6",
+          "marking": "auto",
+          "lines": [
+            {
+              "label": "Sessions attended",
+              "authority": "",
+              "amount": "8",
+              "marks": "2"
+            },
+            {
+              "label": "Sessions offered",
+              "authority": "",
+              "amount": "10",
+              "marks": "2"
+            },
+            {
+              "label": "Attendance rate (%)",
+              "authority": "",
+              "amount": "80",
+              "marks": "2"
+            }
+          ]
+        },
+        {
+          "ref": "b",
+          "required": "Explain why attendance is tracked.",
+          "marks": "4",
+          "marking": "ai_assisted",
+          "rubric": [
+            {
+              "point": "It shows who may need support.",
+              "authority": "",
+              "marks": "2"
+            },
+            {
+              "point": "It is evidence that the programme was delivered.",
+              "authority": "",
+              "marks": "2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

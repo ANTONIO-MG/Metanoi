@@ -1,0 +1,105 @@
+/**
+ * assessments.css — templates/assessments/index.html, take.html and result.html.
+ *
+ * The list is one row per quiz / test / mock exam, grouped by module, with the
+ * type pills and module select filtering in place. The paper pages add the
+ * scenario reading panel and the answer-beside-memo review. Colours come from
+ * the Metanoia tokens (static/css/metanoia-ui.css); every hard surface has its dark
+ * twin at the bottom of the file.
+ *
+ * Sections: header + filters · groups + rows · taking a paper (the scenario
+ * panel) · result (the answer beside the memo) · dark-mode twins.
+ */
+
+.asx { --asx-ink: var(--t-brown, #3E2415); --asx-muted: var(--t-slate, #6B5E55);
+  --asx-line: var(--t-line, #DFE5EF); --asx-surface: #fff; --asx-soft: var(--t-cloud, #FAF7F2); }
+
+.asx-head__row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; align-items: center; }
+.asx-head__text { min-width: 0; flex: 1 1 320px; }
+.asx-filters { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; margin-top: 1rem; }
+.asx-pills { display: flex; flex-wrap: wrap; gap: .4rem; }
+.asx-pill { display: inline-flex; align-items: center; gap: .4rem; min-height: 36px; padding: 0 .95rem;
+  border-radius: 999px; border: 1px solid var(--asx-line); background: var(--asx-surface);
+  color: var(--asx-ink); font-size: .82rem; font-weight: 600; cursor: pointer;
+  transition: background-color .16s, border-color .16s, color .16s; }
+.asx-pill:hover { border-color: var(--t-blue-40, #A9C8EE); }
+.asx-pill.is-on { background: var(--asx-ink); border-color: var(--asx-ink); color: #fff; }
+.asx-pill__n { font-size: .7rem; font-weight: 700; padding: .05rem .45rem; border-radius: 999px;
+  background: var(--t-blue-10, #E8F0FB); color: var(--t-blue, #0B5FC6); }
+.asx-pill.is-on .asx-pill__n { background: var(--t-gold, #F2A900); color: var(--asx-ink); }
+.asx-module-filter { margin: 0; min-width: 0; max-width: 100%; }
+.asx-module-filter select { max-width: 100%; }
+
+.asx-group { margin: 1.25rem 0 0; padding: 0; }
+.asx-group__title { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--t-blue, #0B5FC6); margin: 0 0 .55rem .2rem; }
+.asx-list { border: 1px solid var(--asx-line); border-radius: 14px; background: var(--asx-surface); overflow: hidden; }
+.asx-row { display: flex; gap: .9rem; align-items: center; padding: .85rem 1rem; }
+.asx-row + .asx-row { border-top: 1px solid var(--asx-line); }
+.asx-row[hidden], .asx-group[hidden] { display: none; }
+.asx-row.is-locked .asx-row__title { color: var(--asx-muted); }
+.asx-row__icon { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+  font-size: 1.1rem; }
+.asx-row__main { flex: 1; min-width: 0; }
+.asx-row__title { font-size: .95rem; font-weight: 700; color: var(--asx-ink); margin: 0; overflow-wrap: anywhere; }
+.asx-row__meta { display: flex; flex-wrap: wrap; gap: .2rem .8rem; font-size: .76rem; color: var(--asx-muted); margin-top: .25rem; align-items: center; }
+.asx-row__side { display: flex; flex-direction: column; align-items: flex-end; gap: .4rem; flex: 0 0 auto; }
+.asx-row__actions { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+
+.asx-tag { font-weight: 700; font-size: .7rem; padding: .1rem .5rem; border-radius: 999px; }
+.asx-kind--quiz { background: #FFF4D6; color: #8A6100; }
+.asx-kind--test { background: var(--t-blue-10, #E8F0FB); color: var(--t-blue, #0B5FC6); }
+.asx-kind--mock_exam { background: var(--t-gold-10, #EEF6E2); color: var(--t-gold-deep, #4F7F12); }
+.asx-kind--assignment, .asx-kind--exam_section { background: var(--t-brown-10, #EFE7E0); color: var(--asx-ink); }
+.asx-memo { color: var(--asx-muted); }
+.asx-memo.is-open { color: var(--t-gold-deep, #4F7F12); font-weight: 600; }
+.asx-status { font-weight: 600; }
+.asx-lock { font-size: .78rem; color: var(--asx-muted); }
+
+.asx-state { font-size: .72rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; white-space: nowrap; }
+.asx-state--new { background: var(--asx-soft); color: var(--asx-muted); }
+.asx-state--progress { background: #FFF4D6; color: #8A6100; }
+.asx-state--submitted { background: var(--t-blue-10, #E8F0FB); color: var(--t-blue, #0B5FC6); }
+.asx-state--marked { background: var(--t-gold-10, #EEF6E2); color: var(--t-gold-deep, #4F7F12); }
+
+@media (max-width: 575.98px) {
+  .asx-row { flex-wrap: wrap; align-items: flex-start; }
+  .asx-row__icon { flex-basis: 34px; width: 34px; height: 34px; font-size: .95rem; }
+  .asx-row__main { flex-basis: calc(100% - 50px); }
+  .asx-row__side { flex-basis: 100%; flex-direction: row; justify-content: space-between; align-items: center; padding-left: 50px; }
+}
+
+.asx-scenario { border: 1px solid var(--asx-line); border-radius: 12px; background: var(--asx-soft); margin-bottom: 1rem; }
+.asx-scenario > summary { cursor: pointer; padding: .75rem 1rem; font-weight: 700; color: var(--asx-ink); list-style: none;
+  display: flex; align-items: center; gap: .5rem; }
+.asx-scenario > summary::-webkit-details-marker { display: none; }
+.asx-scenario > summary .bi-chevron-down { margin-left: auto; transition: transform .18s; }
+.asx-scenario[open] > summary .bi-chevron-down { transform: rotate(180deg); }
+.asx-scenario__body { max-height: 60vh; overflow: auto; padding: 0 1rem 1rem; font-size: .86rem; line-height: 1.6;
+  white-space: pre-wrap; overflow-wrap: anywhere; color: var(--asx-ink); }
+.asx-q__label { display: inline-grid; place-items: center; min-width: 2.2rem; height: 1.6rem; padding: 0 .45rem; margin-right: .45rem;
+  border-radius: 8px; background: var(--asx-ink); color: #fff; font-size: .78rem; font-weight: 700; vertical-align: 1px; }
+.asx-q__text { white-space: pre-line; overflow-wrap: anywhere; }
+.asx-original { font-size: .82rem; }
+.asx-saved { font-size: .75rem; color: var(--asx-muted); }
+
+.asx-review { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .6rem; }
+.asx-review__col { border: 1px solid var(--asx-line); border-radius: 10px; padding: .7rem .85rem; min-width: 0; }
+.asx-review__col h4 { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .4rem; color: var(--asx-muted); }
+.asx-review__col--memo { background: var(--t-gold-10, #EEF6E2); border-color: var(--t-gold-40, #B8DB8A); }
+.asx-review__col--memo h4 { color: var(--t-gold-deep, #4F7F12); }
+.asx-review__body { font-size: .84rem; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--asx-ink); max-height: 28rem; overflow: auto; }
+.asx-review__pending { font-size: .82rem; color: var(--asx-muted); }
+@media (max-width: 767.98px) { .asx-review { grid-template-columns: 1fr; } }
+
+[data-bs-theme="dark"] .asx { --asx-ink: #E8ECF5; --asx-muted: #A4ADC2; --asx-line: rgba(255, 255, 255, .1);
+  --asx-surface: rgba(255, 255, 255, .03); --asx-soft: rgba(255, 255, 255, .05); }
+[data-bs-theme="dark"] .asx-pill.is-on { background: #E8ECF5; border-color: #E8ECF5; color: #3E2415; }
+[data-bs-theme="dark"] .asx-pill__n, [data-bs-theme="dark"] .asx-kind--test,
+[data-bs-theme="dark"] .asx-state--submitted { background: rgba(90, 147, 220, .18); color: #A9C8EE; }
+[data-bs-theme="dark"] .asx-kind--quiz, [data-bs-theme="dark"] .asx-state--progress { background: rgba(255, 194, 14, .16); color: #F5D46A; }
+[data-bs-theme="dark"] .asx-kind--mock_exam, [data-bs-theme="dark"] .asx-state--marked { background: rgba(242, 169, 0, .16); color: #B8DB8A; }
+[data-bs-theme="dark"] .asx-kind--assignment, [data-bs-theme="dark"] .asx-kind--exam_section { background: rgba(255, 255, 255, .08); color: #E8ECF5; }
+[data-bs-theme="dark"] .asx-memo.is-open, [data-bs-theme="dark"] .asx-review__col--memo h4 { color: #B8DB8A; }
+[data-bs-theme="dark"] .asx-review__col--memo { background: rgba(242, 169, 0, .08); border-color: rgba(242, 169, 0, .3); }
+[data-bs-theme="dark"] .asx-q__label { background: #E8ECF5; color: #3E2415; }

@@ -1,0 +1,30 @@
+{% comment %}The calendar page head — title, actions and the Month/List toggle.
+Shared by calendar.html and calendar-agenda.html. `view_mode` is set by the view.{% endcomment %}
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+      <h3 class="mb-0">Calendar</h3>
+      <small class="text-muted">
+        {% if sees_everything %}Every session across all institutions.{% else %}Your sessions and the dates that apply to you.{% endif %}
+        {% if user_timezone %}Times shown in <strong>{{ user_timezone }}</strong>.{% endif %}
+      </small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-light" href="{% url 'livesessions:past-sessions' %}"><i class="bi bi-play-btn me-1"></i>Past sessions</a>
+      <a class="btn btn-light" href="{% url 'accounts:settings' %}?tab=connected">
+        <i class="bi bi-calendar2-week me-1"></i>Connect a calendar</a>
+      <a class="btn btn-light" href="{% url 'livesessions:ics' %}"><i class="bi bi-download me-1"></i>Download (.ics)</a>
+      <div class="btn-group" role="group" aria-label="Calendar view">
+        <a class="btn btn-light{% if view_mode != 'list' %} active{% endif %}"
+           {% if view_mode != 'list' %}aria-current="page"{% endif %}
+           href="?{% if selected_kinds %}show={{ selected_kinds }}{% endif %}"><i class="bi bi-calendar3 me-1"></i>Month</a>
+        <a class="btn btn-light{% if view_mode == 'list' %} active{% endif %}"
+           {% if view_mode == 'list' %}aria-current="page"{% endif %}
+           href="?view=list{% if selected_kinds %}&amp;show={{ selected_kinds }}{% endif %}"><i class="bi bi-list-ul me-1"></i>List</a>
+      </div>
+      {% if can_schedule %}
+        <a class="btn btn-light" href="{% url 'livesessions:availability' %}"><i class="bi bi-clock-history me-1"></i>Free slots</a>
+        <a class="btn btn-primary" href="{% url 'livesessions:session-create' %}"><i class="bi bi-camera-video me-1"></i>Schedule a session</a>
+      {% endif %}
+    </div>
+  </div>
+

@@ -1,0 +1,152 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load commerce %}
+{% comment %}
+Staff / educator view of one one-on-one student
+(shop.views_one_on_one.student).
+
+Context: student, person, modules, ledger, coaches, rate, max_hours, owed,
+outstanding, settled, pending, upcoming, past, overtime_fee, today, is_admin,
+is_staff.
+
+Blocks: overrides ``content``.
+{% endcomment %}
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-2">
+  <nav class="small mb-2"><a href="{% url 'shop:o2o-students' %}"><i class="bi bi-arrow-left me-1"></i>One-on-one students</a></nav>
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h3 class="mb-0">{{ student.get_full_name|default:student.username }}</h3>
+      <small class="text-muted">{{ student.email }} · {{ person.get_learning_track_display }} · {{ rate|rand }} per module per hour</small>
+    </div>
+    {% if is_staff %}
+    <form method="post" onsubmit="return confirm('Change this student\'s track? Moving to group classes locks their modules until the monthly fee is paid.');">
+      {% csrf_token %}<input type="hidden" name="action" value="track">
+      {% if person.is_one_on_one %}
+        <input type="hidden" name="track" value="class"><button class="btn btn-sm btn-outline-secondary mb-0">Move to group classes</button>
+      {% else %}
+        <input type="hidden" name="track" value="one_on_one"><button class="btn btn-sm btn-primary mb-0">Move to one-on-one</button>
+      {% endif %}
+    </form>
+    {% endif %}
+  </div>
+
+  {% if not person.is_one_on_one %}
+    <div class="alert alert-info">This student is on group classes. Move them to one-on-one to manage hours here.</div>
+  {% else %}
+
+  {% if not settled %}
+  <div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle me-1"></i><strong>{{ owed|rand }} outstanding</strong>
+    ({% for inv in outstanding %}{{ inv.number }}{% if not forloop.last %}, {% endif %}{% endfor %}).
+    No new session can be booked or scheduled until it is paid{% if is_admin %} — as an admin you can override below{% endif %}.</div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-3">Hours left</h5>
+        <table class="table table-sm align-middle mb-0">
+          <tbody>{% for row in modules %}<tr class="text-sm"><td><strong>{{ row.module.code }}</strong> — {{ row.module.display_name }}</td><td class="text-end">{{ row.hours|floatformat:"-2" }} h</td></tr>
+          {% empty %}<tr><td class="text-muted">Not registered for any modules.</td></tr>{% endfor %}</tbody>
+        </table>
+        {% if pending %}<p class="text-xs text-muted mt-3 mb-0">Awaiting payment: {% for p in pending %}{{ p.invoice.number }} ({{ p.invoice.balance|rand }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+      </div></div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-1">Schedule a session</h5>
+        <p class="text-xs text-muted mb-3">Uses the student's hours on that module if they have enough; otherwise the session is booked on account and an invoice is e-mailed. They can attend before paying, and the invoice is sent again after the session.</p>
+        <form method="post" class="row g-2">
+          {% csrf_token %}<input type="hidden" name="action" value="schedule">
+          <div class="col-md-6"><label class="form-label text-xs">Module</label>
+            <select name="module" class="form-select form-select-sm" required><option value="">Choose…</option>
+              {% for row in modules %}<option value="{{ row.module.pk }}">{{ row.module.code }} ({{ row.hours|floatformat:"-2" }} h)</option>{% endfor %}</select></div>
+          <div class="col-md-6"><label class="form-label text-xs">Educator</label>
+            <select name="educator" class="form-select form-select-sm" required>
+              {% for c in coaches %}<option value="{{ c.pk }}">{{ c }}</option>{% endfor %}</select></div>
+          <div class="col-md-4"><label class="form-label text-xs">Date</label><input type="date" name="date" min="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm" required></div>
+          <div class="col-md-4"><label class="form-label text-xs">Start</label><input type="time" name="time" step="900" class="form-control form-control-sm" required></div>
+          <div class="col-md-4"><label class="form-label text-xs">Length</label>
+            <select name="hours" class="form-select form-select-sm"><option value="1">1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option></select></div>
+          <div class="col-12"><input type="text" name="note" maxlength="500" class="form-control form-control-sm" placeholder="What the session covers (optional)"></div>
+          <div class="col-12 d-flex flex-wrap gap-3 text-xs">
+            <label><input type="checkbox" name="ignore_hours" value="1" class="form-check-input me-1">Ignore the educator's open hours</label>
+            {% if is_admin and not settled %}<label class="text-danger"><input type="checkbox" name="override" value="1" class="form-check-input me-1">Schedule even though the account is not settled</label>{% endif %}
+          </div>
+          <div class="col-12"><button class="btn btn-sm btn-primary mb-0" {% if not settled and not is_admin %}disabled{% endif %}><i class="bi bi-calendar-plus me-1"></i>Schedule</button></div>
+        </form>
+      </div></div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-1">Send an invoice for hours</h5>
+        <p class="text-xs text-muted mb-3">The hours are added when it is paid.</p>
+        <form method="post">
+          {% csrf_token %}<input type="hidden" name="action" value="invoice">
+          {% for row in modules %}
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2"><span class="text-sm">{{ row.module.code }}</span>
+              <input type="number" name="hours_{{ row.module.pk }}" min="0" max="{{ max_hours }}" value="0" class="form-control form-control-sm w-auto" style="max-width:6rem"></div>
+          {% endfor %}
+          <button class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-envelope me-1"></i>Send invoice</button>
+        </form>
+      </div></div>
+    </div>
+
+    {% if is_staff %}
+    <div class="col-lg-6">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-1">Adjust hours</h5>
+        <p class="text-xs text-muted mb-3">For corrections and goodwill hours. Use a minus to take hours away. The reason is kept on record.</p>
+        <form method="post" class="row g-2">
+          {% csrf_token %}<input type="hidden" name="action" value="adjust">
+          <div class="col-6"><select name="module" class="form-select form-select-sm" required><option value="">Module…</option>
+            {% for row in modules %}<option value="{{ row.module.pk }}">{{ row.module.code }}</option>{% endfor %}</select></div>
+          <div class="col-6"><input type="number" name="hours" step="1" class="form-control form-control-sm" placeholder="e.g. 1 or -1" required></div>
+          <div class="col-12"><input type="text" name="reason" maxlength="255" class="form-control form-control-sm" placeholder="Reason" required></div>
+          <div class="col-12"><button class="btn btn-sm btn-outline-secondary mb-0">Save</button></div>
+        </form>
+      </div></div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card mt-3"><div class="card-body">
+    <h5 class="mb-3">Sessions</h5>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr class="text-xs text-uppercase text-muted"><th>When</th><th>Module</th><th>Educator</th><th>Paid by</th><th>Status</th><th>Ran</th><th class="text-end"></th></tr></thead>
+      <tbody>
+      {% for b in upcoming %}
+        <tr class="text-sm"><td>{{ b.label }}</td><td>{{ b.programme_module.code|default:"—" }}</td><td>{{ b.educator }}</td>
+          <td>{{ b.get_paid_by_display }}{% if b.invoice %} · {{ b.invoice.number }} ({{ b.invoice.get_status_display|lower }}){% endif %}</td>
+          <td>{{ b.get_status_display }}</td><td>—</td>
+          <td class="text-end"><form method="post" action="{% url 'shop:o2o-cancel' b.pk %}" onsubmit="var r = prompt('Reason for cancelling (the student sees this)'); if (r === null) { return false; } this.reason.value = r; return true;">
+            {% csrf_token %}<input type="hidden" name="reason"><input type="hidden" name="next" value="{{ request.path }}">
+            <button class="btn btn-sm btn-link text-danger mb-0">Cancel (hours back)</button></form></td></tr>
+      {% endfor %}
+      {% for b in past %}
+        <tr class="text-sm text-muted"><td>{{ b.label }}</td><td>{{ b.programme_module.code|default:"—" }}</td><td>{{ b.educator }}</td>
+          <td>{{ b.get_paid_by_display }}{% if b.invoice %} · {{ b.invoice.number }} ({{ b.invoice.get_status_display|lower }}){% endif %}</td>
+          <td>{{ b.get_status_display }}</td>
+          <td>{% if b.measured_minutes %}{{ b.measured_minutes }} min{% else %}—{% endif %}{% if b.overtime_invoice %} · overtime {{ b.overtime_invoice.number }}{% endif %}</td>
+          <td class="text-end">{% if is_staff and not b.overtime_invoice and b.status != 'cancelled' %}
+            <form method="post" onsubmit="return confirm('Send a {{ overtime_fee|rand }} overtime invoice for this session?');">{% csrf_token %}
+              <input type="hidden" name="action" value="overtime"><input type="hidden" name="booking" value="{{ b.pk }}">
+              <button class="btn btn-sm btn-link mb-0">Add overtime</button></form>{% endif %}</td></tr>
+      {% endfor %}
+      {% if not upcoming and not past %}<tr><td colspan="7" class="text-muted text-center py-3">No sessions yet.</td></tr>{% endif %}
+      </tbody>
+    </table></div>
+  </div></div>
+
+  {% if ledger %}
+  <div class="card mt-3"><div class="card-body">
+    <h5 class="mb-3">Hours statement</h5>
+    <table class="table table-sm mb-0"><tbody>
+      {% for e in ledger %}<tr class="text-sm"><td>{{ e.created_at|date:"j M Y H:i" }}</td><td>{{ e.programme_module.code }}</td><td>{{ e.get_kind_display }}</td><td>{{ e.reason }}</td><td class="text-end">{{ e.hours|floatformat:"-2" }} h</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div>
+  {% endif %}
+  {% endif %}
+</div></div>
+{% endblock %}

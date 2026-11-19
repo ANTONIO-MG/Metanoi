@@ -1,0 +1,13 @@
+{% load admin_list i18n %}
+{% comment %}Pagination — OVERRIDES the old admin theme's, which built its own "?p=N" links
+(dropping the search and filters) and printed the request path into the page.
+Django's paginator_number keeps the query string.{% endcomment %}
+<nav class="paginator ta-pager" aria-label="{% blocktranslate with name=cl.opts.verbose_name_plural %}Pagination {{ name }}{% endblocktranslate %}">
+  {% if pagination_required %}
+  <ul class="ta-pager__pages">
+    {% for i in page_range %}<li>{% paginator_number cl i %}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  <span class="ta-pager__count">{{ cl.result_count }} {% if cl.result_count == 1 %}{{ cl.opts.verbose_name }}{% else %}{{ cl.opts.verbose_name_plural }}{% endif %}</span>
+  {% if show_all_url %}<a href="{{ show_all_url }}" class="showall">{% translate 'Show all' %}</a>{% endif %}
+</nav>

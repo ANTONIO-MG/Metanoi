@@ -1,0 +1,94 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+Ask the AI assistant to write blueprints, study guides and week material.
+apps.learning.content_uploads.create — the draft goes to the review queue, never straight to students.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``content``.
+{% endcomment %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h1 class="h4 mb-1"><i class="bi bi-stars text-primary me-2"></i>Create content with AI</h1>
+    <p class="small text-muted mb-0">Describe what you want written and where it goes. The assistant writes it in the
+      Metanoia Group style — blueprints, study guides, self-check quizzes, written practice questions with marking
+      rubrics — one draft week at a time. It lands in the <a href="{% url 'learning:content-queue' %}">content queue</a>
+      for you to read, correct, approve and publish.</p>
+  </div>
+</div>
+
+{% if not ai_enabled %}
+<div class="alert alert-warning">The AI assistant is not switched on: set <code>ANTHROPIC_API_KEY</code> and <code>ADMIN_AI_ENABLED</code>.</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="card" id="createForm">
+  {% csrf_token %}
+  <div class="card-body">
+    <div class="mb-3">
+      <label class="form-label fw-semibold">What should it write?</label>
+      <textarea name="prompt" rows="6" class="form-control" required
+        placeholder="e.g. Write the Test 2 strategic blueprint for CGAU B26S (100 marks, 8 October), then a study guide and a 10-question self-check for each week: week 1 Companies Act s45/s46/s75, week 2 King V governance, week 3 audit opinions and misstatements. Use the attached past papers for the topic frequency.">{{ form.prompt }}</textarea>
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-md-6"><label class="form-label small fw-semibold">Module</label>
+        <select name="offering" class="form-select" required><option value="">— choose —</option>
+          {% for o in offerings %}<option value="{{ o.pk }}" data-programme="{{ o.programme_id }}" {% if form.offering == o.pk|stringformat:'s' %}selected{% endif %}>{{ o.programme.institution.code }} · {{ o.programme.code }} · {{ o.code }} — {{ o.name }}</option>{% endfor %}
+        </select></div>
+      <div class="col-md-6"><label class="form-label small fw-semibold">Intake</label>
+        <select name="cohort" class="form-select"><option value="">Every intake (shared)</option>
+          {% for c in cohorts %}<option value="{{ c.pk }}" data-programme="{{ c.programme_id }}" {% if form.cohort == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.programme.institution.code }} {{ c.programme.code }} · {{ c.code }}</option>{% endfor %}
+        </select></div>
+      <div class="col-md-3"><label class="form-label small fw-semibold">Prepares for</label>
+        <select name="phase_kind" class="form-select"><option value="test">Test</option><option value="exam" {% if form.phase_kind == 'exam' %}selected{% endif %}>Exam</option><option value="other" {% if form.phase_kind == 'other' %}selected{% endif %}>Module resources</option></select></div>
+      <div class="col-md-3"><label class="form-label small fw-semibold">Number</label>
+        <input type="number" name="phase_sequence" min="1" max="9" value="{{ form.phase_sequence|default:1 }}" class="form-control"></div>
+      <div class="col-md-3"><label class="form-label small fw-semibold">From week</label>
+        <input type="number" name="week_from" min="1" max="30" value="{{ form.week_from|default:1 }}" class="form-control"></div>
+      <div class="col-md-3"><label class="form-label small fw-semibold">To week</label>
+        <input type="number" name="week_to" min="1" max="30" value="{{ form.week_to|default:1 }}" class="form-control"></div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label small fw-semibold d-block">Include</label>
+      {% for key, label in wants.items %}
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="checkbox" name="wants" value="{{ key }}" id="w_{{ key }}" {% if key in form.wants %}checked{% endif %}>
+        <label class="form-check-label small" for="w_{{ key }}">{{ label|capfirst }}</label>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-md-6"><label class="form-label small fw-semibold">Week topics (optional, one per line)</label>
+        <textarea name="topics" rows="3" class="form-control form-control-sm" placeholder="Companies Act s45, s46, s75&#10;King V governance&#10;Audit opinions">{{ form.topics }}</textarea></div>
+      <div class="col-md-6"><label class="form-label small fw-semibold">Source documents (optional)</label>
+        <input type="file" name="sources" multiple class="form-control form-control-sm" accept=".pdf,.docx,.xlsx,.md,.txt">
+        <div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="use_module_material" value="1" id="useMod" checked>
+          <label class="form-check-label small" for="useMod">Also read the lessons already on this test block (so it builds on the existing blueprint and guides)</label></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" {% if not ai_enabled %}disabled{% endif %} id="createBtn"><i class="bi bi-stars me-1"></i>Write the draft</button>
+    <span class="small text-muted ms-2 d-none" id="createWait"><span class="spinner-border spinner-border-sm me-1"></span>Writing — a blueprint and three weeks can take a few minutes. Keep this tab open.</span>
+  </div>
+</form>
+<script>
+(function () {
+  var form = document.getElementById('createForm');
+  var offering = form.querySelector('[name=offering]'), cohort = form.querySelector('[name=cohort]');
+  function filter() {
+    var opt = offering.selectedOptions[0], prog = opt ? opt.getAttribute('data-programme') : null;
+    Array.prototype.forEach.call(cohort.options, function (o) {
+      if (!o.value) return;
+      o.hidden = !!prog && o.getAttribute('data-programme') !== prog;
+      if (o.hidden && o.selected) cohort.value = '';
+    });
+  }
+  offering.addEventListener('change', filter); filter();
+  form.addEventListener('submit', function () {
+    document.getElementById('createBtn').disabled = true;
+    document.getElementById('createWait').classList.remove('d-none');
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,15 @@
+{
+  "format": "metanoia-upload/1",
+  "doc_type": "recording",
+  "title": "Live session recording — Companies Act s45, s46, s75",
+  "institution": "MILPARK",
+  "programme": "BCTA",
+  "module": "CGAU",
+  "cohort": "B26S",
+  "assessment": {"kind": "test", "sequence": 2},
+  "week": 1,
+  "audience": "students",
+  "used_on": "2026-09-17",
+  "video_url": "https://www.youtube.com/watch?v=REPLACE_WITH_RECORDING_ID",
+  "notes": "Sample. Use live_url instead of video_url for an upcoming session's joining link."
+}

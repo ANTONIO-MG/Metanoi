@@ -1,0 +1,72 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static %}
+{% comment %}My Programmes — one card per programme; only reached with 2+ registrations.{% endcomment %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header border-0 pb-0">
+    <h1 class="h4 card-title mb-1">My Programmes</h1>
+    <p class="text-sm text-muted mb-0">
+      You're registered for {{ programmes|length }} programme{{ programmes|length|pluralize }}.
+      Open one to see its modules.
+    </p>
+  </div>
+
+  <div class="card-body">
+    <div class="row g-3">
+      {% for programme in programmes %}
+      <div class="col-md-6">
+        <div class="prog-card h-100">
+          <div class="prog-card__head">
+            {% if programme.institution.sharp_logo_url %}
+              <img src="{{ programme.institution.sharp_logo_url }}" alt="{{ programme.institution.display_name }}">
+            {% else %}
+              <span class="prog-card__mark">{{ programme.institution.code|slice:":3" }}</span>
+            {% endif %}
+            <div class="min-w-0">
+              <p class="prog-card__inst">{{ programme.institution.display_name }}</p>
+              <h6 class="prog-card__name">{{ programme.display_name }}</h6>
+            </div>
+          </div>
+
+          <ul class="prog-card__meta">
+            <li><i class="bi bi-hash"></i>{{ programme.full_code }}</li>
+            <li><i class="bi bi-grid-1x2"></i>{{ programme.taught_module_count }} module{{ programme.taught_module_count|pluralize }}</li>
+            {% if programme.nqf_level %}<li><i class="bi bi-mortarboard"></i>NQF {{ programme.nqf_level }}</li>{% endif %}
+          </ul>
+
+          <a class="btn btn-sm bg-gradient-info w-100 mb-0" href="{% url 'learning:my-modules' %}">
+            Open my modules
+          </a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <div class="text-center text-muted py-5">
+          <p class="mb-2">You're not registered for a programme yet.</p>
+          <a class="btn btn-sm bg-gradient-info" href="{% url 'accounts:register-course' %}">Register now</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block additional_css %}
+<style>
+  .prog-card{ display:flex; flex-direction:column; gap:.8rem; padding:1rem 1.1rem;
+    border:1px solid #e3e6ee; border-radius:.9rem; background:#fff; transition:border-color .15s, box-shadow .15s; }
+  .prog-card:hover{ border-color:#5A93DC; box-shadow:0 6px 18px rgba(20,20,43,.07); }
+  .prog-card__head{ display:flex; align-items:center; gap:.75rem; }
+  .prog-card__head img{ width:52px; height:40px; object-fit:contain; flex:0 0 52px; }
+  .prog-card__mark{ width:44px; height:44px; flex:0 0 44px; border-radius:.6rem; display:flex;
+    align-items:center; justify-content:center; font-weight:700; font-size:.75rem; letter-spacing:.02em;
+    background:linear-gradient(310deg,#0B5FC6,#5A93DC); color:#fff; }
+  .prog-card__inst{ font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:#6B5E55; margin:0; }
+  .prog-card__name{ margin:0; font-size:.95rem; color:#3E2415; }
+  .prog-card__meta{ list-style:none; padding:0; margin:0; display:flex; flex-wrap:wrap; gap:.35rem .9rem; }
+  .prog-card__meta li{ font-size:.76rem; color:#6B5E55; display:inline-flex; align-items:center; gap:.3rem; }
+  .prog-card__meta i{ color:#5A93DC; }
+</style>
+{% endblock %}

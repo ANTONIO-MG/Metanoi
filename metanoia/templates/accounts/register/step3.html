@@ -1,0 +1,116 @@
+{% extends 'layouts/auth.html' %}
+{% comment %}Registration wizard, step 3 — review and pay. Context: `person`, `programme`,
+`line_items` and `savings` (label/amount pairs), `subtotal`, `total`, `currency`,
+`is_free`. A paid registration offers exactly two ways to complete it; both enrol the
+student on the spot, the difference being whether the modules open now (paid through
+PayFast) or open for seven days on trust (trial + EFT invoice). Overrides `title`,
+`card_col`, `oblique` and `auth_card`.
+{% endcomment %}
+{% load static %}
+{% block title %}Review · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+{% block card_col %}col-xl-8 col-lg-10{% endblock %}
+{% block oblique %}{% endblock %}
+
+{% block auth_card %}
+<div class="card mt-7 mb-4 shadow-lg">
+  <div class="card-body p-4">
+    {% include 'accounts/register/_steps.html' with step=3 %}
+
+    <div class="text-center mb-4">
+      <h4 class="font-weight-bolder text-info text-gradient mb-1">Review &amp; finish</h4>
+      <p class="text-sm text-muted mb-0">{{ programme.institution.display_name }} ·
+        <strong>{{ programme.display_name }}</strong></p>
+    </div>
+
+    <div class="d-flex align-items-center gap-3 p-3 mb-3 bg-gray-100 rounded-3">
+      <div class="icon-shape bg-gradient-info text-white rounded-circle d-flex align-items-center justify-content-center" style="width:44px;height:44px">
+        <i class="bi bi-person-fill"></i>
+      </div>
+      <div>
+        <h6 class="mb-0">{{ person.first_name }} {{ person.last_name }}</h6>
+        <span class="text-xs text-muted">{{ person.user.email }}</span>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle mb-2">
+        <thead><tr class="text-xs text-uppercase text-muted"><th>Module</th><th class="text-end">Per month</th></tr></thead>
+        <tbody>
+          {% for label, amount in line_items %}
+          <tr>
+            <td class="text-sm text-wrap"><i class="bi bi-journal-text text-info me-2"></i>{{ label }}</td>
+            <td class="text-end text-sm">{% if amount %}{{ currency }} {{ amount|floatformat:2 }}{% else %}<span class="badge bg-gradient-success">Free</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" class="text-center text-muted">Nothing selected — <a href="{% url 'accounts:register-course' %}">go back</a>.</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          {% if savings %}
+          <tr class="text-sm">
+            <td class="text-muted">Subtotal</td>
+            <td class="text-end text-muted">{{ currency }} {{ subtotal|floatformat:2 }}</td>
+          </tr>
+          {% for label, amount in savings %}
+          <tr class="text-sm text-success">
+            <td><i class="bi bi-tag-fill me-2"></i><span>{{ label }}</span></td>
+            <td class="text-end">−{{ currency }} {{ amount|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+          {% endif %}
+          <tr class="fw-bold border-top">
+            <td>Total per month</td>
+            <td class="text-end">{% if is_free %}<span class="text-success">Free</span>{% else %}{{ currency }} {{ total|floatformat:2 }}{% endif %}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <p class="text-xs text-muted mb-4"><i class="bi bi-info-circle me-1"></i>Two ways to finish: pay now and start
+      immediately, or take the free week and pay the invoice by EFT before it ends.</p>
+
+    <form method="post">
+      {% csrf_token %}
+      {% if is_free %}
+        <div class="d-grid">
+          <button type="submit" name="action" value="trial" class="btn bg-gradient-info btn-lg">
+            Finish &amp; enter <i class="bi bi-check2-circle ms-1"></i>
+          </button>
+        </div>
+      {% else %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="border border-2 rounded-3 p-3 h-100 d-flex flex-column">
+              <h6 class="mb-1">Pay now &amp; enrol</h6>
+              <p class="text-xs text-muted flex-grow-1 mb-3">Card or instant EFT through PayFast.
+                Your modules open the moment the payment clears, and the receipt lands on your
+                payment history automatically. If the payment does not go through, you still get
+                the free week from today and can pay at any time.</p>
+              <button type="submit" name="action" value="pay" class="btn bg-gradient-info btn-lg w-100 mb-0">
+                <i class="bi bi-credit-card-2-front me-1"></i> Pay {{ currency }} {{ total|floatformat:2 }} now
+              </button>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="border border-2 rounded-3 p-3 h-100 d-flex flex-column">
+              <h6 class="mb-1">Try 7 days, pay by EFT</h6>
+              <p class="text-xs text-muted flex-grow-1 mb-3">The whole platform opens for seven days
+                from now. We e-mail your invoice and send the PDF to your WhatsApp number so you can
+                pay by EFT while you study. After seven days, unpaid modules close until the payment
+                is recorded.</p>
+              <button type="submit" name="action" value="trial" class="btn bg-gradient-success btn-lg w-100 mb-0">
+                <i class="bi bi-unlock me-1"></i> Start my free week
+              </button>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="mt-4">
+        <button type="submit" name="action" value="back" class="btn btn-link text-secondary p-0" formnovalidate>
+          <i class="bi bi-arrow-left-circle me-1"></i>Back to modules
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

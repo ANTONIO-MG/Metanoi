@@ -1,0 +1,32 @@
+{% comment %}Brand styling for the 400 / 403 / 404 / 503 pages: Montserrat, a white card on Cream,
+Metanoia Brown heading, Blue button. Self-contained (no theme CSS) so an
+error page can never fail to look like Metanoia. The 500 page keeps its own inline
+copy because it must render even when templates are failing.{% endcomment %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; display: flex; align-items: center; justify-content: center;
+         font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+         background: #FAF7F2; color: #5E4335; padding: 1.5rem; }
+  .fix-wrapper { width: 100%; }
+  .container, .row { width: 100%; }
+  .row { display: flex; justify-content: center; }
+  .error-page { max-width: 30rem; margin: 0 auto; background: #fff; border: 1px solid #EFE7E0;
+                border-radius: 1rem; padding: 2.5rem 2rem; text-align: center;
+                box-shadow: 0 6px 24px rgba(62,36,21,.06); }
+  .error-text { font-size: 4.5rem; font-weight: 800; line-height: 1; margin: 0 0 .75rem; color: #3E2415; letter-spacing: -.03em; }
+  .error-text::after { content: "."; color: #F2A900; }
+  .error-page h4 { font-size: 1.15rem; font-weight: 700; color: #3E2415; margin: 0 0 .5rem; }
+  .error-page p { color: #6B5E55; line-height: 1.6; margin: 0 0 1.5rem; font-size: .95rem; }
+  .error-page .fa, .error-page .bi { display: none; }
+  .btn { display: inline-block; padding: .7rem 1.4rem; border-radius: .6rem; font-weight: 600;
+         text-decoration: none; background: #0B5FC6; color: #fff; }
+  .btn:hover { background: #3E2415; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1E120A; color: #E8DED5; }
+    .error-page { background: #3E2415; border-color: rgba(255,255,255,.09); }
+    .error-text, .error-page h4 { color: #fff; }
+    .error-page p { color: #A9B3C7; }
+  }
+</style>

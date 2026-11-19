@@ -1,0 +1,39 @@
+{% comment %}One-time "we've updated our Terms" prompt. Shown on signed-in pages
+while the person's accepted terms version is older than TERMS_VERSION (see
+apps.accounts.context_processors.terms_update). Accepting posts to
+accounts:accept-terms, which stamps the profile, so it appears once per version.{% endcomment %}
+{% if terms_update_due %}
+<div class="modal fade" id="termsUpdateModal" tabindex="-1" aria-labelledby="termsUpdateLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="termsUpdateLabel"><i class="bi bi-file-earmark-text me-2"></i>We've updated our Terms &amp; Conditions</h5>
+      </div>
+      <div class="modal-body small">
+        <p>Our Terms &amp; Conditions (version {{ current_terms_version }}) now cover the whole Metanoia platform in detail. The main points are:</p>
+        <ul class="ps-3">
+          <li><strong>No refunds</strong> on courses, classes and materials once paid, except where the law requires one.</li>
+          <li>We teach you how to study and approach your exams, but <strong>we can't guarantee a pass</strong>. Your own input counts.</li>
+          <li>Classes may be recorded, and materials are for your personal use only.</li>
+          <li>How we use your learning data to support you, and how quickly we reply to your messages.</li>
+        </ul>
+        <p class="mb-0">Please read them, then accept to carry on.</p>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <a class="btn btn-sm btn-outline-primary mb-0" href="{% url 'pages:privacy-and-terms' %}#terms" target="_blank" rel="noopener">Read the Terms</a>
+        <form method="post" action="{% url 'accounts:accept-terms' %}" class="m-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-primary mb-0">I accept</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('termsUpdateModal');
+    if (el && window.bootstrap) { bootstrap.Modal.getOrCreateInstance(el).show(); }
+  });
+</script>
+{% endif %}

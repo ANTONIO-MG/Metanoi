@@ -1,0 +1,348 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load people %}
+{% comment %}
+One session's own page — the link that goes in the calendar, the reminders and
+the e-mails.
+
+Before it happens: details and a Join button. Afterwards the same page grows the
+recording player, transcript, recap and session pack — so the link sent before
+the class keeps working after it.
+
+Business rules carried by the markup:
+
+- Recordings: students and parents watch here only — no download button, the
+  player's own download menu hidden, no right-click "Save video". Staff and
+  educators keep the download (owner, 2026-11-09).
+- Every recording/material link stays on our own domain: the OneDrive share
+  links land students on a Microsoft sign-in page. Staff keep the OneDrive
+  copies, marked as such.
+- Join: Teams asks anonymous joiners to type a name, and Microsoft offers no
+  supported way to pre-fill it, so the page shows the exact name to paste.
+  Identity is already recorded server-side; this only makes the Teams-side
+  report agree.
+- The calendar (.ics) download: the Microsoft invite only goes to licensed staff
+  (see ``graph.create_calendar_event``) and not at all while Teams is off, so
+  this download is a student's way to get the session into their diary.
+- Session pack: the full pack (roster, educator actions, flags) is staff
+  material; the class reads the student version, which is what the recap holds
+  once the pack exists.
+
+The script:
+
+- Puts the join name on the clipboard as they leave (the Join button), so the Teams
+  name box is a paste rather than a retype. Best effort — the link works regardless,
+  and Metanoia has already recorded who clicked it. ``#copyName`` copies it on demand.
+- "Copy joining link" copies the session page URL, for pasting into a chat or a
+  channel. It is the session page rather than the raw Teams URL on purpose: that
+  route is identified, so attendance is still recorded for whoever follows it (see
+  ``session_join``).
+- Recovers an expired recording link (see ``reload`` in the script).{% endcomment %}
+
+{% block additional_css %}
+<style>
+  .session-hero{border-radius:.75rem;overflow:hidden;background:var(--bs-tertiary-bg)}
+  .session-hero img{width:100%;height:auto;display:block}
+  .player-wrap{position:relative;padding-top:56.25%;border-radius:.5rem;overflow:hidden;background:#000}
+  .player-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .pack-body{white-space:pre-wrap;font-size:.9rem;line-height:1.6}
+  .summary-body{font-size:.9rem;line-height:1.6}
+  .summary-body .summary-heading{margin:1rem 0 .4rem;font-weight:600}
+  .summary-body .summary-heading:first-child{margin-top:0}
+  .summary-body ul,.summary-body ol{padding-left:1.25rem;margin-bottom:.5rem}
+  .session-video{width:100%;aspect-ratio:16/9;background:#3E2415;border-radius:.6rem;display:block}
+  .join-as{max-width:22rem}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3">
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
+    <div class="min-w-0">
+      <h3 class="mb-1 text-truncate">{{ meeting.title }}</h3>
+      <small class="text-muted">
+        {{ meeting.get_session_kind_display }} · {{ meeting.audience_label }}
+        {% if meeting.module %} · <a href="{{ meeting.module.get_absolute_url|default:'#' }}">{{ meeting.module.label }}</a>{% endif %}
+      </small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      {% if can_manage %}
+        <a class="btn btn-light" href="{% url 'livesessions:session-register' meeting.pk %}"><i class="bi bi-person-check me-1"></i>Register</a>
+        <a class="btn btn-light" href="{% url 'livesessions:session-edit' meeting.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>
+        <form method="post" action="{% url 'livesessions:session-cancel' meeting.pk %}"
+              onsubmit="return confirm('Cancel this session? Everyone invited will be told.')">
+          {% csrf_token %}
+          <button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-lg me-1"></i>Cancel</button>
+        </form>
+      {% endif %}
+      <a class="btn btn-light" href="{% url 'livesessions:calendar' %}"><i class="bi bi-calendar3 me-1"></i>Calendar</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+
+      {% if artifact and artifact.is_watchable %}
+        <div class="card mb-3" id="recording"><div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+            <h6 class="mb-0"><i class="bi bi-play-btn me-1"></i>Recording</h6>
+            {% if artifact.video_url and can_download %}
+              <a class="btn btn-sm btn-outline-primary" href="{{ artifact.video_url }}?download=1" download>
+                <i class="bi bi-download me-1"></i>Download</a>
+            {% endif %}
+          </div>
+          {% if artifact.embed_url %}
+            <div class="player-wrap"><iframe src="{{ artifact.embed_url }}" allowfullscreen
+                    allow="accelerometer; encrypted-media; picture-in-picture"
+                    title="{{ meeting.title }}"></iframe></div>
+          {% elif artifact.video_url %}
+            <video class="session-video" id="sessionVideo" controls playsinline preload="metadata"
+                   {% if not can_download %}controlslist="nodownload" oncontextmenu="return false;"{% endif %}
+                   {% if meeting.thumbnail %}poster="{{ meeting.thumbnail.url }}"{% endif %}
+                   title="{{ meeting.title }}">
+              <source src="{{ artifact.video_url }}" type="video/mp4">
+              {% if can_download %}Your browser cannot play this video — <a href="{{ artifact.video_url }}?download=1" download>download it</a> instead.{% else %}Your browser cannot play this video. Please try another browser, such as Chrome, Edge or Safari.{% endif %}
+            </video>
+          {% endif %}
+          <div class="mt-2 d-flex gap-3 flex-wrap small text-muted">
+            {% if artifact.transcript_url %}<a href="{{ artifact.transcript_url }}"><i class="bi bi-file-text me-1"></i>Transcript</a>{% endif %}
+            {% if artifact.summary_url %}<a href="{{ artifact.summary_url }}"><i class="bi bi-journal-richtext me-1"></i>Read the summary</a>{% endif %}
+            {% if can_manage and artifact.transcript_web_url %}<a href="{{ artifact.transcript_web_url }}" target="_blank" rel="noopener"><i class="bi bi-file-text me-1"></i>Transcript on OneDrive (staff)</a>{% endif %}
+            {% if can_manage and artifact.summary_web_url %}<a href="{{ artifact.summary_web_url }}" target="_blank" rel="noopener"><i class="bi bi-journal-text me-1"></i>Summary on OneDrive (staff)</a>{% endif %}
+            {% if can_manage and artifact.folder_web_url %}<a href="{{ artifact.folder_web_url }}" target="_blank" rel="noopener"><i class="bi bi-folder2-open me-1"></i>Session folder</a>{% endif %}
+          </div>
+        </div></div>
+      {% elif meeting.has_ended %}
+        <div class="alert alert-secondary">
+          <i class="bi bi-hourglass-split me-1"></i>
+          The recording is still being processed.
+          {% if artifact %}<span class="text-muted">({{ artifact.get_state_display|lower }})</span>{% endif %}
+          It will appear here automatically — you do not need to check back.
+        </div>
+      {% else %}
+        <div class="card mb-3"><div class="card-body text-center py-4">
+          {% if meeting.is_live_now %}
+            <p class="mb-3"><span class="badge bg-success">Live now</span></p>
+          {% elif meeting.scheduled_start %}
+            <p class="text-muted mb-3">Starts {{ meeting.scheduled_start|date:"l j F, H:i" }}</p>
+          {% endif %}
+          <a class="btn btn-primary btn-lg" id="joinBtn"
+             href="{% url 'livesessions:session-join' meeting.pk %}"
+             data-join-name="{{ join_name }}">
+            <i class="bi bi-camera-video-fill me-1"></i>
+            {% if meeting.is_teams %}{% if can_manage %}Start or join the class in Teams{% else %}Join the Teams session{% endif %}{% else %}Join the session{% endif %}
+          </a>
+
+          {% if meeting.is_teams and can_manage %}
+          {% include 'livesessions/_host_start_note.html' %}
+          {% elif meeting.is_teams %}
+          <div class="join-as mt-3 mx-auto">
+            <p class="text-muted small mb-1">Teams will ask for your name. Enter it exactly as:</p>
+            <div class="input-group input-group-sm">
+              <input class="form-control text-center fw-semibold" id="joinName"
+                     value="{{ join_name }}" readonly onclick="this.select()">
+              <button class="btn btn-outline-secondary" type="button" id="copyName">
+                <i class="bi bi-clipboard"></i><span class="ms-1">Copy</span>
+              </button>
+            </div>
+            <p class="text-muted small mt-2 mb-0">
+              Your attendance is recorded against your Metanoia account
+              {% if request.user.email %}({{ request.user.email }}){% endif %} either way.
+            </p>
+          </div>
+          {% endif %}
+
+          <div class="mt-3">
+            <a class="btn btn-sm btn-outline-secondary"
+               href="{% url 'livesessions:session-ics' meeting.pk %}">
+              <i class="bi bi-calendar-plus me-1"></i>Add to my calendar
+            </a>
+            {% if can_manage %}
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="copyLink"
+                      data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'livesessions:session-detail' meeting.pk %}">
+                <i class="bi bi-link-45deg me-1"></i><span>Copy joining link</span>
+              </button>
+              <form method="post" action="{% url 'livesessions:session-share' meeting.pk %}"
+                    class="d-inline"
+                    onsubmit="return confirm('Send the joining link to everyone in this session’s audience?');">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-secondary" type="submit">
+                  <i class="bi bi-send me-1"></i>Send the link to the audience
+                </button>
+              </form>
+            {% endif %}
+          </div>
+
+          {% if meeting.record_automatically %}
+            <p class="text-muted small mt-3 mb-0"><i class="bi bi-record-circle me-1"></i>This session is recorded automatically.</p>
+          {% endif %}
+        </div></div>
+      {% endif %}
+
+      {% if meeting.description %}
+        <div class="card mb-3"><div class="card-body">
+          <h6>About this session</h6>
+          <p class="mb-0">{{ meeting.description|linebreaksbr }}</p>
+        </div></div>
+      {% endif %}
+
+      {% if pack and can_manage %}
+        <div class="card mb-3"><div class="card-body">
+          <h6 class="mb-3"><i class="bi bi-stars me-1"></i>Session pack <span class="text-muted small fw-normal">(staff view)</span></h6>
+          <div class="pack-body">{{ pack.content }}</div>
+        </div></div>
+      {% elif recap %}
+        <div class="card mb-3"><div class="card-body">
+          <h6 class="mb-3"><i class="bi bi-list-ul me-1"></i>Session summary</h6>
+          {% if recap_sections %}
+            <div class="summary-body">
+            {% for section in recap_sections %}
+              {% if recap_sections|length > 1 or section.heading != 'Summary' %}<h6 class="summary-heading">{{ section.heading }}</h6>{% endif %}
+              {{ section.html|safe }}
+            {% endfor %}
+            </div>
+          {% else %}
+            <div class="pack-body">{{ recap.content }}</div>
+          {% endif %}
+        </div></div>
+      {% endif %}
+
+    </div>
+
+    <div class="col-lg-4">
+      {% if meeting.thumbnail %}
+        <div class="session-hero mb-3"><img src="{{ meeting.thumbnail.url }}" alt="{{ meeting.title }}"></div>
+      {% endif %}
+
+      <div class="card mb-3"><div class="card-body">
+        <h6 class="mb-3">Details</h6>
+        <dl class="row mb-0 small">
+          {% if meeting.scheduled_start %}
+            <dt class="col-5">When</dt><dd class="col-7">{{ meeting.scheduled_start|date:"D j M Y, H:i" }}</dd>
+            <dt class="col-5">Duration</dt><dd class="col-7">{{ meeting.duration_minutes }} min</dd>
+            <dt class="col-5">Your time zone</dt><dd class="col-7">{{ request.ui_timezone }}</dd>
+          {% endif %}
+          <dt class="col-5">For</dt><dd class="col-7">{{ meeting.audience_label }}</dd>
+          {% if meeting.resolved_institution %}<dt class="col-5">Institution</dt><dd class="col-7">{{ meeting.resolved_institution.display_name }}</dd>{% endif %}
+          {% if meeting.module %}<dt class="col-5">Module</dt><dd class="col-7">{{ meeting.module.display_name }}</dd>{% endif %}
+          {% if meeting.week %}<dt class="col-5">Covers</dt><dd class="col-7">{{ meeting.week.display_title }}</dd>{% endif %}
+          {% if meeting.calendar_event %}<dt class="col-5">Prepares for</dt><dd class="col-7">{{ meeting.calendar_event.title }}</dd>{% endif %}
+          {% if meeting.host %}<dt class="col-5">Host</dt><dd class="col-7">{{ meeting.host|person_name }}</dd>{% endif %}
+        </dl>
+      </div></div>
+
+      {% if attendance %}
+        <div class="card mb-3"><div class="card-body">
+          <h6 class="mb-2">Your attendance</h6>
+          <p class="mb-1"><span class="badge bg-{% if attendance.status == 'present' %}success{% elif attendance.status == 'late' %}warning{% elif attendance.status == 'excused' %}info{% else %}secondary{% endif %}">{{ attendance.get_status_display }}</span></p>
+          <p class="text-muted small mb-0">{{ attendance.minutes_attended }} minute{{ attendance.minutes_attended|pluralize }} of the session ({{ attendance.attended_pct }}%), recorded from the {{ attendance.get_source_display|lower }}.</p>
+        </div></div>
+      {% endif %}
+
+      {% if can_manage and artifact %}
+        <div class="card"><div class="card-body">
+          <h6 class="mb-2">Processing</h6>
+          <p class="mb-1 small">{{ artifact.get_state_display }}</p>
+          {% if artifact.folder_path %}<p class="text-muted small mb-1"><i class="bi bi-folder me-1"></i>{{ artifact.folder_path }}</p>{% endif %}
+          {% if artifact.youtube_video_id %}<p class="text-muted small mb-1"><i class="bi bi-youtube me-1"></i><a href="https://www.youtube.com/watch?v={{ artifact.youtube_video_id }}" target="_blank" rel="noopener">{{ artifact.youtube_video_id }}</a> <span class="ms-1">(staff)</span></p>{% endif %}
+          {% if artifact.summary_note and not artifact.summary_published_at %}<p class="text-muted small mb-1"><i class="bi bi-hourglass-split me-1"></i>Summary: {{ artifact.summary_note }}</p>{% elif artifact.summary_source %}<p class="text-muted small mb-1"><i class="bi bi-journal-check me-1"></i>Summary: {{ artifact.get_summary_source_display }}</p>{% endif %}
+          {% if artifact.last_error %}<p class="text-danger small mb-0">{{ artifact.last_error|truncatechars:200 }}</p>{% endif %}
+        </div></div>
+      {% endif %}
+    </div>
+  </div>
+
+</div></div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+(function () {
+  var btn = document.getElementById('joinBtn');
+  var copy = document.getElementById('copyName');
+  var field = document.getElementById('joinName');
+
+  /**
+   * Copy ``text`` to the clipboard, best effort; resolves either way.
+   * ``navigator.clipboard`` only exists in a secure context and this site is
+   * reachable over plain HTTP, so the ``execCommand`` path is the one that runs
+   * for most people, not a legacy fallback. It copies from a throw-away textarea
+   * rather than the join-name input because it also serves "copy link", which has
+   * no field of its own.
+   */
+  function put(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).catch(function () {});
+    }
+    var scratch = document.createElement('textarea');
+    scratch.value = text;
+    scratch.setAttribute('readonly', '');
+    scratch.style.position = 'fixed';
+    scratch.style.opacity = '0';
+    document.body.appendChild(scratch);
+    scratch.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(scratch);
+    return Promise.resolve();
+  }
+  if (btn && btn.dataset.joinName) {
+    btn.addEventListener('click', function () { put(btn.dataset.joinName); });
+  }
+  if (copy && field) {
+    copy.addEventListener('click', function () {
+      put(field.value).then(function () {
+        var label = copy.querySelector('span');
+        if (!label) return;
+        var was = label.textContent;
+        label.textContent = 'Copied';
+        setTimeout(function () { label.textContent = was; }, 1600);
+      });
+    });
+  }
+
+  var video = document.getElementById('sessionVideo');
+  if (video) {
+    var source = video.querySelector('source');
+    var base = source ? source.getAttribute('src') : video.getAttribute('src');
+    var retries = 0;
+    /**
+     * The player's source is our /video/ route, which redirects to a Microsoft
+     * download link that expires after about an hour, so a player paused past
+     * that (or left open overnight) fails on its next fetch. Asking our route
+     * again gets a fresh link and playback resumes where they were. Capped at
+     * three tries, reset once playing, so a recording that is really gone does
+     * not retry forever.
+     */
+    var reload = function () {
+      if (!base || retries >= 3) return;
+      retries += 1;
+      var at = video.currentTime || 0;
+      var wasPlaying = !video.paused;
+      var fresh = base + (base.indexOf('?') < 0 ? '?' : '&') + 'r=' + Date.now();
+      if (source) { source.setAttribute('src', fresh); } else { video.setAttribute('src', fresh); }
+      video.load();
+      video.addEventListener('loadedmetadata', function once() {
+        video.removeEventListener('loadedmetadata', once);
+        if (at) { try { video.currentTime = at; } catch (e) {} }
+        if (wasPlaying) { video.play().catch(function () {}); }
+      });
+    };
+    video.addEventListener('error', reload);
+    if (source) { source.addEventListener('error', reload); }
+    video.addEventListener('playing', function () { retries = 0; });
+  }
+
+  var linkBtn = document.getElementById('copyLink');
+  if (linkBtn) {
+    linkBtn.addEventListener('click', function () {
+      put(linkBtn.dataset.link).then(function () {
+        var label = linkBtn.querySelector('span');
+        if (!label) return;
+        var was = label.textContent;
+        label.textContent = 'Link copied';
+        setTimeout(function () { label.textContent = was; }, 1600);
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

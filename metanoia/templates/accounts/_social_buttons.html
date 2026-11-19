@@ -1,0 +1,35 @@
+{% load static socialaccount social_tags %}
+{% comment %}
+Social sign-in buttons. Only configured providers are links
+(social_tags.social_providers). Apple's button is black with the white logo, as
+Apple's guidelines require.
+{% endcomment %}
+{% social_providers as providers %}
+{% if providers %}
+<div class="text-center my-3"><span class="text-sm text-secondary">or continue with</span></div>
+<div class="d-flex gap-2">
+  {% for p in providers %}
+  {% if p.pending %}
+  <span class="btn btn-sm mb-0 flex-fill d-flex align-items-center justify-content-center gap-2 social-btn social-btn--{{ p.id }} is-pending"
+        role="button" aria-disabled="true" tabindex="0" title="Sign in with {{ p.label }} is coming soon">
+    {% if p.icon %}<img src="{% static p.icon %}" alt="" width="16" height="16" onerror="this.remove()">{% endif %}
+    <span>{{ p.label }} <small class="opacity-75">· soon</small></span>
+  </span>
+  {% else %}
+  <a class="btn btn-sm mb-0 flex-fill d-flex align-items-center justify-content-center gap-2 social-btn social-btn--{{ p.id }}"
+     href="{% provider_login_url p.id process='login' %}" aria-label="Continue with {{ p.label }}">
+    {% if p.icon %}<img src="{% static p.icon %}" alt="" width="16" height="16" onerror="this.remove()">{% endif %}
+    <span>{{ p.label }}</span>
+  </a>
+  {% endif %}
+  {% endfor %}
+</div>
+<style>
+  .social-btn { border: 1px solid #d2d6da; background: #fff; color: #3E2415; text-transform: none; font-weight: 600; }
+  .social-btn:hover { background: #f8f9fa; color: #3E2415; }
+  .social-btn--apple, .social-btn--apple:hover { background: #000; border-color: #000; color: #fff; }
+  .social-btn--apple:hover { background: #222; }
+  .social-btn.is-pending { opacity: .55; cursor: not-allowed; }
+  .social-btn.is-pending:hover { background: #000; }
+</style>
+{% endif %}

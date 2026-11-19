@@ -1,0 +1,79 @@
+{% extends 'layouts/auth.html' %}
+{% comment %}
+End-of-registration hand-off; holds for `seconds`, then forwards.
+Inline SVG/CSS on purpose: it must render even if the icon font hasn't loaded.
+Someone who asked for less motion (prefers-reduced-motion) still gets the screen and the
+redirect, just without the drawing and the sliding bar.
+Context: `outcome` (`heading`, `detail`, `note`, `tone`), `seconds`, `next_url`.
+Overrides `title`, `card_col`, `oblique`, `auth_card`, `extra_css` and `extra_js`.
+{% endcomment %}
+{% block title %}{{ outcome.heading }} · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+{% block card_col %}col-xl-5 col-lg-6 col-md-8{% endblock %}
+{% block oblique %}{% endblock %}
+
+{% block auth_card %}
+<div class="card mt-7 mb-4 shadow-lg">
+  <div class="card-body p-4 p-md-5 text-center">
+
+    <div class="rc-mark rc-{{ outcome.tone }}" aria-hidden="true">
+      <svg viewBox="0 0 52 52" role="presentation">
+        <circle class="rc-ring" cx="26" cy="26" r="24" fill="none"/>
+        <path class="rc-tick" fill="none" d="M15 27.5 L22.5 35 L37.5 19"/>
+      </svg>
+    </div>
+
+    <h4 class="font-weight-bolder mt-4 mb-2">{{ outcome.heading }}</h4>
+    <p class="text-sm text-muted mb-2">{{ outcome.detail }}</p>
+    <p class="text-xs text-muted mb-4">{{ outcome.note }}</p>
+
+    <div class="rc-progress" role="progressbar" aria-label="Redirecting to your dashboard">
+      <span class="rc-bar" style="animation-duration:{{ seconds }}s"></span>
+    </div>
+    <p class="text-xs text-muted mt-3 mb-0">
+      Taking you to your dashboard in <span id="rcCount">{{ seconds }}</span>s —
+      <a href="{{ next_url }}" class="text-info font-weight-bold">go now</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rc-mark{ width:88px; height:88px; margin:0 auto; }
+  .rc-mark svg{ width:100%; height:100%; }
+  .rc-ring{ stroke:#2dce89; stroke-width:2; stroke-dasharray:151; stroke-dashoffset:151;
+    animation:rcRing .6s cubic-bezier(.65,0,.45,1) forwards; }
+  .rc-tick{ stroke:#2dce89; stroke-width:3.5; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray:36; stroke-dashoffset:36;
+    animation:rcTick .35s cubic-bezier(.65,0,.45,1) .55s forwards; }
+  .rc-info .rc-ring, .rc-info .rc-tick{ stroke:#5A93DC; }
+  @keyframes rcRing{ to{ stroke-dashoffset:0; } }
+  @keyframes rcTick{ to{ stroke-dashoffset:0; } }
+
+  .rc-progress{ height:4px; border-radius:4px; background:#eef1f6; overflow:hidden; }
+  .rc-bar{ display:block; height:100%; width:100%; border-radius:4px;
+    background:linear-gradient(310deg,#2dce89,#5A93DC); transform-origin:left center;
+    animation:rcBar linear forwards; }
+  @keyframes rcBar{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
+
+  @media (prefers-reduced-motion: reduce){
+    .rc-ring, .rc-tick{ animation:none; stroke-dashoffset:0; }
+    .rc-bar{ animation:none; }
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var seconds = {{ seconds }};
+  var next = "{{ next_url|escapejs }}";
+  var out = document.getElementById('rcCount');
+  var timer = setInterval(function () {
+    seconds -= 1;
+    if (out) out.textContent = seconds > 0 ? seconds : 0;
+    if (seconds <= 0) { clearInterval(timer); window.location.replace(next); }
+  }, 1000);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% comment %}The mailbox reading pane for one message: subject, sender and
+recipients, the action toolbar (reply, reply all, forward, flag, junk, delete),
+the sandboxed body iframe and the attachment chips.
+
+Rendered inside ``mailbox/mailbox.html`` for the selected message and on its own
+by ``apps.mailbox.views.read_fragment``, which returns the HTML as JSON for
+``static/js/mailbox.js`` to swap in.
+
+Context: ``read_ctx`` from ``apps.mailbox.views._read_context`` — ``item`` (the
+mail item, aliased to ``m``), ``attachments`` (non-inline only), ``body_url``
+(the iframe source), ``is_sent`` and ``in_junk``.
+
+Clicking an attachment chip opens the preview (``static/js/mailbox.js``); the
+arrow beside it downloads straight away.{% endcomment %}{% load mailbox_tags %}{% with m=read_ctx.item %}
+<article class="mb-msg" data-id="{{ m.pk }}">
+  <div class="mb-msg__subject">
+    <button type="button" class="mb-iconbtn mb-only-narrow" data-mb="back" title="Back to list"><i class="bi bi-arrow-left"></i></button>
+    <h1>{{ m.subject|default:"(no subject)" }}</h1>
+    {% if m.is_flagged %}<i class="bi bi-flag-fill mb-flagmark" title="Flagged"></i>{% endif %}
+  </div>
+
+  <div class="mb-msg__card">
+    <div class="mb-msg__head">
+      <span class="mb-ava mb-ava--lg" style="--ava: {{ m.from_address|mail_colour }}">{{ m.initials }}</span>
+      <div class="mb-msg__who">
+        <div class="mb-msg__from"><strong>{{ m.sender_display }}</strong>
+          {% if m.from_name %}<span class="mb-msg__addr">&lt;{{ m.from_address }}&gt;</span>{% endif %}</div>
+        <div class="mb-msg__to">To: {% for n, a in m.to %}<span title="{{ a }}">{{ n|default:a }}</span>{% if not forloop.last %}; {% endif %}{% empty %}<em>undisclosed recipients</em>{% endfor %}</div>
+        {% if m.cc %}<div class="mb-msg__to">Cc: {% for n, a in m.cc %}<span title="{{ a }}">{{ n|default:a }}</span>{% if not forloop.last %}; {% endif %}{% endfor %}</div>{% endif %}
+      </div>
+      <div class="mb-msg__tools">
+        <div class="mb-msg__actions">
+          <button type="button" class="mb-iconbtn" data-mb="respond" data-mode="reply" data-id="{{ m.pk }}" title="Reply"><i class="bi bi-reply"></i></button>
+          <button type="button" class="mb-iconbtn" data-mb="respond" data-mode="replyall" data-id="{{ m.pk }}" title="Reply all"><i class="bi bi-reply-all"></i></button>
+          <button type="button" class="mb-iconbtn" data-mb="respond" data-mode="forward" data-id="{{ m.pk }}" title="Forward"><i class="bi bi-forward"></i></button>
+          <div class="dropdown d-inline-block">
+            <button type="button" class="mb-iconbtn" data-bs-toggle="dropdown" title="More actions"><i class="bi bi-three-dots"></i></button>
+            <ul class="dropdown-menu dropdown-menu-end mb-menu">
+              <li><button class="dropdown-item" type="button" data-mb="act" data-act="unread" data-id="{{ m.pk }}"><i class="bi bi-envelope me-2"></i>Mark as unread</button></li>
+              <li><button class="dropdown-item" type="button" data-mb="act" data-act="{% if m.is_flagged %}unflag{% else %}flag{% endif %}" data-id="{{ m.pk }}"><i class="bi bi-flag me-2"></i>{% if m.is_flagged %}Clear flag{% else %}Flag{% endif %}</button></li>
+              <li><button class="dropdown-item" type="button" data-mb="act" data-act="{% if read_ctx.in_junk %}inbox{% else %}junk{% endif %}" data-id="{{ m.pk }}"><i class="bi bi-slash-circle me-2"></i>{% if read_ctx.in_junk %}Not junk{% else %}Mark as junk{% endif %}</button></li>
+              <li><button class="dropdown-item" type="button" data-mb="act" data-act="delete" data-id="{{ m.pk }}"><i class="bi bi-trash3 me-2"></i>Delete</button></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{% url 'mailbox:source' m.pk %}" target="_blank" rel="noopener"><i class="bi bi-code me-2"></i>View message source</a></li>
+            </ul>
+          </div>
+        </div>
+        <time datetime="{{ m.date|date:'c' }}">{{ m.date|date:"D d/m/Y H:i" }}</time>
+      </div>
+    </div>
+
+    {% if read_ctx.attachments %}
+    <div class="mb-atts">
+      {% for a in read_ctx.attachments %}{% url 'mailbox:attachment' m.pk a.pk as att_url %}
+      <span class="mb-att mb-att--read">
+        <a class="mb-att__open" data-mb="preview" href="{{ att_url }}{% if a.preview_kind %}?inline=1{% endif %}"
+           {% if a.preview_kind %}target="_blank" rel="noopener"{% endif %}
+           data-kind="{{ a.preview_kind|default:'' }}" data-url="{{ att_url }}" data-name="{{ a.filename|default:'attachment' }}"
+           data-size="{{ a.size|filesizeformat }}" data-icon="{{ a.icon }}" title="Preview {{ a.filename|default:'attachment' }}">
+          <i class="bi {{ a.icon }}" aria-hidden="true"></i>
+          <span><span class="mb-att__name">{{ a.filename|default:"attachment" }}</span><span class="mb-att__size">{{ a.size|filesizeformat }}</span></span>
+        </a>
+        <a class="mb-att__dl" href="{{ att_url }}" download title="Download {{ a.filename|default:'attachment' }}"
+           aria-label="Download {{ a.filename|default:'attachment' }}"><i class="bi bi-download" aria-hidden="true"></i></a>
+      </span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mb-images" data-images-bar hidden>
+      <i class="bi bi-image"></i>
+      <span>To protect your privacy, pictures from the internet were not downloaded.</span>
+      <button type="button" class="btn btn-link btn-sm p-0" data-mb="show-images">Show pictures</button>
+    </div>
+
+    <iframe class="mb-frame" src="{{ read_ctx.body_url }}" title="Message body"
+            sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
+
+    <div class="mb-msg__quick">
+      <button type="button" class="mb-pill" data-mb="respond" data-mode="reply" data-id="{{ m.pk }}"><i class="bi bi-reply"></i>Reply</button>
+      <button type="button" class="mb-pill" data-mb="respond" data-mode="replyall" data-id="{{ m.pk }}"><i class="bi bi-reply-all"></i>Reply all</button>
+      <button type="button" class="mb-pill" data-mb="respond" data-mode="forward" data-id="{{ m.pk }}"><i class="bi bi-forward"></i>Forward</button>
+    </div>
+  </div>
+</article>
+{% endwith %}

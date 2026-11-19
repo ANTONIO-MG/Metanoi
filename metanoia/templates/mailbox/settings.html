@@ -1,0 +1,146 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load static mailbox_tags %}
+{% comment %}Mail settings (``apps.mailbox.views.settings``): connecting, editing,
+testing, resyncing and disconnecting the user's own mailboxes, and — for
+admin/staff only (``can_manage``) — the domain server settings and assigning
+mailboxes to other people.
+
+Context: ``mine`` (the user's accounts), ``everyone`` (all accounts, staff only),
+``account_form``, ``server_form``, ``assign_form``, ``edit`` (the account being
+edited, if any), ``server`` and ``can_manage``.
+
+Sections, in order: "My mailboxes", then the domain server (admin/staff).{% endcomment %}
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/mailbox.css' %}?v=2">{% endblock %}
+{% block content %}
+<div class="mb-settings">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <a href="{% url 'mailbox:inbox' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to mail</a>
+    <h1 class="h4 mb-0 ms-2">Mail settings</h1>
+  </div>
+
+  <section class="card mb-4"><div class="card-body">
+    <h2 class="h6 text-uppercase text-muted mb-3">My mailboxes</h2>
+    {% for a in mine %}
+    {% include 'mailbox/_account_row.html' %}
+    {% empty %}
+    <p class="text-muted">No mailbox connected yet.</p>
+    {% endfor %}
+  </div></section>
+
+  <section class="card mb-4" id="account-form"><div class="card-body">
+    <h2 class="h6 text-uppercase text-muted mb-3">{% if edit %}Edit {{ edit.email_address }}{% if edit.user_id != request.user.id %} ({{ edit.user.get_full_name|default:edit.user.username }}){% endif %}{% else %}Connect a mailbox{% endif %}</h2>
+    <form method="post" action="{% url 'mailbox:settings' %}{% if edit %}?edit={{ edit.pk }}{% endif %}">{% csrf_token %}
+      <input type="hidden" name="form" value="account">
+      {% if account_form.non_field_errors %}<div class="alert alert-danger">{{ account_form.non_field_errors }}</div>{% endif %}
+      <div class="row g-3">
+        {% for name in 'email_address display_name password'|words %}{% with f=account_form|get_form_field:name %}{% include 'mailbox/_field.html' with col='col-md-4' %}{% endwith %}{% endfor %}
+        {% if edit and edit.signature_html %}
+        <div class="col-12">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <strong class="small">Signature preview</strong>
+            <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-copy-sig><i class="bi bi-clipboard me-1"></i>Copy for other mail apps</button>
+            <button type="submit" class="btn btn-sm btn-outline-secondary" form="sigReset"><i class="bi bi-arrow-counterclockwise me-1"></i>Use the Metanoia signature</button>
+          </div>
+          <div class="mb-sigpreview" id="sigPreview">{{ edit.signature_html|mail_clean }}</div>
+          <p class="small text-muted mt-2 mb-0">Metanoia Mail adds this to every new message, reply and forward from {{ edit.email_address }}. To use it in Roundcube (Axxess webmail), Outlook or a phone, press <em>Copy for other mail apps</em> and paste it into that app's signature box (see <em>Signatures elsewhere</em> in docs/METANOIA_MAIL.md).</p>
+        </div>
+        {% endif %}
+        <div class="col-12"><details{% if not edit %} open{% endif %}><summary class="small">Signature HTML</summary>
+        {% with f=account_form.signature_html %}{% include 'mailbox/_field.html' with col='col-12 mt-2' %}{% endwith %}
+        </details></div>
+        <div class="col-12 d-flex gap-4">
+          <div class="form-check">{{ account_form.notify_new_mail|mb_widget }} <label class="form-check-label" for="{{ account_form.notify_new_mail.id_for_label }}">Notify me when new mail arrives</label></div>
+          <div class="form-check">{{ account_form.is_default|mb_widget }} <label class="form-check-label" for="{{ account_form.is_default.id_for_label }}">Send new messages from this mailbox</label></div>
+        </div>
+      </div>
+      {% if can_manage %}
+      <details class="mt-3" {% if account_form.imap_host.value or account_form.smtp_host.value or account_form.username.value %}open{% endif %}>
+        <summary class="small">Advanced — only if this mailbox uses different servers from the domain</summary>
+        <div class="row g-3 mt-1">
+          {% for name in 'username imap_host imap_port imap_security smtp_host smtp_port smtp_security'|words %}{% with f=account_form|get_form_field:name %}{% include 'mailbox/_field.html' with col='col-md-3' %}{% endwith %}{% endfor %}
+        </div>
+      </details>
+      {% else %}
+      <details class="mt-3" {% if account_form.username.value %}open{% endif %}>
+        <summary class="small">Advanced — a different sign-in name</summary>
+        <div class="row g-3 mt-1">
+          {% with f=account_form.username %}{% include 'mailbox/_field.html' with col='col-md-6' %}{% endwith %}
+          <div class="col-12 form-text">This mailbox uses the domain's mail servers. If it needs different ones, ask an administrator.</div>
+        </div>
+      </details>
+      {% endif %}
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary"><i class="bi bi-check2 me-1"></i>{% if edit %}Save mailbox{% else %}Connect and test{% endif %}</button>
+        {% if edit %}<a class="btn btn-outline-secondary" href="{% url 'mailbox:settings' %}">Cancel</a>{% endif %}
+      </div>
+    </form>
+  </div></section>
+
+  {% if edit %}<form method="post" id="sigReset" action="{% url 'mailbox:settings' %}" onsubmit="return confirm('Replace this mailbox\'s signature with the Metanoia signature?')">{% csrf_token %}
+    <input type="hidden" name="form" value="signature"><input type="hidden" name="account" value="{{ edit.pk }}"></form>{% endif %}
+
+  {% if can_manage %}
+  <section class="card mb-4"><div class="card-body">
+    <h2 class="h6 text-uppercase text-muted mb-1">Metanoia mail server</h2>
+    <p class="small text-muted">Set once for the whole domain — after that, connecting a mailbox needs only an address and a password.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="form" value="server">
+      <div class="row g-3">
+        {% with f=server_form.domain %}{% include 'mailbox/_field.html' with col='col-md-4' %}{% endwith %}
+        <div class="col-12"><strong class="small">Incoming (IMAP)</strong></div>
+        {% for name in 'imap_host imap_port imap_security'|words %}{% with f=server_form|get_form_field:name %}{% include 'mailbox/_field.html' with col='col-md-4' %}{% endwith %}{% endfor %}
+        <div class="col-12"><strong class="small">Outgoing (SMTP)</strong></div>
+        {% for name in 'smtp_host smtp_port smtp_security'|words %}{% with f=server_form|get_form_field:name %}{% include 'mailbox/_field.html' with col='col-md-4' %}{% endwith %}{% endfor %}
+        {% for name in 'history_days max_message_mb'|words %}{% with f=server_form|get_form_field:name %}{% include 'mailbox/_field.html' with col='col-md-4' %}{% endwith %}{% endfor %}
+        <div class="col-12">
+          <div class="form-check">{{ server_form.username_is_email|mb_widget }} <label class="form-check-label" for="{{ server_form.username_is_email.id_for_label }}">{{ server_form.username_is_email.label }}</label>
+            <div class="form-text">{{ server_form.username_is_email.help_text }}</div></div>
+          <div class="form-check mt-2">{{ server_form.server_saves_sent|mb_widget }} <label class="form-check-label" for="{{ server_form.server_saves_sent.id_for_label }}">{{ server_form.server_saves_sent.label }}</label>
+            <div class="form-text">{{ server_form.server_saves_sent.help_text }}</div></div>
+        </div>
+      </div>
+      <button class="btn btn-primary mt-3"><i class="bi bi-hdd-network me-1"></i>Save server settings</button>
+    </form>
+    <p class="small text-muted mt-3 mb-0">Typical values — cPanel: IMAP 993 SSL/TLS, SMTP 465 SSL/TLS (or 587 STARTTLS), host <code>mail.yourdomain</code>.
+      Microsoft 365: <code>outlook.office365.com</code> 993 SSL/TLS and <code>smtp.office365.com</code> 587 STARTTLS (SMTP AUTH must be enabled for the mailbox).
+      Google Workspace: <code>imap.gmail.com</code> 993 and <code>smtp.gmail.com</code> 587 with an app password.</p>
+  </div></section>
+
+  <section class="card mb-4"><div class="card-body">
+    <h2 class="h6 text-uppercase text-muted mb-1">Set up a mailbox for a team member</h2>
+    <p class="small text-muted">For admin, staff and educator accounts. They will find their mail under Email in the sidebar.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="form" value="assign">
+      {% if assign_form.non_field_errors %}<div class="alert alert-danger">{{ assign_form.non_field_errors }}</div>{% endif %}
+      <div class="row g-3">
+        {% for name in 'person email_address display_name password'|words %}{% with f=assign_form|get_form_field:name %}{% include 'mailbox/_field.html' with col='col-md-3' %}{% endwith %}{% endfor %}
+      </div>
+      <input type="hidden" name="assign-notify_new_mail" value="on"><input type="hidden" name="assign-is_default" value="on">
+      <button class="btn btn-outline-primary mt-3"><i class="bi bi-person-plus me-1"></i>Add mailbox</button>
+    </form>
+  </div></section>
+
+  <section class="card mb-4"><div class="card-body">
+    <h2 class="h6 text-uppercase text-muted mb-3">All mailboxes</h2>
+    {% for a in everyone %}{% include 'mailbox/_account_row.html' with show_owner=True %}
+    {% empty %}<p class="text-muted mb-0">None yet.</p>{% endfor %}
+  </div></section>
+  {% endif %}
+</div>
+<script>
+(function () {
+  var btn = document.querySelector('[data-copy-sig]'), box = document.getElementById('sigPreview');
+  if (!btn || !box) return;
+  btn.addEventListener('click', function () {
+    var html = box.innerHTML, done = function () { btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Copied — paste it into the signature box'; };
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+      navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([box.innerText], { type: 'text/plain' }) })]).then(done, fallback);
+    } else fallback();
+    function fallback() {
+      var r = document.createRange(); r.selectNodeContents(box);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      try { document.execCommand('copy'); done(); } catch (e) { alert('Select the preview and copy it with Ctrl+C.'); }
+      sel.removeAllRanges();
+    }
+  });
+})();
+</script>
+{% endblock %}

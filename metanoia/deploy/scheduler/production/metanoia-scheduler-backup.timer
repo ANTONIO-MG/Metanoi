@@ -1,0 +1,14 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Metanoia Group database backup (every 3 hours)
+
+[Timer]
+OnCalendar=*-*-* 00/3:30:00 Africa/Johannesburg
+RandomizedDelaySec=60
+AccuracySec=30s
+Persistent=true
+Unit=metanoia-scheduler-backup.service
+
+[Install]
+WantedBy=timers.target

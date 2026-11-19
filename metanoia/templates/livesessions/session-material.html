@@ -1,0 +1,68 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+A session's transcript or summary, on our own domain (views.session_transcript,
+views.session_summary). When the material is not there (yet), the same page
+explains that instead — with a 404, never JSON.
+{% endcomment %}
+
+{% block additional_css %}
+<style>
+  .cue{display:grid;grid-template-columns:4.5rem 1fr;gap:.25rem 1rem;padding:.6rem 0;border-bottom:1px solid var(--bs-border-color)}
+  .cue:last-child{border-bottom:0}
+  .cue__time{font-variant-numeric:tabular-nums;color:var(--bs-secondary-color);font-size:.85rem;padding-top:.1rem}
+  .cue__who{font-weight:600;margin-bottom:.15rem}
+  .cue__text{line-height:1.6}
+  .material-body{line-height:1.65}
+  .material-body h2,.material-body h3{font-size:1.05rem;margin-top:1.25rem}
+  @media (max-width:575.98px){.cue{grid-template-columns:1fr}.cue__time{padding-top:0}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3">
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
+    <div class="min-w-0">
+      <h3 class="mb-1">{{ what }}</h3>
+      <small class="text-muted">
+        {{ meeting.title }}{% if meeting.scheduled_start %} · {{ meeting.scheduled_start|date:"D j M Y, H:i" }}{% endif %}
+      </small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-light" href="{{ meeting.get_absolute_url }}#recording"><i class="bi bi-play-btn me-1"></i>Session page</a>
+    </div>
+  </div>
+
+  <div class="row g-3"><div class="col-xl-9">
+    {% if cues %}
+      <div class="card"><div class="card-body">
+        {% if can_manage and artifact.transcript_web_url %}
+          <p class="small text-muted mb-2"><a href="{{ artifact.transcript_web_url }}" target="_blank" rel="noopener"><i class="bi bi-folder2-open me-1"></i>Open the file in OneDrive</a> <span class="ms-1">(staff)</span></p>
+        {% endif %}
+        {% for cue in cues %}
+          <div class="cue">
+            <div class="cue__time">{{ cue.start }}</div>
+            <div>
+              {% if cue.speaker %}<div class="cue__who">{{ cue.speaker }}</div>{% endif %}
+              <div class="cue__text">{{ cue.text }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div></div>
+    {% elif sections %}
+      <div class="card"><div class="card-body material-body">
+        {% for section in sections %}
+          {% if sections|length > 1 or section.heading != 'Summary' %}<h2>{{ section.heading }}</h2>{% endif %}
+          {{ section.html|safe }}
+        {% endfor %}
+      </div></div>
+    {% else %}
+      <div class="alert alert-secondary">
+        <i class="bi bi-hourglass-split me-1"></i>{{ reason }}
+        <a href="{{ meeting.get_absolute_url }}">Back to the session page</a>.
+      </div>
+    {% endif %}
+  </div></div>
+
+</div></div>
+{% endblock %}

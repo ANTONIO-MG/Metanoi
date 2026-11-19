@@ -1,0 +1,348 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load people %}
+{% load static %}
+{% comment %}
+Progress dashboard: overall and per-module progress, results, activity and
+what to improve.
+
+Context:
+  board          from apps.reports.progress_board.build_dashboard
+  target         the student being viewed; students / picker_label feed the picker
+  is_own         the viewer is looking at their own progress
+  is_parent      the viewer is a parent (their child)
+  general_cards  the programme's General module, shown first as its own card
+                 (parents only)
+
+The same view serves a student, a parent and staff/educators (?student=). The
+student picker is the same for every role — only the pool behind it differs;
+a parent with a single child gets no control, just the child's name. A student
+registered for a programme but with no modules yet still sees General as
+theirs.
+
+Sections: header, overview (ring + tiles), what to improve / doing well,
+activity + results trend, per module. Charts are CSS bars and inline SVG, so
+there is nothing to initialise on a boosted swap.
+
+Blocks: overrides ``additional_css`` and ``content``.
+{% endcomment %}
+
+{% block additional_css %}
+<link href="{% static 'css/reports.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="rp vstack gap-4">
+
+  <div class="rp-card rp-head">
+    <div class="min-w-0">
+      {% if is_own %}<h1>My progress</h1>{% else %}<h1>{{ target|person_name }}</h1>{% endif %}
+      {% if is_own %}<p>How far you are through each module, how your results are going, and what to do next.</p>
+      {% else %}<p>Progress per module, results and what to improve.</p>{% endif %}
+    </div>
+    <div class="rp-head__tools">
+      {% if students and not is_parent or students|length > 1 %}
+      <form method="get" class="rp-picker">
+        <label for="rpStudent">{% if picker_label == 'Child' %}View child{% else %}View student{% endif %}</label>
+        <select id="rpStudent" name="student" class="form-select form-select-sm" onchange="this.form.submit()">
+          {% for s in students %}
+            <option value="{{ s.pk }}" {% if s == target %}selected{% endif %}>{{ s|person_name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'reports:my-reports' %}{% if not is_own %}?student={{ target.pk }}{% endif %}">
+        <i class="bi bi-clipboard-data me-1"></i><span>Reports</span></a>
+    </div>
+  </div>
+
+  {% if not board.has_modules and general_cards %}
+  <div>
+    <h2 class="h6 fw-bold mb-3" style="color:var(--rp-ink)">Programme</h2>
+    <div class="rp-mods">
+      {% for g in general_cards %}
+      <article class="rp-card rp-mod rp-mod--general" style="--rp-accent: {{ g.accent }}">
+        <div class="rp-mod__head">
+          <div class="min-w-0">
+            <span class="rp-mod__code">{{ g.code }} · {{ g.programme.short_code }}</span>
+            <h3 class="rp-mod__name">{{ g.name }}</h3>
+          </div>
+          <span class="rp-chip rp-chip--success">Open to all</span>
+        </div>
+        <div class="rp-mod__body">
+          <p class="rp-muted rp-small mb-0">Everything for the whole programme: getting started, the candidate guide, the timetable, programme-wide briefings, recordings and sessions. Free, and not counted in the progress figures.</p>
+        </div>
+        <div class="rp-mod__foot">
+          {% if g.next_class %}<span><span>Next session</span> {{ g.next_class.scheduled_start|date:'D j M, H:i' }}</span>
+          {% else %}<span>No programme-wide session scheduled</span>{% endif %}
+          <span class="ms-auto d-inline-flex gap-3">
+            {% if g.attendance_url %}<a class="rp-link" href="{{ g.attendance_url }}">Attendance</a>{% endif %}
+            {% if g.calendar_url %}<a class="rp-link" href="{{ g.calendar_url }}">Calendar</a>{% endif %}
+          </span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not board.has_modules %}
+  <div class="rp-card"><div class="rp-empty">
+    <i class="bi bi-journal-x"></i>
+    <span>No modules registered yet. Progress appears here once modules are added.</span>
+    {% if is_own %}<div class="mt-2"><a class="rp-link" href="{% url 'learning:my-modules' %}">Choose modules</a></div>{% endif %}
+  </div></div>
+  {% else %}
+
+  <div class="rp-overview">
+    <div class="rp-card rp-ring-card">
+      <div class="rp-ring rp-ring--{{ board.overall.tone }}" role="img" aria-label="Overall progress {{ board.overall.pct|default:0 }}%">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="rp-ring__track" cx="60" cy="60" r="52"/>
+          <circle class="rp-ring__value" cx="60" cy="60" r="52" stroke-dasharray="{{ board.overall.dash }} 326.7"/>
+        </svg>
+        <div class="rp-ring__label"><b>{% if board.overall.pct is None %}—{% else %}{{ board.overall.pct }}%{% endif %}</b><span>Overall</span></div>
+      </div>
+      <div class="min-w-0">
+        <h2>Overall progress</h2>
+        {% if board.overall.units %}
+          <p><span>{{ board.overall.units_done }} of {{ board.overall.units }}</span> <span>pieces of released work done</span></p>
+        {% else %}
+          <p>Nothing released to track yet.</p>
+        {% endif %}
+        <p class="rp-small">Counts the lessons and papers on your schedule and the live classes held since you enrolled.</p>
+      </div>
+    </div>
+
+    <div class="rp-tiles">
+      <div class="rp-card rp-tile">
+        <span class="rp-tile__label">Live classes</span>
+        <span class="rp-tile__value">{{ board.classes.joined }}<small> / {{ board.classes.held }}</small></span>
+        <div class="rp-bar rp-bar--{% if board.classes.pct is None %}secondary{% elif board.classes.pct >= 80 %}success{% elif board.classes.pct >= 60 %}warning{% else %}danger{% endif %}"><span style="width:{{ board.classes.pct|default:0 }}%"></span></div>
+        <span class="rp-tile__note">{% if board.classes.held %}Attended{% else %}No classes held yet{% endif %}</span>
+      </div>
+      <div class="rp-card rp-tile">
+        <span class="rp-tile__label">Results</span>
+        <span class="rp-tile__value">{% if board.results.avg is None %}—{% else %}{{ board.results.avg }}%{% endif %}</span>
+        <div class="rp-bar rp-bar--{{ board.results.tone }}"><span style="width:{{ board.results.avg|default:0 }}%"></span></div>
+        <span class="rp-tile__note">{% if board.results.count %}<span>Average of</span> {{ board.results.count }} <span>paper{{ board.results.count|pluralize }}</span>{% else %}No papers sat yet{% endif %}</span>
+      </div>
+      <div class="rp-card rp-tile">
+        {% if board.countdown %}
+          <span class="rp-tile__label">Next {{ board.countdown.kind|lower }}</span>
+          <span class="rp-tile__value">{{ board.countdown.days_left }}<small> days</small></span>
+          <div class="rp-bar"><span style="width:{{ board.countdown.elapsed_pct }}%"></span></div>
+          <span class="rp-tile__note">{{ board.countdown.date|date:'j M Y' }}</span>
+        {% else %}
+          <span class="rp-tile__label">Readiness</span>
+          <span class="rp-tile__value">{% if board.readiness.pct is None %}—{% else %}{{ board.readiness.pct }}%{% endif %}</span>
+          <div class="rp-bar rp-bar--{{ board.readiness.tone|default:'secondary' }}"><span style="width:{{ board.readiness.pct|default:0 }}%"></span></div>
+          <span class="rp-tile__note">{{ board.readiness.label|default:'Not enough data' }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="rp-split rp-split--8-4">
+    <div class="min-w-0">
+      <div class="rp-card h-100">
+        <div class="rp-card__head">
+          <span class="rp-glyph"><i class="bi bi-lightbulb"></i></span>
+          <h2>What to improve</h2>
+        </div>
+        {% if board.improve %}
+        <ul class="rp-improve">
+          {% for item in board.improve %}
+          <li>
+            <span class="rp-improve__ico rp-improve__ico--{{ item.tone }}"><i class="bi {{ item.icon }}"></i></span>
+            <div class="rp-improve__main">
+              <p class="rp-improve__title">{{ item.title }}</p>
+              <p class="rp-improve__body">{{ item.body }}</p>
+            </div>
+            {% if is_own %}<a class="btn btn-sm btn-outline-primary" href="{{ item.url }}">{{ item.cta }}</a>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="rp-empty"><i class="bi bi-check2-circle"></i><span>Nothing stands out right now. Keep the rhythm going.</span></div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="min-w-0">
+      <div class="rp-card h-100">
+        <div class="rp-card__head">
+          <span class="rp-glyph"><i class="bi bi-stars"></i></span>
+          <h2>Going well</h2>
+        </div>
+        <div class="rp-card__body">
+          {% if board.strengths %}
+          <ul class="rp-good">
+            {% for line in board.strengths %}<li><i class="bi bi-check-circle-fill"></i><span>{{ line }}</span></li>{% endfor %}
+          </ul>
+          {% else %}
+          <p class="rp-muted rp-small mb-0">Finish a block of work, attend every class in a module or score 70% and it shows up here.</p>
+          {% endif %}
+          {% if board.readiness and board.readiness.pct is not None and board.countdown %}
+          <hr style="border-color:var(--rp-line);opacity:1">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="rp-small rp-muted">Readiness for {{ board.readiness.phase }}</span>
+            <span class="rp-chip rp-chip--{{ board.readiness.tone }}">{{ board.readiness.pct }}% · {{ board.readiness.label }}</span>
+          </div>
+          <p class="rp-small rp-muted mt-1 mb-0">{{ board.readiness.basis }}</p>
+          {% endif %}
+          {% if board.risk and board.risk.reasons %}
+          <hr style="border-color:var(--rp-line);opacity:1">
+          <p class="rp-small fw-bold mb-1">Flagged for attention</p>
+          <ul class="rp-good">
+            {% for reason in board.risk.reasons %}<li><i class="bi bi-exclamation-circle" style="color:var(--rp-warning-bar)"></i><span>{{ reason }}</span></li>{% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp-split rp-split--5-7">
+    <div class="min-w-0">
+      <div class="rp-card h-100">
+        <div class="rp-card__head">
+          <span class="rp-glyph"><i class="bi bi-activity"></i></span>
+          <h2>Activity</h2>
+          <span class="rp-chip rp-chip--secondary ms-auto">Last 12 weeks</span>
+        </div>
+        <div class="rp-card__body">
+          <div class="rp-activity" role="img" aria-label="Activity per week">
+            {% for week in board.activity.weeks %}
+            <div class="rp-activity__col" title="{{ week.count }} · {{ week.start|date:'j M' }}">
+              <div class="rp-activity__bar{% if not week.count %} rp-activity__bar--empty{% endif %}" style="height:{{ week.height }}%"></div>
+              {% if forloop.first or forloop.last or forloop.counter == 6 %}<span class="rp-activity__tick">{{ week.start|date:'j M' }}</span>{% else %}<span class="rp-activity__tick">&nbsp;</span>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          <p class="rp-small rp-muted mt-2 mb-0">
+            <span>{{ board.activity.this_week }} this week</span> · <span>{{ board.activity.last_week }} last week</span>.
+            <span>Classes joined, papers handed in and lessons studied.</span>
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="min-w-0">
+      <div class="rp-card h-100">
+        <div class="rp-card__head">
+          <span class="rp-glyph"><i class="bi bi-graph-up"></i></span>
+          <h2>Results over time</h2>
+          {% if board.trend.avg is not None %}<span class="rp-chip rp-chip--{{ board.results.tone }} ms-auto">{{ board.trend.avg }}% average</span>{% endif %}
+        </div>
+        <div class="rp-card__body">
+          {% if board.trend.points %}
+          <svg class="rp-trend" viewBox="-28 -10 640 190" role="img" aria-label="Results over time">
+            <line class="rp-trend__grid" x1="0" y1="0" x2="600" y2="0"/>
+            <line class="rp-trend__grid" x1="0" y1="80" x2="600" y2="80"/>
+            <line class="rp-trend__grid" x1="0" y1="160" x2="600" y2="160"/>
+            <text class="rp-trend__axis" x="-6" y="4" text-anchor="end">100</text>
+            <text class="rp-trend__axis" x="-6" y="164" text-anchor="end">0</text>
+            <line class="rp-trend__pass" x1="0" y1="{{ board.trend.pass_y }}" x2="600" y2="{{ board.trend.pass_y }}"/>
+            {% if board.trend.points|length > 1 %}<polyline class="rp-trend__line" points="{{ board.trend.line }}"/>{% endif %}
+            {% for p in board.trend.points %}
+              <circle class="rp-trend__dot{% if p.pct < 50 %} rp-trend__dot--fail{% endif %}" cx="{{ p.x }}" cy="{{ p.y }}" r="5"><title>{{ p.title }} — {{ p.pct }}%</title></circle>
+            {% endfor %}
+          </svg>
+          <p class="rp-small rp-muted mt-2 mb-0">Each dot is a paper you handed in. The dashed line is the 50% pass mark.</p>
+          {% else %}
+          <div class="rp-empty"><i class="bi bi-graph-up"></i><span>No papers handed in yet. Your results line starts with your first quiz, test or mock exam.</span></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h2 class="h6 fw-bold mb-3" style="color:var(--rp-ink)">Progress per module</h2>
+    <div class="rp-mods">
+      {% for g in general_cards %}
+      <article class="rp-card rp-mod rp-mod--general" style="--rp-accent: {{ g.accent }}">
+        <div class="rp-mod__head">
+          <div class="min-w-0">
+            <span class="rp-mod__code">{{ g.code }} · {{ g.programme.short_code }}</span>
+            <h3 class="rp-mod__name">{{ g.name }}</h3>
+          </div>
+          <span class="rp-chip rp-chip--success">Open to all</span>
+        </div>
+        <div class="rp-mod__body">
+          <p class="rp-muted rp-small mb-0">Everything for the whole programme: getting started, the candidate guide, the timetable, programme-wide briefings, recordings and sessions. Free, and not counted in the progress figures.</p>
+        </div>
+        <div class="rp-mod__foot">
+          {% if g.next_class %}<span><span>Next session</span> {{ g.next_class.scheduled_start|date:'D j M, H:i' }}</span>
+          {% else %}<span>No programme-wide session scheduled</span>{% endif %}
+          <span class="ms-auto d-inline-flex gap-3">
+            {% if g.attendance_url %}<a class="rp-link" href="{{ g.attendance_url }}">Attendance</a>{% endif %}
+            {% if g.calendar_url %}<a class="rp-link" href="{{ g.calendar_url }}">Calendar</a>{% endif %}
+          </span>
+        </div>
+      </article>
+      {% endfor %}
+      {% for card in board.cards %}
+      <article class="rp-card rp-mod{% if not card.unlocked %} rp-mod--locked{% endif %}" style="--rp-accent: {{ card.accent }}">
+        <div class="rp-mod__head">
+          <div class="min-w-0">
+            <span class="rp-mod__code">{{ card.code }}</span>
+            <h3 class="rp-mod__name">{{ card.name }}</h3>
+          </div>
+          <span class="rp-chip rp-chip--{{ card.tone }}">{{ card.status }}</span>
+        </div>
+        <div class="rp-mod__body">
+          <div>
+            <div class="rp-mod__pct">
+              <b>{% if card.pct is None %}—{% else %}{{ card.pct }}%{% endif %}</b>
+              {% if card.units %}<span><span>{{ card.units_done }} of {{ card.units }}</span> <span>done</span></span>{% endif %}
+            </div>
+            <div class="rp-bar rp-bar--lg rp-bar--{{ card.tone }}"><span style="width:{{ card.pct|default:0 }}%"></span></div>
+          </div>
+
+          <div class="rp-meters">
+            <div class="rp-meter" title="Lessons and papers on the schedule">
+              <div class="rp-meter__label">Schedule</div>
+              <div class="rp-meter__value">{{ card.work.done }}<small> / {{ card.work.tracked }}</small></div>
+              <div class="rp-bar"><span style="width:{{ card.work.pct|default:0 }}%"></span></div>
+            </div>
+            <div class="rp-meter" title="Live classes attended">
+              <div class="rp-meter__label">Classes</div>
+              <div class="rp-meter__value">{{ card.classes.joined }}<small> / {{ card.classes.held }}</small></div>
+              <div class="rp-bar rp-bar--{% if card.classes.missed %}warning{% else %}success{% endif %}"><span style="width:{{ card.classes.pct|default:0 }}%"></span></div>
+            </div>
+          </div>
+
+          <div class="rp-results">
+            <div class="rp-results__num">
+              <b>{% if card.avg is None %}—{% else %}{{ card.avg }}%{% endif %}</b>
+              <span>{% if card.results %}<span>Average of</span> {{ card.results|length }}{% if card.trend %} · {% if card.trend > 0 %}<span class="rp-trend-up">+{{ card.trend }}</span>{% elif card.trend < 0 %}<span class="rp-trend-down">{{ card.trend }}</span>{% endif %}{% endif %}{% else %}No results yet{% endif %}</span>
+            </div>
+            {% if card.spark %}
+            <svg viewBox="-2 -2 124 36" preserveAspectRatio="none" aria-hidden="true"><polyline points="{{ card.spark }}"/></svg>
+            {% endif %}
+            {% if card.grade %}<span class="rp-chip rp-chip--{% if card.grade.passed %}success{% else %}warning{% endif %} ms-auto">{{ card.grade.final_pct|floatformat:0 }}%{% if card.grade.letter %} · {{ card.grade.letter }}{% endif %}</span>{% endif %}
+          </div>
+
+          {% if card.blocks %}
+          <div class="rp-blocks">
+            {% for block in card.blocks %}
+              <span class="rp-block{% if block.complete %} rp-block--done{% elif block.is_current %} rp-block--current{% endif %}"
+                    title="{{ block.title }}{% if block.tracked %} — {{ block.done }}/{{ block.tracked }}{% endif %}">
+                {% if block.complete %}<i class="bi bi-check2"></i>{% endif %}{{ block.label }}{% if block.tracked and not block.complete %} · {{ block.pct }}%{% endif %}
+              </span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        <div class="rp-mod__foot">
+          {% if card.last_active %}<span><span>Last active</span> {{ card.last_active|date:'j M' }}</span>
+          {% else %}<span>No activity yet</span>{% endif %}
+          {% if card.classes.next %}<span>· <span>Next class</span> {{ card.classes.next.scheduled_start|date:'D j M, H:i' }}</span>{% endif %}
+          <a class="rp-link" href="{{ card.url }}">Open module</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}

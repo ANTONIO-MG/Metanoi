@@ -1,0 +1,13 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Quarter-hourly Metanoia Group reminders (06:00-22:45 SAST)
+
+[Timer]
+OnCalendar=*-*-* 06..22:00/15:00 Africa/Johannesburg
+AccuracySec=30s
+Persistent=true
+Unit=metanoia-scheduler-quick.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+{% comment %}
+Pill switching between upcoming (/communication/meetings/) and past sessions.
+A .t-nav, wired by js/metanoia-ui.js.
+
+  current  'upcoming' | 'past'
+{% endcomment %}
+<nav class="t-nav mb-3" data-t-nav aria-label="Online sessions">
+  <span class="t-nav__glide" aria-hidden="true"></span>
+  <a href="/communication/meetings/"{% if current == 'upcoming' %} aria-current="page"{% endif %}><i class="bi bi-camera-video" aria-hidden="true"></i>Upcoming</a>
+  <a href="{% url 'livesessions:past-sessions' %}"{% if current == 'past' %} aria-current="page"{% endif %}><i class="bi bi-play-btn" aria-hidden="true"></i>Past sessions</a>
+</nav>

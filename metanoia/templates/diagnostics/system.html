@@ -1,0 +1,222 @@
+{% extends 'diagnostics/_shell.html' %}{% load static %}
+{% comment %}
+System monitor — apps.diagnostics.views.system. The server's CPU, memory, disk and network
+and the site's traffic: live (polled every 10 s from system-live) and over time (the
+five-minute SystemSample rows, apps.diagnostics.monitor). Developers only.
+Two sections: "Right now" and "Over time".
+
+Extends ``diagnostics/_shell.html``; fills ``nav_system``, ``title_icon``,
+``diagnostics``.
+{% endcomment %}
+{% block nav_system %}btn-primary{% endblock %}
+{% block title_icon %}bi-speedometer2 text-primary{% endblock %}
+
+{% block diagnostics %}
+<style>
+  .mon-gauges{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.75rem; margin-bottom:1rem; }
+  .mon-g{ padding:.9rem 1rem; }
+  .mon-g .l{ font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--tc-muted,#6B5E55); }
+  .mon-g .n{ font-size:1.7rem; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; }
+  .mon-g .s{ font-size:.78rem; color:var(--tc-muted,#6B5E55); }
+  .mon-bar{ height:6px; border-radius:3px; background:var(--tc-line,rgba(52,71,103,.11)); margin:.45rem 0 .35rem; overflow:hidden; }
+  .mon-bar > i{ display:block; height:100%; border-radius:3px; background:#198754; transition:width .6s ease; }
+  .mon-bar.is-warn > i{ background:#d9a400; } .mon-bar.is-bad > i{ background:#dc3545; }
+  .mon-state{ font-size:.7rem; font-weight:600; }
+  .mon-state.is-ok{ color:#198754; } .mon-state.is-warn{ color:#9a6b00; } .mon-state.is-bad{ color:#b02a37; }
+  .mon-chart{ position:relative; height:220px; }
+  .mon-tip{ display:flex; gap:.6rem; padding:.55rem 0; border-bottom:1px solid var(--tc-line,rgba(52,71,103,.11)); font-size:.86rem; }
+  .mon-tip:last-child{ border-bottom:0; }
+  .mon-tip i{ font-size:1rem; margin-top:.1rem; }
+  .mon-kv{ display:grid; grid-template-columns:auto 1fr; gap:.3rem 1rem; font-size:.84rem; margin:0; }
+  .mon-kv dt{ color:var(--tc-muted,#6B5E55); font-weight:500; } .mon-kv dd{ margin:0; text-align:right; font-variant-numeric:tabular-nums; }
+  .mon-live{ display:inline-flex; align-items:center; gap:.35rem; font-size:.75rem; color:var(--tc-muted,#6B5E55); }
+  .mon-live::before{ content:''; width:8px; height:8px; border-radius:50%; background:#198754; animation:monpulse 2s infinite; }
+  @keyframes monpulse{ 50%{ opacity:.3; } }
+  @media (prefers-reduced-motion: reduce){ .mon-live::before{ animation:none; } .mon-bar > i{ transition:none; } }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <div class="small text-muted">
+    {% if instance.type %}<span class="badge bg-light text-dark me-1"><i class="bi bi-hdd-rack me-1"></i>EC2 {{ instance.type }}{% if instance.zone %} · {{ instance.zone }}{% endif %}</span>{% endif %}
+    {{ now.cores }} vCPU · {{ now.memory.total_mb|floatformat:0 }} MB RAM · up <span data-live="uptime_text">{{ uptime }}</span>
+  </div>
+  <span class="mon-live" id="monLive">Live · updates every 10 s</span>
+</div>
+
+<div class="mon-gauges" id="monGauges">
+  <div class="card mon-g"><div class="l">CPU</div>
+    <div class="n"><span data-live="cpu">{{ now.cpu }}</span>%</div>
+    <div class="mon-bar is-{{ now.levels.cpu }}" data-bar="cpu"><i style="width:{{ now.cpu }}%"></i></div>
+    <div class="s">load <span data-live="load0">{{ now.load.0 }}</span> / {{ now.cores }} cores</div></div>
+  <div class="card mon-g"><div class="l">Memory (RAM)</div>
+    <div class="n"><span data-live="mem_pct">{{ now.memory.pct }}</span>%</div>
+    <div class="mon-bar is-{{ now.levels.memory }}" data-bar="mem"><i style="width:{{ now.memory.pct }}%"></i></div>
+    <div class="s"><span data-live="mem_used">{{ now.memory.used_mb }}</span> of {{ now.memory.total_mb }} MB in use · swap <span data-live="swap">{{ now.memory.swap_used_mb }}</span> MB</div></div>
+  {% for d in now.disks %}
+  <div class="card mon-g"><div class="l">{{ d.label }}</div>
+    <div class="n"><span data-live="disk{{ forloop.counter0 }}">{{ d.pct }}</span>%</div>
+    <div class="mon-bar is-{% if d.pct >= thresholds.1 %}bad{% elif d.pct >= thresholds.0 %}warn{% else %}ok{% endif %}" data-bar="disk{{ forloop.counter0 }}"><i style="width:{{ d.pct }}%"></i></div>
+    <div class="s">{{ d.used_gb }} of {{ d.total_gb }} GB · <span data-live="free{{ forloop.counter0 }}">{{ d.free_gb }}</span> GB free</div></div>
+  {% endfor %}
+  <div class="card mon-g"><div class="l">Requests / minute</div>
+    <div class="n" data-live="rpm">{% widthratio now.last5.requests 5 1 %}</div>
+    <div class="s mt-2"><span data-live="req60">{{ now.last60.requests }}</span> in the last hour · avg <span data-live="ms">{{ now.last60.avg_ms }}</span> ms</div></div>
+  <div class="card mon-g"><div class="l">People online (15 min)</div>
+    <div class="n" data-live="users">{{ now.last15.users }}</div>
+    <div class="s mt-2">signed in · plus <span data-live="visitors">{{ now.last15.visitors }}</span> visitor(s) not signed in</div></div>
+  <div class="card mon-g"><div class="l">Errors (last hour)</div>
+    <div class="n {% if now.last60.errors %}text-danger{% endif %}" data-live="e60">{{ now.last60.errors }}</div>
+    <div class="s mt-2">server (5xx) · <span data-live="slow60">{{ now.last60.slow }}</span> slow (&gt;2 s)</div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-body">
+      <h6 class="mb-2"><i class="bi bi-lightbulb me-1"></i>What the numbers say <small class="text-muted fw-normal">(last 7 days)</small></h6>
+      {% for lvl, title, text in advice %}
+      <div class="mon-tip"><i class="bi {% if lvl == 'bad' %}bi-exclamation-octagon-fill text-danger{% elif lvl == 'warn' %}bi-exclamation-triangle-fill text-warning{% else %}bi-check-circle-fill text-success{% endif %}"></i>
+        <div><b>{{ title }}</b><div class="text-muted">{{ text }}</div></div></div>
+      {% endfor %}
+      {% if not week.samples %}<p class="small text-muted mt-2 mb-0">History starts filling in once the five-minute sampler has run (the <code>system-sample</code> job on the recordings timer).</p>{% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-body">
+      <h6 class="mb-2"><i class="bi bi-cpu me-1"></i>Services</h6>
+      <dl class="mon-kv">
+        <dt>Web workers</dt><dd>{{ now.app.processes|default:'—' }} process{{ now.app.processes|pluralize:"es" }} · {{ now.app.rss_mb }} MB</dd>
+        <dt>Database</dt><dd>{% if db.size_mb is not None %}{{ db.size_mb }} MB · {{ db.connections }} connection{{ db.connections|pluralize }}{% else %}{{ db.vendor }}{% endif %}</dd>
+        <dt>Redis</dt><dd>{% if redis.used_mb is not None %}{{ redis.used_mb }} MB{% else %}—{% endif %}</dd>
+        <dt>Page cache (Linux)</dt><dd>{{ now.memory.cache_mb }} MB <span class="text-muted">(free for apps when needed)</span></dd>
+        <dt>Load (1 / 5 / 15 min)</dt><dd>{{ now.load.0 }} / {{ now.load.1 }} / {{ now.load.2 }}</dd>
+        {% if week.samples %}
+        <dt>Data out, 7 days</dt><dd>{{ week.net_out_gb }} GB</dd>
+        <dt>Data in, 7 days</dt><dd>{{ week.net_in_gb }} GB</dd>
+        {% endif %}
+      </dl>
+    </div></div>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <h5 class="mb-0 me-2">Over time</h5>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Time range">
+    {% for r in ranges %}<a class="btn {% if r == span %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?range={{ r }}">{{ r }}</a>{% endfor %}
+  </div>
+  {% if summary.samples %}<span class="small text-muted">{{ summary.samples }} sample{{ summary.samples|pluralize }} since {{ summary.since|date:"j M H:i" }}</span>{% endif %}
+</div>
+
+{% if summary.samples %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body py-2 diag-stat"><div class="n">{{ summary.cpu_p95 }}%</div><div class="l">CPU p95 · peak {{ summary.cpu_peak }}%</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body py-2 diag-stat"><div class="n">{{ summary.mem_p95 }}%</div><div class="l">RAM p95 · peak {{ summary.mem_peak }}%</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body py-2 diag-stat"><div class="n">{{ summary.requests }}</div><div class="l">Requests · peak {{ summary.peak_rpm }}/min</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body py-2 diag-stat"><div class="n">{{ summary.peak_users }}</div><div class="l">Most signed in at once (5 min)</div></div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6 class="mb-1">CPU and memory in use (%)</h6>
+    <div class="mon-chart"><canvas id="monRes" role="img" aria-label="CPU and memory percent over time"></canvas></div></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6 class="mb-1">Requests per minute</h6>
+    <div class="mon-chart"><canvas id="monReq" role="img" aria-label="Requests per minute over time"></canvas></div></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6 class="mb-1">People signed in</h6>
+    <div class="mon-chart"><canvas id="monUsers" role="img" aria-label="Signed-in users over time"></canvas></div></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6 class="mb-1">Average response time (ms)</h6>
+    <div class="mon-chart"><canvas id="monMs" role="img" aria-label="Average response time over time"></canvas></div></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6 class="mb-1">Network (MB per period)</h6>
+    <div class="mon-chart"><canvas id="monNet" role="img" aria-label="Network data in and out over time"></canvas></div></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6 class="mb-1">Busiest hours <small class="text-muted fw-normal">(average requests / minute, last 7 days)</small></h6>
+    <div class="mon-chart"><canvas id="monHours" role="img" aria-label="Average requests per minute by hour of day"></canvas></div></div></div></div>
+</div>
+{% else %}
+<div class="card mb-3"><div class="card-body text-muted small"><i class="bi bi-hourglass-split me-1"></i>No samples in this range yet. The sampler records one every five minutes; charts appear after the first few.</div></div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6 class="mb-2">Most visited pages <small class="text-muted fw-normal">(last 24 hours)</small></h6>
+    {% if pages %}
+    <table class="table table-sm diag-table mb-0"><thead><tr><th>Page (URL name)</th><th class="text-end">Requests</th></tr></thead><tbody>
+      {% for name, n in pages %}<tr><td class="diag-mono">{{ name }}</td><td class="text-end">{{ n }}</td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<p class="small text-muted mb-0">Nothing counted yet.</p>{% endif %}
+  </div></div></div>
+  {% if summary.per_day %}
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6 class="mb-2">Requests per day</h6>
+    <table class="table table-sm diag-table mb-0"><thead><tr><th>Day</th><th class="text-end">Requests</th></tr></thead><tbody>
+      {% for day, n in summary.per_day reversed %}<tr><td>{{ day }}</td><td class="text-end">{{ n }}</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div></div>
+  {% endif %}
+</div>
+<p class="small text-muted mt-3">These are the server's own readings (what <code>top</code>, <code>free</code> and <code>df</code> show) and every request the site answered, static files excluded. Amber from {{ thresholds.0 }}%, red from {{ thresholds.1 }}%.</p>
+
+<script>
+(function () {
+  var LIVE = "{% url 'diagnostics:system-live' %}";
+  var series = {{ series_json|safe }}, hours = {{ hours_json|safe }};
+  function set(name, value) { document.querySelectorAll('[data-live="' + name + '"]').forEach(function (el) { el.textContent = value; }); }
+  function bar(name, pct, lvl) {
+    var el = document.querySelector('[data-bar="' + name + '"]'); if (!el) return;
+    el.className = 'mon-bar is-' + lvl; el.firstChild.style.width = Math.min(pct, 100) + '%';
+  }
+  function poll() {
+    if (document.hidden) return;
+    fetch(LIVE, {credentials: 'same-origin', appQuiet: true}).then(function (r) { return r.json(); }).then(function (d) {
+      set('cpu', d.cpu); set('load0', d.load[0]); bar('cpu', d.cpu, d.levels.cpu);
+      set('mem_pct', d.memory.pct); set('mem_used', d.memory.used_mb); set('swap', d.memory.swap_used_mb); bar('mem', d.memory.pct, d.levels.memory);
+      d.disks.forEach(function (x, i) { set('disk' + i, x.pct); set('free' + i, x.free_gb); bar('disk' + i, x.pct, d.levels['disk' + i]); });
+      set('rpm', Math.round(d.last5.requests / 5)); set('req60', d.last60.requests); set('ms', d.last60.avg_ms);
+      set('users', d.last15.users); set('visitors', d.last15.visitors); set('e60', d.last60.errors); set('slow60', d.last60.slow);
+      set('uptime_text', d.uptime_text);
+    }).catch(function () {});
+  }
+  setInterval(poll, 10000);
+
+  if (!series.labels || !series.labels.length) return;
+  Metanoia.ensureScript('{% static 'myhub/vendor/chart.js/Chart.bundle.min.js' %}', function () {
+    if (typeof Chart === 'undefined') return;
+    var css = getComputedStyle(document.querySelector('.tc') || document.body);
+    function v(n, f) { return (css.getPropertyValue(n) || f).trim(); }
+    var one = v('--tc-in', '#0B5FC6'), two = v('--tc-out', '#d9730d');
+    var ink = v('--tc-muted', '#6B5E55'), grid = v('--tc-line', 'rgba(52,71,103,.11)');
+    function line(id, sets, opts) {
+      var el = document.getElementById(id); if (!el) return;
+      opts = opts || {};
+      new Chart(el.getContext('2d'), {
+        type: opts.type || 'line',
+        data: { labels: opts.labels || series.labels, datasets: sets.map(function (s) {
+          return Object.assign({ borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: .25, fill: false,
+                                 borderRadius: 4, maxBarThickness: 22 }, s); }) },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: sets.length > 1, position: 'top', align: 'end', labels: { color: ink, boxWidth: 10, boxHeight: 10 } },
+                     tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + c.formattedValue + (opts.unit || ''); } } } },
+          scales: {
+            x: { ticks: { color: ink, maxTicksLimit: 8, autoSkip: true, maxRotation: 0 }, grid: { display: false } },
+            y: { beginAtZero: true, max: opts.max, ticks: { color: ink, maxTicksLimit: 5 }, grid: { color: grid } }
+          }
+        }
+      });
+    }
+    line('monRes', [{ label: 'CPU', data: series.cpu, borderColor: one, backgroundColor: one },
+                    { label: 'Memory', data: series.mem, borderColor: two, backgroundColor: two }], { max: 100, unit: '%' });
+    line('monReq', [{ label: 'Requests / min', data: series.requests, borderColor: one, backgroundColor: one }]);
+    line('monUsers', [{ label: 'Signed in', data: series.users, borderColor: one, backgroundColor: one }]);
+    line('monMs', [{ label: 'Average', data: series.avg_ms, borderColor: one, backgroundColor: one }], { unit: ' ms' });
+    line('monNet', [{ label: 'Out (to users)', data: series.net_out, borderColor: one, backgroundColor: one },
+                    { label: 'In (uploads)', data: series.net_in, borderColor: two, backgroundColor: two }], { unit: ' MB' });
+    var hourLabels = []; for (var h = 0; h < 24; h++) hourLabels.push((h < 10 ? '0' : '') + h + ':00');
+    line('monHours', [{ label: 'Requests / min', data: hours, backgroundColor: one, borderWidth: 0 }], { type: 'bar', labels: hourLabels });
+  });
+})();
+</script>
+{% endblock %}

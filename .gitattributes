@@ -1,0 +1,14 @@
+# Binary files git must never normalise; see metanoia/docs/reference/deployment.md
+
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.eot    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.pdf    binary

@@ -1,0 +1,88 @@
+{% load mailbox_tags %}{% with d=compose_ctx.draft %}
+<form class="mb-compose" data-draft="{{ d.pk }}" autocomplete="off"
+      data-save-url="{% url 'mailbox:draft-save' d.pk %}" data-send-url="{% url 'mailbox:draft-send' d.pk %}"
+      data-discard-url="{% url 'mailbox:draft-discard' d.pk %}" data-attach-url="{% url 'mailbox:draft-attach' d.pk %}"
+      onsubmit="return false">
+  <div class="mb-compose__bar">
+    <button type="button" class="mb-iconbtn mb-only-narrow" data-mb="back" title="Back"><i class="bi bi-arrow-left"></i></button>
+    <button type="button" class="mb-send" data-mb="send"><i class="bi bi-send-fill"></i>Send</button>
+    <button type="button" class="mb-cmd" data-mb="attach"><i class="bi bi-paperclip"></i><span>Attach file</span></button>
+    <input type="file" multiple hidden data-mb-file>
+    <button type="button" class="mb-cmd" data-mb="discard"><i class="bi bi-trash3"></i><span>Discard</span></button>
+    <span class="mb-compose__saved" data-saved>{% if d.mode != 'new' %}{{ d.get_mode_display }}{% else %}New message{% endif %}</span>
+  </div>
+
+  {% if d.context_label %}
+  <div class="mb-context"><i class="bi bi-link-45deg"></i>Sending from the Learning Hub: <strong>{{ d.context_label }}</strong></div>
+  {% endif %}
+
+  <div class="mb-field">
+    <label>From</label>
+    <select name="account" class="mb-from">
+      {% for a in compose_ctx.accounts %}<option value="{{ a.pk }}" {% if a.pk == d.account_id %}selected{% endif %}>{{ a.from_header }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="mb-field">
+    <label>To</label>
+    <div class="mb-recips" data-recips="to"><input type="text" class="mb-recips__input" aria-label="To"></div>
+    <input type="hidden" name="to" value="{{ d.to }}">
+    <button type="button" class="mb-cc-toggle" data-mb="show-cc" {% if compose_ctx.show_cc %}hidden{% endif %}>Cc &amp; Bcc</button>
+  </div>
+  <div class="mb-field" data-cc-row {% if not compose_ctx.show_cc %}hidden{% endif %}>
+    <label>Cc</label>
+    <div class="mb-recips" data-recips="cc"><input type="text" class="mb-recips__input" aria-label="Cc"></div>
+    <input type="hidden" name="cc" value="{{ d.cc }}">
+  </div>
+  <div class="mb-field" data-cc-row {% if not compose_ctx.show_cc %}hidden{% endif %}>
+    <label>Bcc</label>
+    <div class="mb-recips" data-recips="bcc"><input type="text" class="mb-recips__input" aria-label="Bcc"></div>
+    <input type="hidden" name="bcc" value="{{ d.bcc }}">
+  </div>
+  <div class="mb-field mb-field--subject">
+    <input type="text" name="subject" value="{{ d.subject }}" placeholder="Add a subject" aria-label="Subject" maxlength="998">
+  </div>
+
+  <div class="mb-draft-atts" data-atts>{% include 'mailbox/_draft_attachments.html' with attachments=compose_ctx.attachments draft=d %}</div>
+
+  <div class="mb-toolbar" role="toolbar" aria-label="Formatting">
+    <select data-cmd="fontName" title="Font">
+      <option value="Montserrat, Aptos, Helvetica, Arial, sans-serif">Montserrat</option>
+      <option value="Aptos, Calibri, Helvetica, Arial, sans-serif">Aptos</option>
+      <option value="Calibri, Arial, sans-serif">Calibri</option>
+      <option value="Arial, Helvetica, sans-serif">Arial</option>
+      <option value="Georgia, serif">Georgia</option>
+      <option value="'Times New Roman', serif">Times New Roman</option>
+      <option value="'Courier New', monospace">Courier New</option>
+    </select>
+    <select data-cmd="fontSize" title="Size">
+      <option value="2">10</option><option value="3" selected>12</option><option value="4">14</option>
+      <option value="5">18</option><option value="6">24</option>
+    </select>
+    <span class="mb-sep"></span>
+    <button type="button" data-cmd="bold" title="Bold (Ctrl+B)"><i class="bi bi-type-bold"></i></button>
+    <button type="button" data-cmd="italic" title="Italic (Ctrl+I)"><i class="bi bi-type-italic"></i></button>
+    <button type="button" data-cmd="underline" title="Underline (Ctrl+U)"><i class="bi bi-type-underline"></i></button>
+    <button type="button" data-cmd="strikeThrough" title="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
+    <label class="mb-colour" title="Font colour"><i class="bi bi-fonts"></i><input type="color" data-cmd="foreColor" value="#c50f1f"></label>
+    <label class="mb-colour" title="Highlight"><i class="bi bi-highlighter"></i><input type="color" data-cmd="hiliteColor" value="#fff100"></label>
+    <span class="mb-sep"></span>
+    <button type="button" data-cmd="insertUnorderedList" title="Bullets"><i class="bi bi-list-ul"></i></button>
+    <button type="button" data-cmd="insertOrderedList" title="Numbering"><i class="bi bi-list-ol"></i></button>
+    <button type="button" data-cmd="outdent" title="Decrease indent"><i class="bi bi-text-indent-right"></i></button>
+    <button type="button" data-cmd="indent" title="Increase indent"><i class="bi bi-text-indent-left"></i></button>
+    <span class="mb-sep"></span>
+    <button type="button" data-cmd="justifyLeft" title="Align left"><i class="bi bi-text-left"></i></button>
+    <button type="button" data-cmd="justifyCenter" title="Centre"><i class="bi bi-text-center"></i></button>
+    <button type="button" data-cmd="justifyRight" title="Align right"><i class="bi bi-text-right"></i></button>
+    <span class="mb-sep"></span>
+    <button type="button" data-cmd="createLink" title="Insert link"><i class="bi bi-link-45deg"></i></button>
+    <button type="button" data-cmd="removeFormat" title="Clear formatting"><i class="bi bi-eraser"></i></button>
+    <button type="button" data-cmd="undo" title="Undo (Ctrl+Z)"><i class="bi bi-arrow-counterclockwise"></i></button>
+    <button type="button" data-cmd="redo" title="Redo (Ctrl+Y)"><i class="bi bi-arrow-clockwise"></i></button>
+  </div>
+
+  <div class="mb-editor" contenteditable="true" data-editor role="textbox" aria-multiline="true" aria-label="Message body">{{ d.body_html|mail_clean }}</div>
+  <div class="mb-drop" data-drop hidden><i class="bi bi-cloud-arrow-up"></i>Drop files to attach them</div>
+  {% for pk, sig in compose_ctx.signatures %}<template data-mb-sig="{{ pk }}">{{ sig|safe }}</template>{% endfor %}
+</form>
+{% endwith %}

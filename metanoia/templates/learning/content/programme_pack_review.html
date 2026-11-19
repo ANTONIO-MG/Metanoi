@@ -1,0 +1,152 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+What a programme pack was read as, and the button that builds it —
+apps.learning.programme_pack_views.review. Refreshes itself while the AI step or the
+build runs: the script polls the status every 2 s, moves the bar and reloads when
+it is done.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``content``.
+{% endcomment %}
+{% block content %}
+{% if running %}<script>
+(function () {
+  var url = "{% url 'learning:programme-pack-status' token %}", t0 = Date.now(), misses = 0;
+  function el(id) { return document.getElementById(id); }
+  function tick() {
+    fetch(url, {credentials: 'same-origin', appQuiet: true}).then(function (r) { return r.json(); }).then(function (d) {
+      misses = 0;
+      if (d.build !== 'running' && d.ai !== 'running') { window.location.reload(); return; }
+      var bar = el('packBar'); if (!bar) return;
+      if (d.build === 'running' && d.total) {
+        bar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+        bar.style.width = d.pct + '%'; bar.textContent = d.pct + '%';
+        bar.parentNode.setAttribute('aria-valuenow', d.pct);
+        el('packStep').textContent = d.label + ' · step ' + d.done + ' of ' + d.total;
+        var spent = (Date.now() - Date.parse(d.started_at || '')) / 1000;
+        if (d.done > 2 && isFinite(spent) && spent > 0) {
+          var left = spent / d.done * (d.total - d.done);
+          el('packEta').textContent = left > 90 ? 'about ' + Math.round(left / 60) + ' min left' : left > 5 ? 'about ' + Math.round(left) + ' s left' : 'almost done';
+        }
+      }
+      setTimeout(tick, 2000);
+    }).catch(function () { if (++misses < 10) setTimeout(tick, 4000); else window.location.reload(); });
+  }
+  setTimeout(tick, 1500);
+})();
+</script>{% endif %}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+      <h1 class="h4 mb-1"><i class="bi bi-file-earmark-zip text-primary me-2"></i>{{ state.archive }} → {{ cohort.programme.full_code }} · {{ cohort.code }}</h1>
+      <p class="small text-muted mb-0">Into the existing programme {{ cohort.programme.display_name }}, cohort {{ cohort.code }}{% if cohort.name %} “{{ cohort.name }}”{% endif %}
+        · block “{{ spine.phase.title }}” ({{ spine.phase.kind }} {{ spine.phase.sequence }}) · key <code>{{ spine.key }}</code>
+        <span class="text-muted">— the same key as an earlier build of this block means this one updates it.</span></p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'learning:programme-pack-seed' token %}"><i class="bi bi-filetype-py me-1"></i>Download the seed (.py)</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'learning:programme-pack-plan' token %}"><i class="bi bi-filetype-json me-1"></i>Plan (.json)</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'learning:programme-pack-sheet-file' token %}"><i class="bi bi-filetype-csv me-1"></i>Schedule sheet (.csv)</a>
+      {% if state.build.status != 'running' %}
+      <form method="post" action="{% url 'learning:programme-pack-build' token %}" class="d-inline">{% csrf_token %}
+        <button class="btn btn-primary btn-sm" {% if not can_build %}disabled{% endif %}><i class="bi bi-hammer me-1"></i>{% if state.build.status == 'built' %}Build again (safe — nothing duplicates){% else %}Build it{% endif %}</button>
+      </form>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  {% for label, value in summary.items %}
+  <div class="col-6 col-md"><div class="card h-100"><div class="card-body py-2">
+    <div class="small text-muted text-capitalize">{{ label|cut:'_' }}</div><div class="h5 mb-0">{{ value }}</div>
+  </div></div></div>
+  {% endfor %}
+</div>
+
+{% if check.problems %}<div class="alert alert-danger small">{% for p in check.problems %}<div><i class="bi bi-x-octagon me-1"></i>{{ p }}</div>{% endfor %}<div class="mt-1">Nothing can be built until this is fixed.</div></div>{% endif %}
+
+<div class="card mb-3"><div class="card-body small">
+  <strong>Modules:</strong>
+  {% for code, target, name in check.mapping %}<span class="badge bg-light text-dark me-1">{{ code }} → {{ target }} · {{ name|truncatechars:34 }}</span>{% empty %}<span class="text-muted">none matched.</span>{% endfor %}
+  {% for code in check.missing %}<span class="badge bg-danger me-1">{{ code }} → no module</span>{% endfor %}
+</div></div>
+
+<div class="card mb-3"><div class="card-body small">
+  <strong>AI step:</strong>
+  {% if state.ai.status == 'running' %}<span class="spinner-border spinner-border-sm mx-1"></span>reading the timetable and writing unit summaries…
+    <div class="progress mt-1 mb-2" style="height:8px" role="progressbar" aria-label="AI step running"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div></div>
+  {% elif state.ai.status == 'done' %}done — {{ state.ai.enrichment.units|length|default:0 }} unit summaries{% if state.ai.drafted_sheet %}, and it drafted the schedule sheet below: check it before you build{% endif %}.
+  {% elif state.ai.status == 'unavailable' %}{{ state.ai.message }}
+  {% elif state.ai.status == 'failed' %}<span class="text-danger">failed ({{ state.ai.message }})</span> — the folders alone are used.
+  {% else %}off — built from the folder structure.{% endif %}
+  <br><strong>Build:</strong>
+  {% if state.build.status == 'running' %}<span class="spinner-border spinner-border-sm mx-1"></span>building since {{ state.build.started_at|slice:"11:19" }}…
+    {% with p=state.build.progress %}
+    <div class="progress mt-2" style="height:14px" role="progressbar" aria-label="Build progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{% if p.total %}{% widthratio p.done p.total 100 %}{% else %}0{% endif %}">
+      <div id="packBar" class="progress-bar {% if not p.total %}progress-bar-striped progress-bar-animated{% endif %}" style="width:{% if p.total %}{% widthratio p.done p.total 100 %}{% else %}100{% endif %}%">{% if p.total %}{% widthratio p.done p.total 100 %}%{% endif %}</div>
+    </div>
+    <div class="d-flex justify-content-between text-muted mt-1"><span id="packStep">{% if p.label %}{{ p.label }} · step {{ p.done }} of {{ p.total }}{% else %}starting…{% endif %}</span><span id="packEta"></span></div>
+    {% endwith %}
+  {% elif state.build.status == 'built' %}<span class="text-success">built</span> {{ state.build.finished_at|slice:":16" }} —
+    {% for k, v in state.build.totals.items %}{{ k|cut:'_' }} {{ v }}{% if not forloop.last %} · {% endif %}{% endfor %}
+  {% elif state.build.status == 'failed' %}<span class="text-danger">failed: {{ state.build.message }}</span>
+  {% else %}not started.{% endif %}
+  {% if offering_links %}<div class="mt-2">Open:{% for o, url in offering_links %} <a class="btn btn-sm btn-outline-primary ms-1" href="{{ url }}">{{ o.code }}</a>{% endfor %}</div>{% endif %}
+  {% if state.build.report %}<details class="mt-2"><summary>Build report</summary><pre class="small mb-0">{% for line in state.build.report %}{{ line }}
+{% endfor %}</pre></details>{% endif %}
+</div></div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header border-0 pb-0"><h2 class="h6 mb-0">Weeks ({{ spine.weeks|length }}) and units</h2></div>
+      <div class="table-responsive"><table class="table table-sm small mb-0 align-middle">
+        <thead><tr><th>#</th><th>Week</th><th>Dates</th><th>Units / files</th></tr></thead>
+        <tbody>
+        {% for w in spine.weeks %}
+          <tr><td>{{ w.number }}</td><td class="fw-semibold">{{ w.title }}</td><td class="text-muted text-nowrap">{{ w.starts|default:'—' }} → {{ w.ends|default:'—' }}</td>
+            <td>{% for b in plan.blocks %}{% if b.number == w.block %}{% for u in b.units %}<span class="badge bg-light text-dark me-1">{{ u.module }} U{{ u.unit }} · {{ u.title|truncatechars:28 }} · {{ u.files|length }}</span>{% endfor %}{% endif %}{% endfor %}
+              {% for m in plan.mocks %}{% if m.number == w.mock %}<span class="badge bg-danger-soft text-danger">{{ m.files|length }} mock file{{ m.files|length|pluralize }}</span>{% endif %}{% endfor %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header border-0 pb-0"><h2 class="h6 mb-0">Onboarding and blueprint</h2></div>
+      <ul class="list-unstyled small mb-0 p-3">
+        {% for f in plan.onboarding %}<li><i class="bi bi-{% if f.audience == 'staff' %}lock text-warning{% else %}people text-success{% endif %} me-1"></i>{{ f.name }}</li>{% endfor %}
+        {% for f in plan.strategy %}<li><i class="bi bi-{% if f.audience == 'staff' %}lock text-warning{% else %}people text-success{% endif %} me-1"></i>{{ f.name }}</li>{% endfor %}
+        {% for f in plan.other %}<li><i class="bi bi-lock text-warning me-1"></i>{{ f.name }}</li>{% endfor %}
+      </ul>
+      <div class="px-3 pb-3 small text-muted"><i class="bi bi-people text-success"></i> students · <i class="bi bi-lock text-warning"></i> tutors and staff only</div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header border-0 pb-0"><h2 class="h6 mb-0">Live sessions ({{ spine.sessions|length }})</h2></div>
+      <div class="p-3 small">{% for s in spine.sessions|slice:":16" %}<div>{{ s.start|slice:":10" }} {{ s.start|slice:"11:16" }} · {{ s.title }}</div>{% empty %}<span class="text-muted">None — add <code>slot</code> rows to the schedule sheet below{% if ai_enabled %}, or let the AI draft it{% endif %}.</span>{% endfor %}
+        {% if spine.sessions|length > 16 %}<div class="text-muted">… and {{ spine.sessions|length|add:"-16" }} more</div>{% endif %}</div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header border-0 pb-0"><h2 class="h6 mb-0">Calendar ({{ spine.events|length }})</h2></div>
+      <div class="p-3 small">{% for e in spine.events %}<div><span class="badge bg-light text-dark me-1">{{ e.kind }}</span>{{ e.start|slice:":16" }} · {{ e.title }}</div>{% endfor %}</div>
+    </div>
+    {% if plan.notes %}<div class="alert alert-warning small">{% for n in plan.notes %}<div>{{ n }}</div>{% endfor %}</div>{% endif %}
+  </div>
+</div>
+<div class="card mt-3" id="sheet">
+  <div class="card-header border-0 pb-0 d-flex flex-wrap gap-2 align-items-center">
+    <h2 class="h6 mb-0 flex-fill">Schedule sheet
+      <span class="badge bg-light text-dark ms-1">{% if state.sheet.source == 'pack' %}from the pack{% elif state.sheet.source == 'uploaded' %}uploaded{% elif state.sheet.source == 'ai' %}drafted by the AI — check it{% elif state.sheet.source == 'edited' %}edited here{% else %}none yet{% endif %}</span></h2>
+  </div>
+  <div class="card-body">
+    <p class="small text-muted mb-2">Session times, extra sessions, calendar dates, unit titles and mock papers.
+      Edit it here (CSV), save, and the weeks, sessions and calendar above update. Download it and keep it in the
+      pack's <code>0_Start_Here</code> folder so the next upload needs no editing.</p>
+    {% if state.sheet.problems %}<div class="alert alert-warning small py-2">{% for p in state.sheet.problems %}<div>{{ p }}</div>{% endfor %}</div>{% endif %}
+    <form method="post" action="{% url 'learning:programme-pack-sheet' token %}">{% csrf_token %}
+      <textarea name="csv" rows="12" class="form-control form-control-sm font-monospace" spellcheck="false" aria-label="Schedule sheet as CSV" placeholder="{{ sheet_help }}">{{ state.sheet.csv }}</textarea>
+      <button class="btn btn-outline-primary btn-sm mt-2" {% if state.build.status == 'running' %}disabled{% endif %}><i class="bi bi-save me-1"></i>Save the sheet</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

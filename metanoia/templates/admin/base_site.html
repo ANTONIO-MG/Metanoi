@@ -1,0 +1,5 @@
+{% extends "layouts/base.html" %}
+{% comment %}Django's own admin pages (the ones the old admin theme does not replace — password
+change, some third-party admin views) extend admin/base_site.html. Pointing it at
+layouts/base.html puts them in the same Metanoia shell as every other admin page;
+their {% templatetag openblock %} block content {% templatetag closeblock %} lands in the hub's content column.{% endcomment %}

@@ -1,0 +1,14 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Tick the Metanoia Group background jobs every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Persistent=true
+Unit=metanoia-scheduler.service
+
+[Install]
+WantedBy=timers.target

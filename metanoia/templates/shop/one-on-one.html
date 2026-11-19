@@ -1,0 +1,49 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static commerce %}
+{% comment %}
+One-on-one sessions: every coach (educators, and admin/staff who coach) with
+an hourly rate, searchable by name. Each card (shop/_coach_card.html) opens
+that coach's week (shop/one-on-one-educator.html).
+
+Context: educators, search.
+
+Blocks: overrides ``additional_css`` and ``content``.
+{% endcomment %}
+
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/commerce.css' %}"><link rel="stylesheet" href="{% static 'css/metanoia-shop.css' %}?v=2">{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-2 ts">
+  <nav class="to-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop:storefront' %}">Shop</a><span aria-hidden="true">/</span><span>One-on-one sessions</span></nav>
+
+  <section class="ts-choose__head">
+    <div>
+      <span class="t-label">Book a coach</span>
+      <h1 class="t-h2 mt-2 mb-1">One-on-one <em>sessions</em><span class="t-dot">.</span></h1>
+      <p class="to-lead">Pick a coach and book an hour that is free on their calendar. The Teams link arrives as soon as you have paid.</p>
+    </div>
+    <form method="get" action="{% url 'shop:one-on-one' %}" class="to-search" role="search">
+      <div class="ts-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <label class="visually-hidden" for="coachSearch">Search coaches by name</label>
+        <input id="coachSearch" type="search" name="q" value="{{ search }}" placeholder="Search educators and coaches">
+      </div>
+      <button class="ts-btn" type="submit">Search</button>
+    </form>
+  </section>
+
+  {% if search %}<p class="ts-count">{{ educators|length }} coach{{ educators|length|pluralize:"es" }} matching “{{ search }}” · <a href="{% url 'shop:one-on-one' %}">Show all</a></p>{% endif %}
+
+  <div class="to-coaches">
+    {% for c in educators %}
+      {% include 'shop/_coach_card.html' %}
+    {% empty %}
+      <div class="t-card ts-empty">
+        <i class="bi bi-person-video3"></i>
+        <h3 class="t-h3">{% if search %}No coach matches that name{% else %}No coaches are taking bookings yet{% endif %}</h3>
+        <p>{% if search %}Try a first name or a surname.{% else %}Check back soon.{% endif %}</p>
+      </div>
+    {% endfor %}
+  </div>
+</div></div>
+{% endblock %}

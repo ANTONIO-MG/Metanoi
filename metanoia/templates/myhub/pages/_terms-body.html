@@ -1,0 +1,294 @@
+{% comment %}
+   Terms & Conditions — the single source of the wording.
+
+   Included by the sign-up modal (myhub/pages/page-register.html), the public
+   Privacy & terms page (pages/privacy-and-terms.html) and the PDF copy
+   (manage.py export_terms_pdf), so the text a user agrees to, the text
+   published on the site and the downloadable copy can never drift apart.
+
+   Markup stays plain (h3/h4/p/ul/table/div) because xhtml2pdf renders the PDF
+   from this same file. Styling lives in the including page, keyed on
+   .metanoia-terms.
+
+   When the wording changes materially: bump TERMS_VERSION in
+   apps/accounts/forms.py and the effective date below, then re-export the PDF
+   (manage.py export_terms_pdf). Company details come from .strings.json
+   (brand.*); a blank detail is left out rather than printed as a gap.
+
+   House rules for this text (owner, 2026-10-30): no refunds on courses and
+   materials, beyond what the law requires; no promise of a pass; PayFast
+   wording; do not mention AI anywhere in the terms.
+{% endcomment %}
+{% with co=brand.registered_name|default:brand.legal_name|default:brand.name contact_email=brand.contact.email|default:brand.support_email %}
+<div class="metanoia-terms">
+
+<p class="terms-meta">Version {{ terms_version|default:"2026-10b" }} · Effective 31 October 2026 · Applies to the {{ brand.name }} Learning Hub
+  ({{ brand.terms_host|default:"learn.metanoiagroup.co.za" }}), the {{ brand.name }} website and every programme, class, product and service we offer.</p>
+
+<div class="terms-key">
+  <p class="terms-key__title">Please read these points carefully — they limit your rights or place obligations on you</p>
+  <p>The Consumer Protection Act asks us to draw your attention to the terms below. They are explained in full in the clauses referred to.</p>
+  <ul>
+    <li><strong>No refunds — see our Refund Policy (clause 13).</strong> Fees for courses, programmes, classes, sessions, study guides, blueprints, mock exams and other materials are not refundable once paid, except where the law says otherwise. Because digital access starts immediately, you agree that the seven-day cooling-off period does not apply to it.</li>
+    <li><strong>No guarantee of a pass (clause 5).</strong> We teach you how to study and how to approach your exams. Your result depends on your own work, and we do not promise any mark, pass or outcome.</li>
+    <li><strong>Our liability is limited (clause 21)</strong> and <strong>you indemnify us (clause 22)</strong> against loss caused by your breach of these terms.</li>
+    <li><strong>Classes may be recorded (clause 8).</strong> If you take part, your voice, image, name and chat messages may appear in the recording.</li>
+    <li><strong>We collect and analyse learning data (clause 17)</strong> so that we can understand how students learn and how best to help you.</li>
+    <li><strong>Printed materials ship within South Africa only (clause 14, Shipping Policy).</strong> Delivery fees and times are set out there, and risk passes to you on delivery.</li>
+    <li><strong>Materials are for your personal use only (clauses 10 and 11).</strong> Sharing them can lead to your account being closed without a refund, and to legal action.</li>
+  </ul>
+</div>
+
+<h3>1. Definitions</h3>
+<p>In these terms:</p>
+<ul>
+  <li><strong>“we”, “us”, “our” and “Metanoia”</strong> mean {{ co }}{% if brand.registration_number %} (registration number {{ brand.registration_number }}){% endif %}, trading as {{ brand.name }};</li>
+  <li><strong>“you”</strong> means the person who creates an account or buys from us. Where a parent, guardian, employer or sponsor pays for or registers a student, “you” also includes that person or organisation, as far as the context allows;</li>
+  <li><strong>“Platform”</strong> means the {{ brand.name }} Learning Hub, our website, our online class rooms, and any app, page, e-mail or WhatsApp channel through which we provide the Services;</li>
+  <li><strong>“Services”</strong> means everything we offer: programmes, courses, modules, live and recorded classes, 1-on-1 sessions, marking, feedback, support and the Platform itself;</li>
+  <li><strong>“Materials”</strong> means all content we provide in any form, including study guides, blueprints, mock exams, model answers, marking guides, summaries, notes, slides, worksheets, templates, recordings, videos and printed study materials;</li>
+  <li><strong>“Programme”</strong> means a course, module, class series or other package of Services that you enrol in or buy;</li>
+  <li><strong>“business day”</strong> means Monday to Friday, excluding South African public holidays.</li>
+</ul>
+
+<h3>2. About us</h3>
+<p>The following information is given as required by section 43 of the Electronic Communications and Transactions Act 25 of 2002 (ECTA).</p>
+<table class="terms-table">
+  <tr><td>Legal name</td><td>{{ co }}, a private company incorporated in South Africa{% if brand.name != co %}, trading as {{ brand.name }}{% endif %}</td></tr>
+  {% if brand.registration_number %}<tr><td>Registration number</td><td>{{ brand.registration_number }}</td></tr>{% endif %}
+  {% if brand.vat_number %}<tr><td>VAT number</td><td>{{ brand.vat_number }}</td></tr>{% endif %}
+  {% if brand.directors %}<tr><td>Director(s)</td><td>{{ brand.directors }}</td></tr>{% endif %}
+  {% if brand.contact.address %}<tr><td>Physical address (and address for legal notices)</td><td>{{ brand.contact.address }}</td></tr>{% endif %}
+  <tr><td>E-mail</td><td>{{ contact_email }}</td></tr>
+  {% if brand.contact.phone %}<tr><td>Telephone / WhatsApp</td><td>{{ brand.contact.phone }}</td></tr>{% endif %}
+  <tr><td>Website</td><td>{{ brand.website|default:brand.company_url }} and https://{{ brand.terms_host|default:"learn.metanoiagroup.co.za" }}</td></tr>
+  <tr><td>Place of registration</td><td>Republic of South Africa</td></tr>
+  <tr><td>Professional or self-regulatory bodies; codes of conduct</td><td>Metanoia does not belong to a self-regulatory body and has not subscribed to an industry code of conduct</td></tr>
+  <tr><td>Information Officer</td><td>{{ brand.information_officer|default:"The Information Officer" }}, {{ contact_email }}</td></tr>
+</table>
+
+<h3>3. Agreeing to these terms</h3>
+<p>3.1 These terms are a binding agreement between you and us. You accept them when you tick the box at sign-up, create an account, buy anything from us, or use the Platform. If you do not agree, do not create an account or use the Services.</p>
+<p>3.2 Our <strong>Privacy Policy</strong>, any Programme outline, price list, invoice or booking page, and any rules we publish for a particular class or product form part of these terms. If they conflict with these terms, the more specific document applies to that Programme or product.</p>
+<p>3.3 You must be 18 or older to accept these terms on your own. If you are under 18, your parent or legal guardian must agree to these terms and to our Privacy Policy on your behalf, and is responsible for your use of the Platform and for paying any fees.</p>
+<p>3.4 If you accept on behalf of an employer, sponsor or other organisation, you confirm that you are authorised to bind it.</p>
+
+<h3>4. What Metanoia is, and what it is not</h3>
+<p>4.1 Metanoia Group provides B-BBEE verification, transformation consulting and skills development. Through the Platform we deliver training programmes and learning support to individuals and organisations.</p>
+<p>4.2 <strong>We are not a university, college or registered higher-education institution</strong>, and we do not offer, award or register any qualification. Any certificate of attendance or completion we issue confirms participation in a Metanoia Programme only. It is not a qualification registered on the National Qualifications Framework and does not earn credits at any institution.</p>
+<p>4.3 We are independent. <strong>We are not affiliated with, endorsed by or acting for SAICA, SAIPA, SAIT, IRBA, any university or any other professional or examining body</strong>, unless we say so in writing. Names of those bodies and their qualifications are used only to describe what our Programmes help you prepare for.</p>
+<p>4.4 You remain responsible for registering with your institution and any professional body, meeting their entry and admission requirements, and keeping to their deadlines, rules and fees. Our Programmes do not replace the lectures, prescribed material or rules of your institution or examining body.</p>
+
+<h3>5. No guarantee of results — your input matters</h3>
+<div class="terms-key">
+<p>5.1 We teach you <strong>how</strong> to study: how to plan, how to read and answer exam questions, how to manage time, and how to approach technical content and case studies. <strong>We do not guarantee that you will pass any test, assessment, module or exam, or achieve any particular mark.</strong></p>
+<p>5.2 Your result depends largely on you: your attendance, preparation, practice, the effort you put into mock exams and feedback, your prior knowledge, your circumstances on exam day and the examiner's own assessment. Past pass rates, testimonials and the results of other students do not predict your result.</p>
+</div>
+<p>5.3 To get the full benefit of a Programme, you are expected to:</p>
+<ul>
+  <li>attend classes, or watch the recordings promptly where you miss a class;</li>
+  <li>complete the preparation, readings and practice questions set for you;</li>
+  <li>write and submit mock exams and assignments under the conditions and by the deadlines given;</li>
+  <li>study the feedback you receive and apply it;</li>
+  <li>ask for help early when you are struggling; and</li>
+  <li>keep studying the prescribed material of your institution or examining body.</li>
+</ul>
+<p>5.4 Our advice on study plans, exam technique or career choices is general guidance to help you decide for yourself. It is not professional, legal, tax or financial advice, and you remain responsible for your own decisions.</p>
+
+<h3>6. Your account</h3>
+<p>6.1 You must give accurate, current and complete information when you sign up and register, and keep it up to date. You must confirm your e-mail address before your account can be used.</p>
+<p>6.2 Your account is personal to you. <strong>You may not share your login, let anyone else use your account, or sign in on behalf of someone else.</strong> We may monitor sign-ins (for example, simultaneous sessions from different places) to protect our Materials, and may suspend an account that appears to be shared.</p>
+<p>6.3 Keep your password confidential. You are responsible for everything done through your account until you tell us that it has been compromised. Tell us immediately at {{ contact_email }} if you suspect unauthorised access.</p>
+<p>6.4 If you sign in with Google or Apple, your use of that service is also governed by that provider's terms. We receive only the details the provider shares with us, such as your name and e-mail address.</p>
+
+<h3>7. Programmes, enrolment and access</h3>
+<p>7.1 A Programme's content, schedule, duration, price and access period are described on its page, outline or invoice at the time you enrol. Your enrolment is confirmed once your payment has cleared, or when we confirm it in writing.</p>
+<p>7.2 <strong>Access period.</strong> You have access to a Programme, module and its Materials for the period you have paid for — for example, the month or months covered by a monthly fee, or the exam cycle stated when you enrolled. When that period ends, or if a fee is not paid when due, access may be suspended or removed without further notice.</p>
+<p>7.3 We may reasonably change a Programme's timetable, educator, platform, format or content — for example, to reflect changes in the syllabus, the law or the examining body's requirements, or because an educator is unavailable. We will tell you of material changes in advance where we reasonably can. A change of this kind does not entitle you to a refund, provided that the Programme as a whole still substantially delivers what was described.</p>
+<p>7.4 Enrolment is personal and may not be transferred to another person. A move to a different Programme, intake or exam sitting is at our discretion and may carry a fee.</p>
+
+<h3>8. Class attendance and conduct</h3>
+<p>8.1 <strong>Live classes</strong> are held online on the meeting platform we choose (for example, Microsoft Teams) at the times shown in your Metanoia calendar. All times are South African Standard Time (SAST). You are responsible for having a suitable device, a stable internet connection and enough data, and for any data or connection costs.</p>
+<p>8.2 <strong>Join links are personal.</strong> Do not share a class link or let anyone who is not enrolled attend. We may remove anyone from a class whom we cannot identify as an enrolled student.</p>
+<p>8.3 <strong>Be on time and prepared.</strong> Join a few minutes before the start, use your real name, and bring the preparation set for the class. We may record attendance, including join and leave times, and use it as described in clause 17.</p>
+<p>8.4 <strong>Conduct.</strong> Be respectful to educators, staff and other students. Keep your microphone muted unless you are speaking, use the chat for relevant questions, and do not disrupt the class. Harassment, discrimination, hate speech, offensive content or repeated disruption may lead to removal from the class, and to suspension or closure of your account without a refund.</p>
+<div class="terms-key">
+<p>8.5 <strong>Recording of classes.</strong> Classes and 1-on-1 sessions may be recorded so that enrolled students can catch up and revise, and for quality and training purposes. If you speak, switch on your camera or post in the chat, your voice, image, name and messages may appear in the recording. By joining a class you consent to this. You may keep your camera off and ask questions privately if you prefer not to appear.</p>
+</div>
+<p>8.6 <strong>You may not record, photograph, screenshot, stream or redistribute any class, session or recording</strong>, in whole or in part, without our written permission.</p>
+<p>8.7 <strong>Missed classes.</strong> If you miss a class, for any reason, no refund, credit or replacement class is due. Where a recording is made, we aim to make it available on the Platform, usually within 48 hours. Recordings are a convenience and may be unavailable because of technical failures.</p>
+<p>8.8 <strong>Classes we move or cancel.</strong> If we have to reschedule or cancel a class, we will tell you as early as we reasonably can, and will offer a replacement class, a recording, or equivalent support.</p>
+<p>8.9 <strong>Sponsors.</strong> Where your studies are paid for by an employer, bursary or other sponsor, and you have agreed to this at registration or under your sponsorship agreement, we may share your attendance, progress and results with that sponsor.</p>
+
+<h3>9. 1-on-1 sessions</h3>
+<p>9.1 1-on-1 sessions are booked through the Platform, subject to the educator's availability and to the minimum notice shown on the booking page. A selected time is held for 15 minutes while you complete payment, and is confirmed once payment is received.</p>
+<p>9.2 You may reschedule a confirmed session through the Platform until the cut-off time shown when you book (usually 24 hours before the session). After the cut-off, a session cannot be moved.</p>
+<p>9.3 If you cannot reschedule and wish to cancel a confirmed session, tell us before it starts. The session's value is then added to your account as credit, less a reasonable cancellation charge that reflects how much notice you gave and whether the educator's time could be booked again, as section 17 of the Consumer Protection Act allows. No charge applies if you cancel because of the death or hospitalisation of the person for whom the session was booked, as provided in that section.</p>
+<p>9.4 If you do not attend without telling us, or arrive late, the session is forfeited or ends at its scheduled time, and no refund or credit is due.</p>
+<p>9.5 If we or the educator cancel a session, you may choose another time, or we will add the session's value to your account as credit for future Metanoia purchases. Account credit has no cash value and cannot be withdrawn or transferred.</p>
+
+<h3>10. Study guides, blueprints, mock exams and other Materials</h3>
+<p>10.1 <strong>Licence.</strong> When you pay for, or are given access to, Materials, we grant you a personal, non-exclusive, non-transferable and revocable licence to use them for your own private study during your access period. You do not buy the Materials or any intellectual property in them. Printed Materials you buy become your property as physical copies, but the content remains protected by copyright.</p>
+<p>10.2 <strong>You may not</strong>, without our prior written consent:</p>
+<ul>
+  <li>copy, share, sell, lend, rent, upload, post, forward or distribute any Materials, in whole or in part, including in WhatsApp, Telegram or other groups, on file-sharing sites, social media or study-notes marketplaces;</li>
+  <li>give your downloads, printed Materials or recordings to anyone else, including classmates, friends or other study groups;</li>
+  <li>upload Materials to any third-party service, tool or platform, or use them to create derivative, competing or commercial products;</li>
+  <li>remove, hide or alter any copyright notice, watermark or identifying mark; or</li>
+  <li>use the Materials to teach, tutor or coach others.</li>
+</ul>
+<p>10.3 <strong>Identifying marks.</strong> Materials may carry visible or hidden marks that identify the account they were issued to. If Materials issued to you are found outside the Platform, we may treat this as a breach by you.</p>
+<p>10.4 <strong>Study guides and summaries</strong> are prepared to help you understand and revise the work. They support, and do not replace, the prescribed textbooks, standards, legislation and material of your institution or examining body.</p>
+<p>10.5 <strong>Blueprints and exam strategy.</strong> Blueprints, topic analyses, “what to expect” guides and question-spotting are our professional opinion, based on our analysis of syllabi, competency frameworks and past papers. <strong>They are not predictions of, or inside information about, the questions in any exam</strong>, and examiners may assess any part of the syllabus. Do not study only the topics a blueprint highlights.</p>
+<p>10.6 <strong>Mock exams and marking.</strong></p>
+<ul>
+  <li>Mock exams are practice assessments set and marked by Metanoia. The mark you receive shows how you performed on that mock, against our marking guide, on that day. <strong>It is not an official result and does not predict your result in the real exam.</strong></li>
+  <li>Submit your answers through the Platform in the format and by the deadline given. We aim to return marks and feedback within the turnaround time stated for each Programme or mock exam. We may decline to mark, or mark later, work that is submitted late or in the wrong format.</li>
+  <li>Your submissions must be your own work, written under the conditions set. Copied, shared or ghost-written work may receive no mark and may lead to suspension of your account.</li>
+  <li>If you disagree with a mark, you may ask for one review within 7 days of receiving it, giving your reasons. The reviewer's decision is final for that mock exam.</li>
+  <li>Model answers and marking guides are released at the time we choose, and are subject to clause 10.2.</li>
+</ul>
+<p>10.7 <strong>Accuracy.</strong> We take care to make our Materials accurate, but they may contain errors, and tax law, accounting standards and syllabi change. Materials reflect the position at the date they were prepared, unless we say otherwise. Please tell us about any error you find. We will correct it within a reasonable time, and that correction is our only obligation in respect of the error, to the extent the law allows.</p>
+
+<h3>11. Intellectual property</h3>
+<p>11.1 All Materials, the Platform and its software, design, text, graphics, logos and the {{ brand.name }} name and brand are owned by us or our licensors and are protected by the Copyright Act 98 of 1978, the Trade Marks Act 194 of 1993 and other laws. Except for the licence in clause 10.1, no rights are granted to you.</p>
+<p>11.2 Breaching clause 10.2 is a material breach of these terms. We may immediately suspend or close your account <strong>without a refund</strong>, claim the damages we suffer, and take civil or criminal action.</p>
+<p>11.3 You keep ownership of the work you submit (answers, assignments, posts and messages). You give us a non-exclusive, royalty-free licence to store, copy, mark, comment on and display it to provide the Services, and to use extracts that do not identify you to improve our teaching and Materials.</p>
+<p>11.4 If you send us ideas, suggestions or feedback, we may use them freely and without owing you anything.</p>
+
+<h3>12. Prices and payment</h3>
+<p>12.1 Prices are in South African rand (ZAR) and include VAT where VAT applies. The price payable is the price shown at checkout or on your invoice when you pay. Delivery fees for physical items are shown separately before you pay.</p>
+<p>12.2 If a price is obviously wrong because of a mistake (for example, a typing or system error), we are not bound by it. We will tell you and give you the choice of paying the correct price or cancelling the order with a full refund of anything you paid for it.</p>
+<p>12.3 <strong>Online payments are processed by PayFast</strong> (PayFast (Pty) Ltd, “Payfast by Network”), a third-party payment gateway. When you pay online you are sent to PayFast's secure payment page and may pay by any method PayFast makes available to us, such as credit or debit card or instant EFT.</p>
+<ul>
+  <li>Your card and bank details are entered on PayFast's systems and are <strong>never seen or stored by Metanoia</strong>. PayFast is certified as a Level 1 service provider under the Payment Card Industry Data Security Standard (PCI DSS) and uses encryption and 3-D Secure verification to protect your payment.</li>
+  <li>Your payment is also subject to PayFast's own terms and privacy policy and those of your bank or card issuer, which may ask you to authenticate the payment.</li>
+  <li>An order or enrolment is only confirmed once PayFast tells us that the payment succeeded. A declined, cancelled or reversed payment means no order is placed or that access is withdrawn.</li>
+  <li>We may cancel an order, or ask for more information before we fulfil it, where we reasonably suspect fraud or the unauthorised use of a payment method.</li>
+</ul>
+<p>12.4 <strong>EFT and invoices.</strong> Where we issue an invoice, you may pay by EFT into the bank account shown on the invoice, using the payment reference on the invoice. Access is given once the funds reflect in our account, which can take up to 3 business days. You are responsible for any bank charges.</p>
+<p>12.5 <strong>Monthly and recurring fees.</strong> Where a Programme is charged monthly, each month's fee is payable in advance and unlocks access for that month. Where you authorise recurring billing through PayFast, you allow PayFast to charge your chosen payment method on each due date until you cancel. Before your first payment you will be shown the amount, frequency, billing date and duration of the recurring charge. You may cancel future recurring payments at any time before the next billing date through your account, through your PayFast account, or by e-mailing us, and we will stop billing you. Cancelling stops future charges and access at the end of the period already paid for; it does not result in a refund for that period.</p>
+<p>12.6 <strong>Fixed-term agreements.</strong> Where the Consumer Protection Act applies to a fixed-term agreement with you (for example, an instalment plan for a full Programme), you may cancel it on 20 business days' written notice. You remain liable for amounts owed up to the cancellation date and for a reasonable cancellation charge, as allowed by section 14 of that Act and its regulations; any amount you paid in advance for the period after cancellation is refunded, less that charge. We will notify you between 40 and 80 business days before a fixed-term agreement expires.</p>
+<p>12.7 <strong>Late payment.</strong> If an amount is overdue, we may suspend your access to the Programme and its Materials until it is paid in full, and may recover the amount through lawful collection processes.</p>
+<p>12.8 <strong>Chargebacks.</strong> If you have a problem with a charge, please contact us first so that we can try to resolve it. If you dispute a valid charge with your bank, or reverse a payment, we may suspend your access while the dispute is open and recover the amount from you if the dispute is decided in our favour.</p>
+<p>12.9 <strong>Your records.</strong> Before you pay, you can review your order and correct any mistakes or cancel it. A confirmation and invoice is sent to you after payment and stays available under your account, where you can view, download and print it.</p>
+<p>12.10 <strong>Discount codes and promotions</strong> are valid only on the conditions stated with them, cannot be exchanged for cash and cannot be applied after payment.</p>
+<p>12.11 Some resources may be sold through a third-party store (such as Payhip). The purchase is then also governed by that store's terms, while your use of the Materials is governed by these terms.</p>
+
+{% include 'myhub/pages/_refund-policy.html' with n="13" %}
+
+{% include 'myhub/pages/_shipping-policy.html' with n="14" r="13" %}
+
+<h3>15. Availability of the Platform and content</h3>
+<p>15.1 We aim to keep the Platform available at all times, but we do not guarantee uninterrupted, error-free access. The Platform may be unavailable during maintenance or updates (which we try to schedule outside peak study hours), or because of problems with hosting, internet, power or third-party services we rely on.</p>
+<p>15.2 Content is available for your access period (clause 7.2). We may update, replace, reorganise or withdraw content, recordings and features, for example to keep them current or when a syllabus changes. Unless a Programme's page says otherwise, recordings are kept available until the end of the exam cycle they relate to.</p>
+<p>15.3 Where the Platform allows you to download Materials, downloading is subject to clause 10. Keep your own copies of your submissions and notes. We do not guarantee that content will be kept after your access period ends or after your account is closed.</p>
+<p>15.4 If the Platform is unavailable for an extended period during your access period because of a fault within our control, we will extend your access, provide recordings or provide other reasonable support. That is our only obligation for the interruption, to the extent the law allows.</p>
+
+<h3>16. Contacting us, and how we respond</h3>
+<p>16.1 <strong>How to reach us.</strong> You can message us through the Platform (Messages or Support &amp; help), by e-mail at {{ contact_email }}{% if brand.contact.whatsapp %}, or on WhatsApp at {{ brand.contact.whatsapp }}{% endif %}.</p>
+<p>16.2 <strong>Office hours</strong> are Monday to Friday, 08:00 to 17:00 (SAST), excluding public holidays. Messages received outside office hours are handled from the next business day. Our channels are not monitored around the clock and are not an emergency service.</p>
+<p>16.3 <strong>Response times.</strong> When you send us a message, we aim to:</p>
+<table class="terms-table">
+  <tr><td>General, account, payment and technical queries</td><td>Acknowledge or reply within 2 business days</td></tr>
+  <tr><td>Academic questions to an educator</td><td>Reply within 3 business days, or deal with the question in the next relevant class</td></tr>
+  <tr><td>Urgent access problems close to a class, mock or exam deadline</td><td>Respond as soon as reasonably possible during office hours, usually on the same business day</td></tr>
+  <tr><td>Complaints</td><td>Acknowledge within 2 business days and aim to resolve within 15 business days (clause 26)</td></tr>
+  <tr><td>Requests about your personal information</td><td>Respond within 30 days, as allowed by POPIA and PAIA</td></tr>
+</table>
+<p>These are targets, not guarantees. Busy periods (such as the weeks before an exam) may take longer, and we will tell you if a matter needs more time.</p>
+<p>16.4 <strong>How we contact you.</strong> We contact you by e-mail, through notifications and messages on the Platform, by telephone, and on WhatsApp where you have given us your WhatsApp number for that purpose. Notices about your account, payments, classes, deadlines and these terms are part of the Service and continue while your account is active. You choose whether to receive reminders and updates by e-mail as well, under your notification settings. We send marketing only with your consent, and you can opt out at any time through the unsubscribe link in the message or in your settings.</p>
+<p>16.5 Keep your contact details up to date. A notice sent to the e-mail address or phone number on your account is treated as received on the business day after it is sent. You agree that agreements, notices and other communications we send electronically satisfy any legal requirement for them to be in writing, as provided for in ECTA.</p>
+
+<h3>17. Your personal information</h3>
+<p>17.1 We process your personal information in line with the Protection of Personal Information Act 4 of 2013 (POPIA) and our Privacy Policy, which forms part of these terms. We are the responsible party for the personal information processed through the Platform.</p>
+<p>17.2 <strong>What we collect:</strong> the details you give us at sign-up and registration (identity, contact, institution, studies, funding, preferences and accessibility needs); records of your purchases and payments (but not your card details, which PayFast handles); your submissions, marks, feedback and messages; and records of how you use the Platform, such as sign-ins, class attendance, pages and Materials viewed, recordings watched, and time spent on activities.</p>
+<p>17.3 Fields marked as required at sign-up and registration must be completed for us to provide the Services; without them we cannot open your account or enrol you. Other information is voluntary.</p>
+<p>17.4 <strong>Why we use it:</strong> to create and run your account, enrol you, deliver classes and Materials, mark your work, take payment and issue invoices, deliver parcels, support you, keep the Platform secure, meet our legal obligations and, with your consent, tell you about other Programmes and offers.</p>
+<div class="terms-key">
+<p>17.5 <strong>Learning analysis.</strong> We collect and analyse information about attendance, progress, assessment results and how students engage with our Programmes and Materials. We do this so that we can:</p>
+<ul>
+  <li>understand how students learn and which study approaches work best;</li>
+  <li>measure and improve the effectiveness of our teaching, Programmes and Materials;</li>
+  <li>identify students who may be falling behind, and offer timely help; and</li>
+  <li>tailor study plans, recommendations and support to you.</li>
+</ul>
+<p>Where we use this information for research, statistics or reporting beyond supporting you directly, we use it in aggregated or de-identified form so that you cannot be identified, as allowed by section 15 of POPIA. We will not publish results that identify you without your consent.</p>
+</div>
+<p>17.6 <strong>Who we share it with:</strong> we do not sell your personal information. We share it only with service providers (operators) who help us run the Services — such as our hosting, e-mail and meeting-platform providers, PayFast for payments and our courier for deliveries — each of whom must protect it; with your sponsor where clause 8.9 applies; and where the law requires it. Some providers may process information outside South Africa, and when they do we make sure that it is protected as required by section 72 of POPIA.</p>
+<p>17.7 <strong>Your rights:</strong> you may ask to see, correct or delete your personal information, object to its processing, and withdraw any consent you have given (this does not affect processing that happened before you withdrew it). You can manage most of this under <em>Settings &gt; Privacy &amp; consent</em>, or by contacting our Information Officer at {{ contact_email }}. You may also lodge a complaint with the Information Regulator (inforegulator.org.za, POPIAComplaints@inforegulator.org.za).</p>
+<p>17.8 We apply reasonable technical and organisational measures to protect your information, and will notify you and the Information Regulator of a security compromise as section 22 of POPIA requires. We keep your information for as long as your account is active and as needed for the purposes above or to meet legal record-keeping requirements (for example, tax records).</p>
+<p>17.9 Our manual under the Promotion of Access to Information Act 2 of 2000 (PAIA) is available on request from {{ contact_email }}.</p>
+
+<h3>18. Acceptable use</h3>
+<p>You may not use the Platform to, or attempt to:</p>
+<ul>
+  <li>break any law, or infringe anyone's rights, including copyright and privacy;</li>
+  <li>gain unauthorised access to the Platform, another person's account or our systems, or interfere with their security — conduct that may also be an offence under the Cybercrimes Act 19 of 2020;</li>
+  <li>copy, scrape, download in bulk, frame, mirror, reverse-engineer or automatically extract content or data from the Platform;</li>
+  <li>upload viruses or harmful code, send spam, or overload or disrupt the Platform;</li>
+  <li>impersonate anyone, or misrepresent your identity or your connection to Metanoia;</li>
+  <li>harass, threaten, bully or discriminate against anyone, or post content that is offensive, defamatory, pornographic or hateful;</li>
+  <li>share other people's personal information without their permission; or</li>
+  <li>cheat, or help others to cheat, in any assessment, including an assessment by your institution or examining body.</li>
+</ul>
+
+<h3>19. Discussions, messages and community features</h3>
+<p>19.1 You are responsible for what you post in discussions, messages, comments and reviews. Keep it relevant, respectful and lawful, and do not post Materials in places where they can be seen by people who are not entitled to them.</p>
+<p>19.2 We may moderate, hide or remove any content, and restrict access to community features, if we reasonably believe that the content breaches these terms. We are not responsible for content posted by other users.</p>
+
+<h3>20. Third-party services</h3>
+<p>The Platform relies on, and links to, services operated by others — including PayFast, Google, Apple, Microsoft Teams, WhatsApp, our courier and third-party stores. Their terms and privacy policies apply to your use of them. We are not responsible for their availability, content or acts, beyond our own obligations under POPIA and the law.</p>
+
+<div class="terms-key">
+<h3>21. Limitation of liability</h3>
+<p>21.1 To the extent the law allows, the Services and Materials are provided on an “as available” basis, and we give no warranty other than those in these terms and those that the law implies and does not allow us to exclude.</p>
+<p>21.2 To the extent the law allows, we are not liable for:</p>
+<ul>
+  <li>any exam, assessment or academic result, or any failure to pass, qualify, be admitted or progress;</li>
+  <li>loss of income, opportunity, employment, bursary or registration;</li>
+  <li>indirect, special or consequential loss;</li>
+  <li>loss caused by interruptions to the Platform, internet or power, by third-party services, or by events outside our reasonable control (clause 24); or</li>
+  <li>loss caused by your breach of these terms, or by your reliance on Materials beyond their stated purpose.</li>
+</ul>
+<p>21.3 To the extent the law allows, our total liability to you for any claim arising from the Services is limited to the fees you paid us for the Programme, product or service that gave rise to the claim, in the 12 months before the claim arose.</p>
+<p>21.4 Nothing in these terms limits or excludes our liability for gross negligence, intentional misconduct, or any liability that cannot be limited or excluded under the Consumer Protection Act or any other law.</p>
+</div>
+
+<div class="terms-key">
+<h3>22. Indemnity</h3>
+<p>You indemnify us, our directors, employees and educators against any claim, loss, damage or cost (including reasonable legal costs) that arises because you breached these terms — in particular by sharing Materials, misusing your account, or posting unlawful content — except to the extent that the loss was caused by our own fault.</p>
+</div>
+
+<h3>23. Suspension and closing an account</h3>
+<p>23.1 You may close your account at any time under <em>Settings &gt; Close account</em>, or by contacting us. Closing your account ends your access to all Programmes and Materials and does not entitle you to a refund (clause 13, Refund Policy).</p>
+<p>23.2 We may suspend or close your account, or remove you from a Programme, with immediate effect and without a refund, if you materially breach these terms (including clauses 6.2, 8.4, 10.2 and 18), if you fail to pay an amount due after we have asked you to, or if we must do so by law. Where it is reasonable, we will first warn you and give you a chance to remedy the breach.</p>
+<p>23.3 Clauses that by their nature are meant to continue — including clauses 10, 11, 13, 17, 21, 22 and 26 — continue after your account is closed.</p>
+
+<h3>24. Events beyond our control</h3>
+<p>We are not in breach of these terms, and are not liable, for a delay or failure caused by circumstances beyond our reasonable control. These include load-shedding and power failures, internet, network or hosting outages, failures of third-party platforms, strikes, unrest, natural disasters, pandemics, and acts of government. We will take reasonable steps to limit the effect on you, for example by rescheduling classes or providing recordings.</p>
+
+<h3>25. Changes to these terms</h3>
+<p>25.1 We may update these terms from time to time, for example to reflect changes to our Services or the law. The version number and effective date at the top show which version applies.</p>
+<p>25.2 We will tell you of material changes by e-mail or on the Platform at least 14 days before they take effect, unless the change is required sooner by law. If you continue to use the Platform after a change takes effect, you accept the updated terms. If you do not agree, you may close your account before the change takes effect.</p>
+<p>25.3 A change does not affect fees already paid or orders placed before it took effect, unless the law requires otherwise.</p>
+
+<h3>26. Complaints, disputes and governing law</h3>
+<p>26.1 If you are unhappy, please tell us first at {{ contact_email }}, giving your name, the Programme or order concerned and what went wrong. We will acknowledge your complaint within 2 business days and aim to resolve it within 15 business days. If you are not satisfied with our response, you may ask for it to be escalated to a director.</p>
+<p>26.2 If we cannot resolve a dispute between us, either of us may propose mediation. You also keep your right to approach the National Consumer Commission, the Consumer Goods and Services Ombud, the Information Regulator (for privacy matters) or a court.</p>
+<p>26.3 These terms are governed by the laws of the Republic of South Africa. You consent to the jurisdiction of the Magistrates' Court with jurisdiction over the matter, in terms of section 45 of the Magistrates' Courts Act 32 of 1944, even if the amount claimed exceeds that court's ordinary monetary limit. This does not prevent either of us from approaching another competent court.</p>
+
+<h3>27. General</h3>
+<p>27.1 <strong>Whole agreement.</strong> These terms, with the documents referred to in clause 3.2, are the whole agreement between us about their subject matter.</p>
+<p>27.2 <strong>Severability.</strong> If any part of these terms is found invalid or unenforceable, it is removed or limited only as far as necessary, and the rest continues to apply.</p>
+<p>27.3 <strong>No waiver.</strong> If we allow you extra time or do not enforce a right immediately, we do not give up that right.</p>
+<p>27.4 <strong>Transfer.</strong> You may not transfer your rights or obligations under these terms. We may transfer ours to a successor to our business, provided that your rights under these terms are not reduced.</p>
+<p>27.5 <strong>Records.</strong> Our electronic records of your acceptance of these terms (including the version, date and time), your orders, payments, attendance and use of the Platform are accepted as proof of those facts, unless you prove otherwise.</p>
+<p>27.6 <strong>Addresses for notices.</strong> We choose the physical address in clause 2 as our address for legal notices and service of legal process (domicilium citandi et executandi). You choose the address in your profile, or failing that, your e-mail address.</p>
+<p>27.7 <strong>Interpretation.</strong> Headings are for convenience only. “Including” means “including, without limitation”. These terms are drafted in plain language and are not interpreted against us only because we prepared them.</p>
+
+<h3>28. Contact</h3>
+<p>{{ co }}{% if brand.name != co %} t/a {{ brand.name }}{% endif %} · {{ contact_email }}{% if brand.contact.phone %} · {{ brand.contact.phone }}{% endif %}{% if brand.contact.address %} · {{ brand.contact.address }}{% endif %}</p>
+
+</div>
+{% endwith %}

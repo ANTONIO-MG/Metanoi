@@ -1,0 +1,13 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Twice-daily Metanoia Group after-class run (06:00 and 22:00 SAST)
+
+[Timer]
+OnCalendar=*-*-* 06,22:00:00 Africa/Johannesburg
+AccuracySec=1min
+Persistent=true
+Unit=metanoia-scheduler-sessions.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,100 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}How the class answered one paper. apps.assessments.views.analytics / analytics.item_analysis{% endcomment %}
+{% block additional_css %}
+<style>
+  .an-bar{ height:.55rem; border-radius:.3rem; background:var(--bs-tertiary-bg); overflow:hidden; }
+  .an-bar > span{ display:block; height:100%; background:var(--bs-primary); }
+  .an-bar.ok > span{ background:var(--bs-success); }
+  .an-bar.bad > span{ background:var(--bs-danger); }
+  .an-stat{ font-size:1.5rem; font-weight:700; line-height:1.1; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap justify-content-between gap-2">
+    <div>
+      <h1 class="h5 mb-1"><i class="bi bi-bar-chart text-primary me-2"></i>{{ assessment.title }}</h1>
+      <div class="small text-muted">{{ assessment.module }} · {{ assessment.total_marks }} marks · pass {{ assessment.pass_mark_pct }}%</div>
+    </div>
+    <div class="small">
+      {% if all_attempts %}<a href="?">Best attempt per student</a> · <strong>All attempts</strong>
+      {% else %}<strong>Best attempt per student</strong> · <a href="?all=1">All attempts</a>{% endif %}
+      · <a href="{% url 'assessments:builder' assessment.pk %}">Builder</a> · <a href="{% url 'assessments:marking-queue' %}">Marking queue</a>
+    </div>
+  </div>
+</div>
+
+{% if not summary.candidates %}
+<div class="card"><div class="card-body text-muted">No submissions yet.</div></div>
+{% else %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-2"><div class="card h-100"><div class="card-body"><div class="small text-muted">Candidates</div><div class="an-stat">{{ summary.candidates }}</div>{% if summary.awaiting_marking %}<div class="small text-warning">{{ summary.awaiting_marking }} awaiting marking</div>{% endif %}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card h-100"><div class="card-body"><div class="small text-muted">Average</div><div class="an-stat">{{ summary.mean }}%</div><div class="small text-muted">median {{ summary.median }}%</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card h-100"><div class="card-body"><div class="small text-muted">Pass rate</div><div class="an-stat">{{ summary.pass_rate }}%</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card h-100"><div class="card-body"><div class="small text-muted">Range</div><div class="an-stat">{{ summary.lowest }}–{{ summary.highest }}%</div></div></div></div>
+  <div class="col-12 col-md-4"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted mb-1">Score spread</div>
+    {% for b in summary.distribution %}
+    <div class="d-flex align-items-center gap-2 small"><span style="width:5.5rem">{{ b.label }}</span>
+      <div class="an-bar flex-grow-1"><span style="width:{{ b.share }}%"></span></div><span class="text-muted" style="width:2rem">{{ b.count }}</span></div>
+    {% endfor %}
+    {% if summary.minutes %}<div class="small text-muted mt-1">Average time taken: {{ summary.minutes }} min</div>{% endif %}
+  </div></div></div>
+</div>
+
+{% if hardest %}
+<div class="alert alert-light border small"><i class="bi bi-lightbulb text-warning me-1"></i><strong>Teach these next:</strong>
+  {% for r in hardest %}{{ r.question.text|truncatechars:60 }} ({{ r.mean_pct }}%){% if not forloop.last %} · {% endif %}{% endfor %}</div>
+{% endif %}
+
+<div class="card mb-3">
+  <div class="card-header"><h2 class="h6 mb-0">Question by question</h2></div>
+  <div class="card-body">
+    {% for r in questions %}
+    <div class="mb-4 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+      <div class="d-flex justify-content-between gap-2">
+        <div class="fw-semibold small">{{ forloop.counter }}. {{ r.question.text|truncatechars:220 }}</div>
+        <div class="small text-nowrap">{{ r.question.marks }} marks</div>
+      </div>
+      <div class="row g-2 small mt-1">
+        <div class="col-md-5"><div class="d-flex align-items-center gap-2">Average
+          <div class="an-bar flex-grow-1 {% if r.mean_pct >= 60 %}ok{% elif r.mean_pct < 40 %}bad{% endif %}"><span style="width:{{ r.mean_pct|default:0 }}%"></span></div>
+          <strong>{% if r.mean_pct is not None %}{{ r.mean_pct }}%{% else %}—{% endif %}</strong></div></div>
+        <div class="col-md-7 text-muted">{{ r.answered }} answered · full marks {{ r.full|default:'—' }}% · zero {{ r.zero|default:'—' }}% · {{ r.marks_lost }} marks lost by the class</div>
+      </div>
+      {% if r.choices %}
+      <table class="table table-sm small mt-2 mb-0"><thead><tr><th>Option</th><th style="width:40%">Chosen by</th></tr></thead><tbody>
+        {% for c in r.choices %}<tr class="{% if c.correct %}table-success{% endif %}"><td>{% if c.correct %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}{{ c.text }}</td>
+          <td><div class="d-flex align-items-center gap-2"><div class="an-bar flex-grow-1 {% if c.correct %}ok{% else %}bad{% endif %}"><span style="width:{{ c.share }}%"></span></div>{{ c.count }} ({{ c.share }}%)</div></td></tr>{% endfor %}
+      </tbody></table>
+      {% endif %}
+      {% if r.points %}
+      <table class="table table-sm small mt-2 mb-0"><thead><tr><th>Marking point</th><th class="text-end">Marks</th><th style="width:30%">Made by {% if r.points_marked %}<span class="text-muted">({{ r.points_marked }} ticked)</span>{% endif %}</th></tr></thead><tbody>
+        {% for p in r.points %}<tr><td>{{ p.point|truncatechars:160 }}{% if p.authority %} <span class="text-muted">— {{ p.authority }}</span>{% endif %}</td><td class="text-end">{{ p.marks }}</td>
+          <td>{% if p.share is not None %}<div class="d-flex align-items-center gap-2"><div class="an-bar flex-grow-1 {% if p.share >= 60 %}ok{% elif p.share < 30 %}bad{% endif %}"><span style="width:{{ p.share }}%"></span></div>{{ p.share }}%</div>{% else %}<span class="text-muted">tick points when marking</span>{% endif %}</td></tr>{% endfor %}
+      </tbody></table>
+      {% endif %}
+      {% if r.lines %}
+      <table class="table table-sm small mt-2 mb-0"><thead><tr><th>Line</th><th class="text-end">Marks</th><th style="width:30%">Correct</th></tr></thead><tbody>
+        {% for l in r.lines %}<tr><td>{{ l.label }}</td><td class="text-end">{{ l.marks }}</td><td>{% if l.share is not None %}{{ l.share }}%{% else %}—{% endif %}</td></tr>{% endfor %}
+      </tbody></table>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2 class="h6 mb-0">Candidates</h2></div>
+  <div class="table-responsive"><table class="table table-sm align-middle small mb-0">
+    <thead><tr><th>Student</th><th>Attempt</th><th class="text-end">Score</th><th>Status</th><th>Time</th><th></th></tr></thead>
+    <tbody>{% for s in students %}<tr>
+      <td>{{ s.attempt.student.get_full_name|default:s.attempt.student.email }}</td><td>#{{ s.attempt.attempt_no }}</td>
+      <td class="text-end fw-semibold {% if s.pct < assessment.pass_mark_pct %}text-danger{% endif %}">{{ s.pct }}%</td>
+      <td>{{ s.attempt.get_status_display }}</td><td>{% if s.attempt.time_spent_seconds %}{% widthratio s.attempt.time_spent_seconds 60 1 %} min{% else %}—{% endif %}</td>
+      <td class="text-end"><a href="{% url 'assessments:result' s.attempt.public_id %}">Result</a>{% if s.attempt.status == 'submitted' %} · <a href="{% url 'assessments:mark-attempt' s.attempt.public_id %}">Mark</a>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}
+{% endblock %}

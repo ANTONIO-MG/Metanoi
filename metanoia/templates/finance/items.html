@@ -1,0 +1,112 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static commerce %}
+{% comment %}
+Products & services — what invoices and estimates bill. Context: page,
+total, sel (current filters), options (lookups.filter_options), counts, querystring.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``additional_css``, ``content``.
+{% endcomment %}
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/commerce.css' %}">{% endblock %}
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3 tc">
+  <div class="tc-head">
+    <div><span class="tc-eyebrow">Finance</span><h3>Products &amp; services</h3>
+      <p>Everything you can put on an invoice or estimate. Module and programme fees stay in step with the modules; paying them unlocks access.</p></div>
+    <div class="tc-head__actions">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'shop:all-products' %}"><i class="bi bi-shop me-1"></i>Shop catalogue</a>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'finance:item-add' %}?type=product"><i class="bi bi-box-seam me-1"></i>Add product</a>
+      <a class="btn btn-sm btn-primary" href="{% url 'finance:item-add' %}?type=service"><i class="bi bi-plus-lg me-1"></i>Add service</a>
+    </div>
+  </div>
+
+  <nav class="tc-aisles" aria-label="Quick views">
+    <a class="tc-aisle {% if not sel.type and not sel.source %}is-active{% endif %}" href="?">All <span class="opacity-75 ms-1">{{ counts.all }}</span></a>
+    <a class="tc-aisle {% if sel.type == 'product' %}is-active{% endif %}" href="?type=product">Products <span class="opacity-75 ms-1">{{ counts.products }}</span></a>
+    <a class="tc-aisle {% if sel.type == 'service' %}is-active{% endif %}" href="?type=service">Services <span class="opacity-75 ms-1">{{ counts.services }}</span></a>
+    <a class="tc-aisle {% if sel.source == 'module' %}is-active{% endif %}" href="?source=module">Module fees</a>
+    <a class="tc-aisle {% if sel.source == 'programme' %}is-active{% endif %}" href="?source=programme">Programme fees</a>
+  </nav>
+
+  <form method="get" class="tc-filters" id="itemFilters">
+    <label class="tc-lookup__f tc-filters__q"><span>Search</span>
+      <input class="form-control form-control-sm" type="search" name="q" value="{{ sel.q }}" placeholder="Name, SKU, description, institution…"></label>
+    <label class="tc-lookup__f"><span>Search in</span>
+      <select class="form-select form-select-sm" name="field">{% for f in options.item_fields %}<option value="{{ f.id }}" {% if sel.field == f.id %}selected{% endif %}>{{ f.label }}</option>{% endfor %}</select></label>
+    <label class="tc-lookup__f"><span>Type</span>
+      <select class="form-select form-select-sm" name="type"><option value="">Any</option>
+        <option value="product" {% if sel.type == 'product' %}selected{% endif %}>Products</option>
+        <option value="service" {% if sel.type == 'service' %}selected{% endif %}>Services</option></select></label>
+    <label class="tc-lookup__f"><span>Institution</span>
+      <select class="form-select form-select-sm" name="institution" data-institution><option value="">Any</option>
+        <option value="general" {% if sel.institution == 'general' %}selected{% endif %}>General (everyone)</option>
+        {% for i in options.institutions %}<option value="{{ i.id }}" {% if sel.institution == i.id|stringformat:"s" %}selected{% endif %}>{{ i.label }}</option>{% endfor %}</select></label>
+    <label class="tc-lookup__f"><span>Programme</span>
+      <select class="form-select form-select-sm" name="programme" data-programme><option value="">Any</option>
+        {% for p in options.programmes %}<option value="{{ p.id }}" data-institution="{{ p.institution }}" {% if sel.programme == p.id|stringformat:"s" %}selected{% endif %}>{{ p.label }}</option>{% endfor %}</select></label>
+    <label class="tc-lookup__f"><span>Category</span>
+      <select class="form-select form-select-sm" name="category"><option value="">Any</option>
+        {% for c in options.categories %}<option value="{{ c.id }}" {% if sel.category == c.id|stringformat:"s" %}selected{% endif %}>{{ c.label }}</option>{% endfor %}</select></label>
+    <label class="tc-lookup__f"><span>Kind</span>
+      <select class="form-select form-select-sm" name="source"><option value="">Any</option>
+        {% for s in options.sources %}<option value="{{ s.id }}" {% if sel.source == s.id %}selected{% endif %}>{{ s.label }}</option>{% endfor %}</select></label>
+    <label class="tc-lookup__f"><span>Sold</span>
+      <select class="form-select form-select-sm" name="listing"><option value="">Anywhere</option>
+        {% for s in options.listings %}<option value="{{ s.id }}" {% if sel.listing == s.id %}selected{% endif %}>{{ s.label }}</option>{% endfor %}</select></label>
+    <label class="tc-lookup__f"><span>Status</span>
+      <select class="form-select form-select-sm" name="status"><option value="">Any</option>
+        <option value="active" {% if sel.status == 'active' %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if sel.status == 'inactive' %}selected{% endif %}>Inactive</option></select></label>
+    <div class="d-flex gap-1"><button class="btn btn-sm btn-primary"><i class="bi bi-search"></i><span class="visually-hidden">Search</span></button>
+      <a class="btn btn-sm btn-link" href="?">Clear</a></div>
+  </form>
+
+  <div class="tc-card"><div class="tc-table-wrap"><table class="tc-table">
+    <thead><tr><th>Item</th><th>Type</th><th>For</th><th class="r">Price</th><th>Sold</th><th></th></tr></thead>
+    <tbody>
+      {% for p in page %}
+      <tr{% if p.status != 'active' %} class="text-muted"{% endif %}>
+        <td><a class="fw-semibold" href="{% url 'finance:item-edit' p.pk %}">{{ p.name }}</a>
+          <div class="small text-muted">{{ p.sku }}{% if p.category %} · {{ p.category.name }}{% endif %}{% if p.status != 'active' %} · <span class="tc-chip">Inactive</span>{% endif %}</div>
+          {% if p.summary %}<div class="small text-muted">{{ p.summary|truncatechars:90 }}</div>{% endif %}</td>
+        <td><span class="tc-chip {% if p.kind == 'service' %}tc-chip--cyan{% else %}tc-chip--primary{% endif %}">{{ p.get_kind_display }}</span>
+          {% if p.unlocks %}<div class="small text-muted mt-1"><i class="bi bi-unlock"></i> {% if p.unlocks == 'module' %}module fee{% else %}programme fee{% endif %}</div>{% endif %}</td>
+        <td class="small">{% if p.programme %}{{ p.programme.institution.code }} {{ p.programme.short_code }}{% if p.module %} · {{ p.module.code }}{% endif %}{% elif p.institution %}{{ p.institution.code }}{% else %}General{% endif %}</td>
+        <td class="r fw-semibold">{{ p.price|rand }}{% if p.unit %}<div class="small text-muted fw-normal">per {{ p.unit }}</div>{% endif %}
+          {% if p.price_from_modules %}<div class="small text-muted fw-normal" title="Follows the module fees">auto</div>{% endif %}</td>
+        <td class="small">{% if p.shop_listed %}<span class="tc-chip tc-chip--success">Shop + invoices</span>{% else %}<span class="tc-chip">Invoices only</span>{% endif %}</td>
+        <td class="r text-nowrap"><a class="btn btn-sm btn-link" href="{% url 'finance:item-edit' p.pk %}">Edit</a>
+          {% if p.fulfilment != 'none' %}<a class="btn btn-sm btn-link" href="{% url 'shop:edit-product' p.pk %}" title="Files, sizes, photos, booking rules">Shop editor</a>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6"><div class="tc-empty"><i class="bi bi-box-seam"></i><h5>Nothing matches</h5>
+        <p class="mb-3">Try fewer words, another “Search in” field, or clear the filters.</p>
+        <a class="btn btn-sm btn-primary" href="{% url 'finance:item-add' %}{% if sel.q %}?name={{ sel.q|urlencode }}{% endif %}">Add {% if sel.q %}“{{ sel.q }}”{% else %}an item{% endif %}</a></div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div></div>
+
+  {% if page.has_other_pages %}
+  <nav class="d-flex justify-content-between align-items-center mt-3 small" aria-label="Pages">
+    <span class="text-muted">{{ total }} items · page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    <span>{% if page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?{{ querystring }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+      {% if page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?{{ querystring }}&page={{ page.next_page_number }}">Next</a>{% endif %}</span>
+  </nav>
+  {% endif %}
+</div></div>
+<script>
+(function () {
+  var form = document.getElementById('itemFilters'); if (!form) { return; }
+  var inst = form.querySelector('[data-institution]'), prog = form.querySelector('[data-programme]');
+  function scope() {
+    Array.prototype.forEach.call(prog.options, function (o) {
+      o.hidden = !!(inst.value && inst.value !== 'general' && o.dataset.institution && o.dataset.institution !== inst.value);
+    });
+    if (prog.selectedOptions[0] && prog.selectedOptions[0].hidden) { prog.value = ''; }
+  }
+  scope();
+  form.querySelectorAll('select').forEach(function (sel) {
+    sel.addEventListener('change', function () { if (sel === inst) { scope(); } if (sel.name !== 'field' || form.elements.q.value) { form.submit(); } });
+  });
+})();
+</script>
+{% endblock %}

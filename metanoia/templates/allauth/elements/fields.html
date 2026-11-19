@@ -1,0 +1,14 @@
+{% for field in attrs.form.hidden_fields %}{{ field }}{% endfor %}
+{% if attrs.form.non_field_errors %}<div class="alert alert-danger text-white text-sm py-2">{{ attrs.form.non_field_errors|join:" " }}</div>{% endif %}
+{% for field in attrs.form.visible_fields %}
+<div class="allauth-field">
+  {% if field.widget_type == 'checkbox' %}
+    <div class="form-check">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+  {% else %}
+    {% if not attrs.unlabeled %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{% else %}<label class="visually-hidden" for="{{ field.id_for_label }}">{{ field.label }}</label>{% endif %}
+    {{ field }}
+  {% endif %}
+  {% if field.help_text %}<span class="allauth-help">{{ field.help_text|safe }}</span>{% endif %}
+  {{ field.errors }}
+</div>
+{% endfor %}

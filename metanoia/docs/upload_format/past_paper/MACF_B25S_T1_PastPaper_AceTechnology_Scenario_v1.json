@@ -1,0 +1,11 @@
+{
+  "format": "metanoia-upload/1",
+  "doc_type": "past_paper",
+  "title": "MACF B25S Test 1 past paper — Ace Technology (scenario)",
+  "institution": "MILPARK",
+  "programme": "BCTA",
+  "module": "MACF",
+  "assessment": {"kind": "test", "sequence": 1},
+  "audience": "students",
+  "notes": "Sample. Upload the PDF with this sidecar; name the solution …_Solution_v1.pdf and upload it too. Use \"audience\": \"staff\" if the institution does not allow redistribution."
+}

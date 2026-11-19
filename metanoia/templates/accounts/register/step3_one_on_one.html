@@ -1,0 +1,86 @@
+{% extends 'layouts/auth.html' %}
+{% block title %}Review · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+{% block card_col %}col-xl-8 col-lg-10{% endblock %}
+{% block oblique %}{% endblock %}
+
+{% block auth_card %}
+<div class="card mt-7 mb-4 shadow-lg">
+  <div class="card-body p-4">
+    {% include 'accounts/register/_steps.html' with step=3 %}
+
+    <div class="text-center mb-4">
+      <h4 class="font-weight-bolder text-info text-gradient mb-1">Review &amp; finish — one-on-one</h4>
+      <p class="text-sm text-muted mb-0">{{ programme.institution.display_name }} ·
+        <strong>{{ programme.display_name }}</strong></p>
+    </div>
+
+    <div class="d-flex align-items-center gap-3 p-3 mb-3 bg-gray-100 rounded-3">
+      <div class="icon-shape bg-gradient-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width:44px;height:44px">
+        <i class="bi bi-person-video3"></i>
+      </div>
+      <div>
+        <h6 class="mb-0">{{ person.first_name }} {{ person.last_name }}</h6>
+        <span class="text-xs text-muted">{{ person.user.email }}</span>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle mb-2">
+        <thead><tr class="text-xs text-uppercase text-muted"><th>Module</th><th class="text-end">Hours</th><th class="text-end">Amount</th></tr></thead>
+        <tbody>
+          {% for label, hours, amount in line_items %}
+          <tr>
+            <td class="text-sm text-wrap"><i class="bi bi-journal-text text-info me-2"></i>{{ label }}</td>
+            <td class="text-end text-sm">{% if hours %}{{ hours }} × {{ currency }} {{ rate|floatformat:0 }}{% else %}<span class="text-muted">later</span>{% endif %}</td>
+            <td class="text-end text-sm">{% if amount %}{{ currency }} {{ amount|floatformat:2 }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="fw-bold border-top"><td colspan="2">Total now</td><td class="text-end">{{ currency }} {{ total|floatformat:2 }}</td></tr>
+        </tfoot>
+      </table>
+    </div>
+    <ul class="text-xs text-muted mb-4 ps-3">
+      <li>Your modules open straight away: schedule, documents, mocks and recordings of your own sessions.</li>
+      <li>Sessions are {{ currency }} {{ rate|floatformat:0 }} per module per hour. Your hours are added once the invoice is paid; then you pick a time that suits you.</li>
+      <li>Cancel at least 24 hours before a session and the hour comes back to you. A session that runs past its time by more than 30 minutes adds a R100 invoice.</li>
+    </ul>
+
+    <form method="post">
+      {% csrf_token %}
+      {% if total %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="border border-2 rounded-3 p-3 h-100 d-flex flex-column">
+            <h6 class="mb-1">Pay now</h6>
+            <p class="text-xs text-muted flex-grow-1 mb-3">Card or instant EFT. Your hours are ready to book the moment the payment clears.</p>
+            <button type="submit" name="action" value="pay" class="btn bg-gradient-info btn-lg w-100 mb-0">
+              <i class="bi bi-credit-card-2-front me-1"></i> Pay {{ currency }} {{ total|floatformat:2 }} now
+            </button>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="border border-2 rounded-3 p-3 h-100 d-flex flex-column">
+            <h6 class="mb-1">Pay by EFT</h6>
+            <p class="text-xs text-muted flex-grow-1 mb-3">We e-mail the invoice. Your modules are open meanwhile; you can book once it is paid.</p>
+            <button type="submit" name="action" value="invoice" class="btn bg-gradient-success btn-lg w-100 mb-0">
+              <i class="bi bi-envelope me-1"></i> E-mail my invoice
+            </button>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="d-grid">
+        <button type="submit" name="action" value="register" class="btn bg-gradient-info btn-lg">Finish &amp; enter <i class="bi bi-check2-circle ms-1"></i></button>
+      </div>
+      {% endif %}
+      <div class="mt-4">
+        <button type="submit" name="action" value="back" class="btn btn-link text-secondary p-0" formnovalidate>
+          <i class="bi bi-arrow-left-circle me-1"></i>Back to modules
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,241 @@
+{
+  "_about": "SINGLE CONTROL DOCUMENT for the whole platform. Edit this one file to re-brand it, set your organisation's details (name, logo, contact, social links), change standard wording (welcome messages, footer, errors), or toggle which dynamic widgets/badges appear. Loaded by core.branding; exposed to every template as `brand` / `org` / `dynamic` / `site` / `strings` (see core.context_processors.branding) and to Python via `from core.branding import t, BRAND, ORG`. Placeholders like {name} are filled with str.format() — keep them.",
+  "_sections": "ORGANISATION (your details + logo + contact + social) → see `brand`.  STANDARD WORDING → `brand.welcome`, `meta`, `auth`, `messages`, `errors`, `footer`.  DYNAMIC ELEMENTS (badges/widgets/banner you can turn on/off) → `dynamic`.  CUSTOM SITE-WIDE VALUES injected into every page → `site`.",
+  "brand": {
+    "_about": "Your organisation's identity. Everything here flows into the navbar, sidebar, footer, e-mails and auth pages automatically.",
+    "name": "Metanoia Group",
+    "short_name": "Metanoia",
+    "legal_name": "Companies of Metanoia Group",
+    "_registered_note": "Company details printed in the Terms & Conditions (ECTA s43). Fill in registration_number, vat_number, directors and information_officer — a blank value is left out of the terms rather than printed empty.",
+    "registered_name": "Companies of Metanoia Group (Pty) Ltd",
+    "registration_number": "",
+    "vat_number": "",
+    "directors": "",
+    "information_officer": "",
+    "terms_host": "learn.metanoiagroup.co.za",
+    "company": "Metanoia Group",
+    "tagline": "Empowering through transformation.",
+    "description": "Metanoia Group: B-BBEE verification, transformation consulting, skills development and learning for organisations across South Africa.",
+    "locale": "en",
+    "year": "2026",
+    "logo": "images/brand/metanoia-mark.png",
+    "logo_dark": "images/brand/metanoia-mark.png",
+    "_favicon_note": "Leave `favicon` EMPTY to use the generated set in static/images/icons/ (favicon-16/32/180) — browsers then pick the right size per context, which is why the tab icon stays sharp. Set it to a single path only if you want to override all of them with one file.",
+    "favicon": "",
+    "website": "https://metanoiagroup.co.za",
+    "company_url": "https://metanoiagroup.co.za",
+    "_policy_note": "Linked from the small print of every e-mail. Terms live on the LMS; the privacy policy is the public website's.",
+    "terms_url": "https://learn.metanoiagroup.co.za/social/privacy-and-terms/",
+    "privacy_url": "https://metanoiagroup.co.za/privacy",
+    "support_email": "info@metanoiagroup.co.za",
+    "_invoice_name_note": "How the business signs financial documents. The invoice template writes the trading name in a different word order to the platform name, so it is kept separate rather than reusing `name`.",
+    "invoice_name": "Metanoia Group",
+    "contact": {
+      "_about": "`whatsapp` is what is DISPLAYED; `whatsapp_url` is what is LINKED. Keep them in step — a wa.me link must be digits only, with the country code and no '+', spaces or brackets.",
+      "email": "info@metanoiagroup.co.za",
+      "support_email": "info@metanoiagroup.co.za",
+      "phone": "+27 11 027 8720",
+      "whatsapp": "",
+      "whatsapp_url": "",
+      "address": "Metanoia House, 86 Fleet Street, Ferndale, Randburg, Gauteng 2194, South Africa",
+      "address_lines": [
+        "Metanoia House, 86 Fleet Street",
+        "Ferndale, Randburg, Gauteng 2194",
+        "South Africa"
+      ],
+      "phone_alt": "+27 11 026 4449",
+      "fax": "+27 86 511 9009",
+      "postal_address": "PostNet Suite 78, Private Bag X14, Pinegowrie, Gauteng 2123"
+    },
+    "banking": {
+      "_about": "Printed under Notes / Terms on every invoice PDF. The reference students must use is built per invoice (Invoice.payment_reference), not stored here.",
+      "account_name": "Companies of Metanoia Group (Pty) Ltd",
+      "bank": "",
+      "account_number": "",
+      "branch_code": ""
+    },
+    "links": {
+      "_about": "Outbound destinations used by the landing page's call-to-action buttons. Leave a value empty to hide that button.",
+      "store": "",
+      "store_label": ""
+    },
+    "social": {
+      "_about": "Full URLs only: each value becomes a link. Leave one empty to hide its icon (no Facebook, X or Instagram page is published on the website yet).",
+      "facebook": "",
+      "twitter": "",
+      "instagram": "",
+      "linkedin": "https://za.linkedin.com/company/metanoia-group/",
+      "youtube": "",
+      "whatsapp": ""
+    },
+    "welcome": {
+      "title": "Welcome!",
+      "subtitle": "Sign in to continue to your learning.",
+      "signup_title": "Create your account",
+      "signup_subtitle": "Join Metanoia in a few clicks."
+    },
+    "copyright": "Copyright © 2026 Metanoia Group. All rights reserved.",
+    "powered_by": "Metanoia Group",
+    "powered_by_url": "https://www.randgtech.co.za",
+    "built_by": "R&G Tech",
+    "built_by_person": "Gerson Antonio"
+  },
+  "dynamic": {
+    "_about": "Turn the live, data-driven elements of the UI on/off from here. `badges` control the unread/pending counters; `widgets` control floating/quick tools; `announcement` shows a site-wide banner. Read in templates as `dynamic.badges.*` etc.",
+    "badges": {
+      "unread_messages": true,
+      "unread_notifications": true,
+      "pending_tasks": true,
+      "pending_ai_actions": true,
+      "finance_due": true
+    },
+    "widgets": {
+      "ai_assistant_widget": false,
+      "calendar_quick_add": true
+    },
+    "announcement": {
+      "enabled": false,
+      "text": "",
+      "level": "info"
+    }
+  },
+  "landing": {
+    "_about": "The public landing page (templates/pages/landing.html). `nav` is the in-page jump list shown in the floating navbar — each `href` MUST match an id= on a section of that page, or the link scrolls nowhere (apps/myhub/tests.py fails the build if one doesn't). Re-point or trim these per organisation; the navbar loops over whatever is here. The footer no longer has a link column — it is a single centred contact line built from `brand.contact`.",
+    "nav": [
+      {
+        "label": "The Blueprint",
+        "href": "#blueprint"
+      },
+      {
+        "label": "Institutions",
+        "href": "#institutions"
+      },
+      {
+        "label": "Testimonials",
+        "href": "#testimonials"
+      },
+      {
+        "label": "About us",
+        "href": "#about"
+      },
+      {
+        "label": "FAQs",
+        "href": "#faq"
+      }
+    ]
+  },
+  "site": {
+    "_about": "Arbitrary site-wide values injected into EVERY template context (as `site.<key>`). Add anything you want available everywhere — a promo line, a phone for the header, a banner image — without touching code.",
+    "header_tagline": "",
+    "footer_note": ""
+  },
+  "meta": {
+    "page_title": "Metanoia — Dashboard",
+    "description": "Metanoia Group — manage people, programmes, departments and reporting for your school, church, company or non-profit from one dashboard.",
+    "keywords": "organisation management, school admin, church admin, learning management, dashboard",
+    "author": "Metanoia Group",
+    "og_title": "Metanoia Group — Dashboard",
+    "og_description": "Metanoia Group — one platform for every organisation.",
+    "og_image": "",
+    "favicon": "images/brand/metanoia-mark.png"
+  },
+  "nav": {
+    "search_placeholder": "Search",
+    "profile": "Profile",
+    "inbox": "Inbox",
+    "logout": "Logout",
+    "messages": "Messages",
+    "notifications": "Notifications"
+  },
+  "common": {
+    "save": "Save",
+    "save_changes": "Save changes",
+    "add": "Add",
+    "create": "Create",
+    "edit": "Edit",
+    "update": "Update",
+    "delete": "Delete",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "close": "Close",
+    "back": "Back",
+    "search": "Search",
+    "submit": "Submit",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "actions": "Actions",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "loading": "Loading…",
+    "no_records": "No records found.",
+    "required_field": "This field is required."
+  },
+  "auth": {
+    "sign_in": "Sign in",
+    "sign_in_heading": "Sign in to your account",
+    "sign_up": "Sign up",
+    "sign_up_heading": "Create your account",
+    "sign_out": "Sign out",
+    "username_or_email": "Username or e-mail",
+    "username": "Username",
+    "email": "E-mail",
+    "password": "Password",
+    "confirm_password": "Confirm password",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "remember_me": "Remember me",
+    "forgot_password": "Forgot password?",
+    "forgot_password_heading": "Reset your password",
+    "forgot_password_help": "Enter your e-mail and we'll send you a link to reset your password.",
+    "send_reset_link": "Send reset link",
+    "back_to_login": "Back to sign in",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "lock_screen": "Locked",
+    "unlock": "Unlock"
+  },
+  "messages": {
+    "saved": "{name} saved successfully.",
+    "deleted": "{name} deleted.",
+    "created": "{name} created.",
+    "updated": "{name} updated.",
+    "form_errors": "Please correct the errors highlighted below.",
+    "welcome": "Welcome, {name}.",
+    "account_created": "Account created. Welcome!",
+    "verify_email_sent": "Account created. We've e-mailed a verification link to {email} — confirm it, then sign in.",
+    "verify_email_required": "Please verify your e-mail before signing in. We've sent a fresh link to {email}.",
+    "signed_out": "You have been signed out.",
+    "reset_link_sent": "If that e-mail exists, a reset link has been sent.",
+    "invalid_credentials": "Invalid e-mail or password.",
+    "email_password_required": "E-mail and password are required.",
+    "user_already_exists": "An account with that e-mail address already exists."
+  },
+  "errors": {
+    "back_home": "Back to home",
+    "400": {
+      "title": "Bad request",
+      "message": "The request could not be understood by the server."
+    },
+    "403": {
+      "title": "Forbidden",
+      "message": "You don't have permission to access this page."
+    },
+    "404": {
+      "title": "Page not found",
+      "message": "The page you are looking for doesn't exist or has moved."
+    },
+    "500": {
+      "title": "Server error",
+      "message": "Something went wrong on our end. Please try again later."
+    },
+    "503": {
+      "title": "Service unavailable",
+      "message": "We're temporarily offline for maintenance. Please check back soon."
+    }
+  },
+  "footer": {
+    "copyright": "Copyright © 2026 Metanoia Group. All rights reserved."
+  }
+}

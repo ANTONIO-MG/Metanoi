@@ -1,0 +1,92 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+Upload a whole programme pack as a zip — apps.learning.programme_pack_views.upload.
+Admin/staff only. The review page shows what was read before anything is built.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``content``.
+{% endcomment %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h1 class="h4 mb-1"><i class="bi bi-file-earmark-zip text-primary me-2"></i>Import content into a programme</h1>
+    <p class="small text-muted mb-2">Choose the programme and cohort, then upload the pack as one zip — the student
+      pack and, beside it, the tutor pack. The content goes into that programme's <strong>existing modules</strong>:
+      nothing new is created, and a module folder that does not match one of the programme's modules stops the build.
+      The folders are the structure: a <strong>Start here</strong> folder becomes onboarding, each dated
+      <strong>weekend / week</strong> folder a week, each <strong>MODULE_Unit_n_Title</strong> folder a unit lesson,
+      a <strong>Mocks</strong> folder the mock weeks, a <strong>Blueprint</strong> folder the blueprint lessons.
+      Student-pack files go to students; tutor-pack files stay with tutors and staff.</p>
+    <p class="small text-muted mb-0">What folders cannot say — session times, extra sessions, exam and deadline
+      dates, unit titles, mock papers — comes from the <strong>schedule sheet</strong>
+      (<code>0_Start_Here/schedule.csv</code> in the pack, or uploaded below){% if ai_enabled %}, or the AI drafts it
+      from the timetable for you to check{% endif %}. Uploading a new version of a pack already built updates it in
+      place: students keep their progress. Nothing is built until you have checked the next page.</p>
+  </div>
+</div>
+
+<div class="alert {% if ai_enabled %}alert-info{% else %}alert-secondary{% endif %} small">
+  {% if ai_enabled %}<i class="bi bi-stars me-1"></i>The AI assistant is on. Tick the box below and, when the pack has
+    no schedule sheet, it drafts one from the timetable and guides — then writes a summary for every unit.
+  {% else %}<i class="bi bi-diagram-3 me-1"></i>The AI assistant has no key yet, so the pack is read from its folders
+    and its schedule sheet. Add <code>ANTHROPIC_API_KEY</code> to the server's secrets to turn the AI on.{% endif %}
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card" id="packForm">
+  {% csrf_token %}
+  <div class="card-body">
+    <div class="row g-2 mb-3">
+      <div class="col-md-8"><label class="form-label fw-semibold" for="cohortSel">Programme and cohort</label>
+        <select name="cohort" class="form-select" id="cohortSel" required>
+          <option value="">Choose…</option>
+          {% for programme, cohorts in cohort_groups %}<optgroup label="{{ programme.institution.code }} · {{ programme.display_name }}">
+            {% for c in cohorts %}<option value="{{ c.pk }}" {% if form.cohort == c.pk|stringformat:'s' %}selected{% endif %}>{{ programme.full_code }} · {{ c.code }}{% if c.name %} — {{ c.name }}{% endif %}</option>{% endfor %}
+          </optgroup>{% endfor %}
+        </select>
+        <div class="form-text">Only programmes and cohorts that exist are offered. Add a cohort on the programme first if it is missing.</div></div>
+      <div class="col-md-4"><label class="form-label small fw-semibold" for="yearInp">Year of the first week</label>
+        <input name="year" id="yearInp" type="number" class="form-control" value="{{ form.year }}">
+        <div class="form-text">Dates the folder names such as “7-8_Nov”.</div></div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold" for="zipInp">The pack (.zip)</label>
+      <input type="file" name="archive" id="zipInp" accept=".zip" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small fw-semibold" for="sheetInp">Schedule sheet (optional — only if it is not in the zip)</label>
+      <input type="file" name="sheet" id="sheetInp" accept=".csv,.xlsx" class="form-control form-control-sm">
+      <details class="small mt-1"><summary>What goes in the sheet</summary>
+        <p class="mb-1 mt-1">One row per item. Columns: <code>type, module, number, date, end, time, minutes, kind, title, details</code>.
+          Types: <code>phase</code> (which test / exam block this is), <code>slot</code> (a module's weekly session),
+          <code>session</code> (a one-off session), <code>date</code> (a calendar date), <code>unit</code>,
+          <code>week</code>, <code>mock_paper</code>, <code>document</code>, <code>host</code>.</p>
+        <pre class="small bg-light p-2 mb-0">{{ sheet_help }}</pre></details>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" name="use_ai" value="1" id="useAi" {% if form.use_ai %}checked{% endif %} {% if not ai_enabled %}disabled{% endif %}>
+      <label class="form-check-label small" for="useAi">Let the AI draft the schedule sheet (if the pack has none) and write the unit summaries{% if not ai_enabled %} (no key yet){% endif %}</label>
+    </div>
+    <button class="btn btn-primary" id="packBtn"><i class="bi bi-search me-1"></i>Read the pack</button>
+    <span class="small text-muted ms-2 d-none" id="packWait"><span class="spinner-border spinner-border-sm me-1"></span>Uploading and reading — a 20 MB pack takes a moment.</span>
+  </div>
+</form>
+
+{% if recent %}
+<div class="card mt-3">
+  <div class="card-header border-0 pb-0"><h2 class="h6 mb-0">Recent imports</h2></div>
+  <div class="table-responsive"><table class="table table-sm small mb-0 align-middle">
+    <thead><tr><th>Zip</th><th>Placed on</th><th>Status</th><th>When</th><th></th></tr></thead>
+    <tbody>{% for r in recent %}
+      <tr><td>{{ r.archive }}</td><td>{{ r.form.cohort_label|default:r.form.programme_code }}</td>
+        <td>{{ r.build.status }}</td><td class="text-muted">{{ r.created_at }}</td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'learning:programme-pack-review' r.token %}">Open</a></td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}
+<script>
+document.getElementById('packForm').addEventListener('submit', function () {
+  document.getElementById('packBtn').disabled = true;
+  document.getElementById('packWait').classList.remove('d-none');
+});
+</script>
+{% endblock %}

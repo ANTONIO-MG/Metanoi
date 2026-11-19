@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Metanoia Group — background jobs on macOS (launchd).
+
+  Ticks the runner every 60 seconds; each job's own interval decides whether it
+  is due. Edit the three paths below, then:
+
+      cp com.metanoiagroup.scheduler.plist ~/Library/LaunchAgents/
+      launchctl load ~/Library/LaunchAgents/com.metanoiagroup.scheduler.plist
+      tail -f /tmp/metanoia-scheduler.log
+
+  To stop:
+      launchctl unload ~/Library/LaunchAgents/com.metanoiagroup.scheduler.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.metanoiagroup.scheduler</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- 1. the interpreter with the project's dependencies -->
+        <string>/Users/YOU/Documents/Development/.env/bin/python3</string>
+        <string>manage.py</string>
+        <string>run_scheduled_jobs</string>
+    </array>
+
+    <!-- 2. the directory containing manage.py -->
+    <key>WorkingDirectory</key>
+    <string>/Users/YOU/Documents/Development/Metanoia/metanoia</string>
+
+    <key>StartInterval</key>
+    <integer>60</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 3. where output goes -->
+    <key>StandardOutPath</key>
+    <string>/tmp/metanoia-scheduler.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/metanoia-scheduler.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>DJANGO_SETTINGS_MODULE</key>
+        <string>config.settings</string>
+        <key>LANG</key>
+        <string>en_US.UTF-8</string>
+    </dict>
+
+    <!-- Don't restart in a tight loop if the command exits immediately. -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>

@@ -1,0 +1,14 @@
+{
+  "format": "metanoia-upload/1",
+  "doc_type": "blueprint",
+  "title": "CGAU B26S Test 2 — Strategic Blueprint",
+  "institution": "MILPARK",
+  "programme": "BCTA",
+  "module": "CGAU",
+  "cohort": "B26S",
+  "assessment": {"kind": "test", "sequence": 2},
+  "audience": "students",
+  "used_on": "2026-09-14",
+  "marks": 100,
+  "notes": "Sample. A blueprint has no week: it goes in the test's Revision & blueprint week."
+}

@@ -1,0 +1,17 @@
+{% extends 'communication/email/base_email.html' %}{% load org_branding %}{% load links %}
+{% comment %}
+A single notification e-mail. Context: notification, recipient.
+
+There is deliberately no "why am I getting this" line: the footer's Unsubscribe /
+preferences links say it.
+
+Extends ``communication/email/base_email.html``; fills ``heading``, ``content``,
+``cta``. Includes ``communication/email/_button.html``.
+{% endcomment %}
+{% block heading %}{{ notification.title|default:notification.verb }}{% endblock %}
+{% block content %}
+  {% if recipient %}<p style="margin:0 0 14px">Hi {{ recipient|greeting_name }},</p>{% endif %}
+  {% if notification.actor %}<p style="margin:0 0 8px;color:#6B5E55">From {{ notification.actor|greeting_name }}</p>{% endif %}
+  {% if notification.body %}<p style="margin:0 0 14px">{{ notification.body|linkify_email }}</p>{% endif %}
+{% endblock %}
+{% block cta %}{% include 'communication/email/_button.html' with url=notification.url label="OPEN" %}{% endblock %}

@@ -1,0 +1,282 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+Schedule / edit a live session (apps.livesessions.forms.SessionForm).
+
+The JS here only narrows lists and previews the title; SessionForm.clean()
+enforces all of it on the server.
+
+The form has two sections: 1 — who it is for, 2 — the session.
+
+Script parts: each cascading list (institution → programme → module / cohort,
+module → week) shows only the options under the choice above it; the "a class /
+individual people" switch; and the people picker. On submit every select is
+re-enabled, because disabled selects are not posted.{% endcomment %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">{{ page_title }}</h3>
+    <a class="btn btn-light" href="{% url 'livesessions:calendar' %}">Cancel</a>
+  </div>
+
+  {% if not teams_ready %}
+  <div class="alert alert-warning">
+    <strong>Microsoft Teams is not configured.</strong> The session will still be saved, but nobody
+    can join it until its Teams meeting can be created (that is retried when someone joins). Set the <code>MS_GRAPH_*</code> values to switch Teams on.
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate id="sessionForm">
+    {% csrf_token %}
+    {{ form.title }}{{ form.audience }}
+    {% if form.errors %}
+    <div class="alert alert-danger" role="alert">
+      <strong>The session was not saved.</strong>
+      <ul class="mb-0">
+        {% for field in form %}{% for e in field.errors %}<li>{{ field.label }}: {{ e }}</li>{% endfor %}{% endfor %}
+        {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="row g-3">
+      <div class="col-lg-8">
+
+        <div class="card mb-3"><div class="card-body">
+          <h6 class="mb-2">1 · Who is it for?</h6>
+          <div class="btn-group mb-3" role="group" aria-label="Who is it for">
+            {% for r in form.target %}
+              {{ r.tag }}<label class="btn btn-outline-primary" for="{{ r.id_for_label }}">{{ r.choice_label }}</label>
+            {% endfor %}
+          </div>
+
+          <div class="row g-3">
+            {% for field in form %}{% if field.name in "institution,programme,module,cohort" %}
+            <div class="col-md-6 scope-field" data-field="{{ field.name }}">
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            {% endif %}{% endfor %}
+          </div>
+          <p class="text-muted small mt-2 mb-0" id="classNote">
+            Everyone on the most specific choice is invited automatically and told by notification and
+            e-mail: the module (only the chosen intake, if you pick one), else the intake, else the
+            programme, else the institution — with the educators who teach them.</p>
+          <p class="text-muted small mt-2 mb-0" id="peopleNote" hidden>
+            Only the people you add below are invited. The institution, programme and module are optional
+            here — choose them to file the recording in the right place.</p>
+
+          <div id="peoplePicker" class="mt-3" hidden>
+            <label class="form-label" for="peopleSearch">Invite people</label>
+            <div class="position-relative">
+              <input class="form-control" id="peopleSearch" type="search" autocomplete="off"
+                     placeholder="Search by name or e-mail…" data-url="{% url 'livesessions:session-people' %}">
+              <div class="list-group position-absolute w-100 shadow-sm" id="peopleResults" style="z-index:20"></div>
+            </div>
+            <div id="peopleChosen" class="d-flex flex-wrap gap-2 mt-2" aria-live="polite">
+              {% for person in form.selected_people %}
+              <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 p-2" data-id="{{ person.pk }}">
+                {{ person.get_full_name|default:person.username }} <small class="text-muted">{{ person.email }}</small>
+                <input type="hidden" name="invitees" value="{{ person.pk }}">
+                <button type="button" class="btn-close btn-close-sm ms-1" aria-label="Remove {{ person.get_full_name|default:person.username }}"></button>
+              </span>
+              {% endfor %}
+            </div>
+            <div class="form-text" id="peopleEmpty"{% if form.selected_people %} hidden{% endif %}>Nobody added yet.</div>
+            {% for error in form.invitees.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        </div></div>
+
+        <div class="card mb-3"><div class="card-body">
+          <h6 class="mb-3">2 · The session</h6>
+          <div class="row g-3">
+            {% for field in form %}{% if field.name in "scheduled_start,scheduled_end" %}
+            <div class="col-md-6">
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            {% endif %}{% endfor %}
+          </div>
+          <div class="mt-3">
+            <label class="form-label" for="{{ form.title_suffix.id_for_label }}">{{ form.title_suffix.label }}</label>
+            <div class="input-group">
+              <span class="input-group-text text-wrap text-start small" id="titlePrefix" style="max-width:60%"
+                    data-initial="">—</span>
+              {{ form.title_suffix }}
+            </div>
+            <div class="form-text">{{ form.title_suffix.help_text }}</div>
+            {% for error in form.title_suffix.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          {% for field in form %}{% if field.name in "description,session_kind,week,calendar_event" %}
+            <div class="mt-3 scope-field" data-field="{{ field.name }}">
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+          {% endif %}{% endfor %}
+        </div></div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card mb-3"><div class="card-body">
+          <h6 class="mb-3">Recording</h6>
+          {% for field in form %}{% if field.name in "record_automatically,publish_recording" %}
+            <div class="form-check mb-2">
+              {{ field }}
+              <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            </div>
+          {% endif %}{% endfor %}
+          <p class="text-muted small mb-0">Every session gets its own Teams meeting and link. The recording,
+             transcript and summary are filed in OneDrive under the institution, programme and module, then
+             published to the people the session was for.</p>
+        </div></div>
+
+        <div class="card mb-3"><div class="card-body">
+          <h6 class="mb-3">Repeat</h6>
+          {% for field in form %}{% if field.name in "is_recurring,recurrence" %}
+            <div class="mb-2">
+              {% if field.name == "is_recurring" %}
+                <div class="form-check">{{ field }}<label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+              {% else %}
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+              {% endif %}
+            </div>
+          {% endif %}{% endfor %}
+        </div></div>
+
+        <button class="btn btn-primary w-100" type="submit">
+          <i class="bi bi-calendar-check me-1"></i>{% if meeting %}Save changes{% else %}Schedule and invite{% endif %}
+        </button>
+        <p class="text-muted small mt-2 mb-0">Everyone invited gets a notification and an e-mail with the link to
+          this session.</p>
+      </div>
+    </div>
+  </form>
+</div></div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+(function () {
+  var form = document.getElementById('sessionForm');
+  if (!form) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var pick = { institution: $('id_institution'), programme: $('id_programme'),
+               module: $('id_module'), cohort: $('id_cohort'), week: $('id_week') };
+  var PARENT = { programme: 'institution', module: 'programme', cohort: 'programme', week: 'module' };
+
+  function narrow(name) {
+    var select = pick[name], parent = pick[PARENT[name]];
+    if (!select || !parent) return;
+    var want = parent.value;
+    Array.prototype.forEach.call(select.options, function (opt) {
+      if (!opt.value) return;
+      var ok = !!want && opt.getAttribute('data-parent') === want;
+      opt.hidden = !ok; opt.disabled = !ok;
+    });
+    var chosen = select.options[select.selectedIndex];
+    if (chosen && chosen.value && chosen.disabled) select.value = '';
+    select.disabled = !want;
+  }
+  function narrowAll() { ['programme', 'module', 'cohort', 'week'].forEach(narrow); }
+
+  function code(select) {
+    var opt = select && select.options[select.selectedIndex];
+    return opt && opt.value ? (opt.getAttribute('data-code') || '') : '';
+  }
+  var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function when() {
+    var v = ($('id_scheduled_start') || {}).value;
+    if (!v) return '';
+    var d = new Date(v);
+    if (isNaN(d)) return '';
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    return DAYS[d.getDay()] + ' ' + pad(d.getDate()) + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear()
+      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function preview() {
+    var codes = ['institution', 'programme', 'module', 'cohort'].map(function (n) { return code(pick[n]); })
+      .filter(Boolean).join(' ');
+    var text = [codes, when()].filter(Boolean).join(' · ');
+    $('titlePrefix').textContent = text ? text + ' |' : '—';
+  }
+
+  function target() {
+    var r = form.querySelector('input[name="target"]:checked');
+    return r ? r.value : 'class';
+  }
+  function syncTarget() {
+    var people = target() === 'people';
+    $('peoplePicker').hidden = !people;
+    $('peopleNote').hidden = !people;
+    $('classNote').hidden = people;
+  }
+
+  var search = $('peopleSearch'), results = $('peopleResults'), chosen = $('peopleChosen');
+  var timer = null;
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function chosenIds() {
+    return Array.prototype.map.call(chosen.querySelectorAll('input[name="invitees"]'), function (i) { return i.value; });
+  }
+  function syncEmpty() { $('peopleEmpty').hidden = chosen.children.length > 0; }
+  function add(person) {
+    if (chosenIds().indexOf(String(person.id)) !== -1) return;
+    var chip = document.createElement('span');
+    chip.className = 'badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 p-2';
+    chip.dataset.id = person.id;
+    chip.innerHTML = esc(person.name) + ' <small class="text-muted">' + esc(person.email) + '</small>'
+      + '<input type="hidden" name="invitees" value="' + esc(String(person.id)) + '">'
+      + '<button type="button" class="btn-close btn-close-sm ms-1" aria-label="Remove ' + esc(person.name) + '"></button>';
+    chosen.appendChild(chip);
+    syncEmpty();
+  }
+  chosen.addEventListener('click', function (e) {
+    if (e.target.classList.contains('btn-close')) { e.target.closest('[data-id]').remove(); syncEmpty(); }
+  });
+  function show(rows) {
+    results.innerHTML = '';
+    rows.forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'list-group-item list-group-item-action';
+      b.innerHTML = esc(p.name) + ' <small class="text-muted">' + esc(p.email) + '</small>';
+      b.addEventListener('click', function () { add(p); results.innerHTML = ''; search.value = ''; search.focus(); });
+      results.appendChild(b);
+    });
+    if (!rows.length && search.value.trim().length >= 2) {
+      results.innerHTML = '<div class="list-group-item text-muted small">Nobody found.</div>';
+    }
+  }
+  if (search) {
+    search.addEventListener('input', function () {
+      clearTimeout(timer);
+      var q = search.value.trim();
+      if (q.length < 2) { results.innerHTML = ''; return; }
+      timer = setTimeout(function () {
+        fetch(search.dataset.url + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+          .then(function (data) { show(data.results || []); })
+          .catch(function () { show([]); });
+      }, 250);
+    });
+    search.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });
+  }
+
+  Object.keys(pick).forEach(function (name) {
+    if (pick[name]) pick[name].addEventListener('change', function () { narrowAll(); preview(); });
+  });
+  var start = $('id_scheduled_start');
+  if (start) start.addEventListener('input', preview);
+  form.querySelectorAll('input[name="target"]').forEach(function (r) { r.addEventListener('change', syncTarget); });
+  form.addEventListener('submit', function () {
+    Object.keys(pick).forEach(function (n) { if (pick[n]) pick[n].disabled = false; });
+  });
+  narrowAll(); preview(); syncTarget(); syncEmpty();
+})();
+</script>
+{% endblock %}

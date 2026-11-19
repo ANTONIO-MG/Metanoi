@@ -1,0 +1,137 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load static people %}
+{% comment %}Assessments — every quiz, test and mock exam for the learner's modules,
+grouped by module. The pills filter by type and the select by module; both are
+client-side over the rows already on the page, so they are instant.
+
+Past papers and mock exams from the module schedule appear here as sittable
+papers (apps/assessments/papers.py). Their rows say whether the suggested
+solution is out: "Solution after you submit" or "Solution released".
+
+Context comes from apps.assessments.views.index.{% endcomment %}
+
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/assessments.css' %}?v=1">{% endblock %}
+
+{% block content %}
+<div class="asx">
+  <div class="card asx-head">
+    <div class="card-body">
+      <div class="asx-head__row">
+        <div class="asx-head__text">
+          <h1 class="h4 mb-1"><i class="bi bi-ui-checks text-primary me-2"></i>{{ page_title }}</h1>
+          <p class="mb-0 small text-muted">
+            {% if read_only %}The quizzes, tests and mock exams set for {{ child|person_name }},
+              and how they went. You can follow the results here; sitting them is theirs to do.
+            {% elif is_staff %}Every quiz, test and mock exam on the modules you look after.
+            {% else %}Quizzes, tests and mock exams for your modules. Sit any paper on the system; the
+              suggested solution appears beside each question once you have submitted and it has been released.{% endif %}</p>
+        </div>
+        {% include 'partials/_child_switcher.html' %}
+      </div>
+
+      {% if total %}
+      <div class="asx-filters">
+        <div class="asx-pills" role="group" aria-label="Filter by type">
+          <button type="button" class="asx-pill is-on" data-kind="">All <span class="asx-pill__n">{{ total }}</span></button>
+          {% for key, label, n in kinds %}
+          <button type="button" class="asx-pill" data-kind="{{ key }}">{{ label }} <span class="asx-pill__n">{{ n }}</span></button>
+          {% endfor %}
+        </div>
+        {% if groups|length > 1 %}
+        <label class="asx-module-filter">
+          <span class="visually-hidden">Module</span>
+          <select class="form-select form-select-sm" id="asxModule">
+            <option value="">All modules</option>
+            {% for g in groups %}<option value="{{ g.module.pk|default:'none' }}">{{ g.module|default:'No module' }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% for g in groups %}
+  <section class="asx-group" data-module="{{ g.module.pk|default:'none' }}">
+    <h2 class="asx-group__title">{{ g.module|default:'No module' }}</h2>
+    <div class="asx-list">
+      {% for row in g.rows %}{% with a=row.a %}
+      <article class="asx-row{% if not row.open %} is-locked{% endif %}" data-kind="{{ a.kind }}">
+        <div class="asx-row__icon asx-kind--{{ a.kind }}" aria-hidden="true">
+          <i class="bi {% if a.kind == 'quiz' %}bi-lightning-charge{% elif a.kind == 'test' %}bi-clipboard-check{% elif a.kind == 'mock_exam' %}bi-file-earmark-ruled{% elif a.kind == 'assignment' %}bi-pencil-square{% else %}bi-ui-checks{% endif %}"></i>
+        </div>
+        <div class="asx-row__main">
+          <h3 class="asx-row__title">{{ a.title }}</h3>
+          <div class="asx-row__meta">
+            <span class="asx-tag asx-kind--{{ a.kind }}">{{ a.get_kind_display }}</span>
+            <span>{{ a.total_marks|floatformat:"-2" }} marks</span>
+            {% if a.time_limit_minutes %}<span>{{ a.time_limit_minutes }} min</span>{% endif %}
+            {% if row.sitting %}<span><i class="bi bi-calendar-event me-1"></i><span>Sitting</span> {{ row.sitting|date:"j M Y" }}</span>{% endif %}
+            {% if row.due %}<span><i class="bi bi-alarm me-1"></i><span>Due</span> {{ row.due|date:"j M Y, H:i" }}</span>{% endif %}
+            {% if row.memo == 'open' %}<span class="asx-memo is-open"><i class="bi bi-key me-1"></i><span>Solution released</span></span>
+            {% elif row.memo == 'later' %}<span class="asx-memo"><i class="bi bi-key me-1"></i><span>Solution after you submit</span></span>
+            {% elif row.memo == 'pending' %}<span class="asx-memo"><i class="bi bi-key me-1"></i><span>Solution not released yet</span></span>{% endif %}
+            {% if is_staff %}<span class="asx-status">{{ a.get_status_display }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="asx-row__side">
+          {% if not is_staff %}
+            <span class="asx-state asx-state--{{ row.state }}">{{ row.state_label }}{% if row.attempt and row.state == 'marked' %} · {{ row.attempt.score|floatformat:"-2" }}/{{ a.total_marks|floatformat:"-2" }}{% endif %}</span>
+          {% endif %}
+          <div class="asx-row__actions">
+          {% if is_staff %}
+            {% if row.is_paper %}<a href="{% url 'assessments:take' a.id %}" class="btn btn-sm btn-outline-primary">Preview</a>{% endif %}
+            <a href="{% url 'assessments:builder' a.id %}" class="btn btn-sm btn-outline-secondary">Build</a>
+          {% elif read_only %}
+            {% if row.attempt %}<a href="{% url 'assessments:result' row.attempt.public_id %}" class="btn btn-sm btn-outline-primary">Result</a>{% endif %}
+          {% elif not row.open %}
+            <span class="asx-lock"><i class="bi bi-lock me-1"></i><span>{{ row.lock_label|default:'Locked' }}</span></span>
+          {% else %}
+            {% if row.attempt %}<a href="{% url 'assessments:result' row.attempt.public_id %}" class="btn btn-sm btn-outline-secondary">Result</a>{% endif %}
+            <a href="{% url 'assessments:take' a.id %}" class="btn btn-sm btn-primary">
+              {% if row.in_progress %}Continue{% elif row.attempt %}Sit again{% else %}Start{% endif %}</a>
+          {% endif %}
+          </div>
+        </div>
+      </article>
+      {% endwith %}{% endfor %}
+    </div>
+  </section>
+  {% empty %}
+  <div class="card"><div class="card-body text-center text-muted py-5">No quizzes, tests or mock exams are available yet.</div></div>
+  {% endfor %}
+  <p class="asx-none text-center text-muted py-4 d-none">Nothing matches this filter.</p>
+</div>
+
+<script>
+(function () {
+  var root = document.querySelector('.asx');
+  if (!root) return;
+  var kind = '', module = '';
+  var select = document.getElementById('asxModule');
+  function apply() {
+    var shown = 0;
+    root.querySelectorAll('.asx-group').forEach(function (group) {
+      var inModule = !module || group.dataset.module === module;
+      var visible = 0;
+      group.querySelectorAll('.asx-row').forEach(function (row) {
+        var ok = inModule && (!kind || row.dataset.kind === kind);
+        row.hidden = !ok;
+        if (ok) visible++;
+      });
+      group.hidden = visible === 0;
+      shown += visible;
+    });
+    var none = root.querySelector('.asx-none');
+    if (none) none.classList.toggle('d-none', shown > 0 || !root.querySelector('.asx-row'));
+  }
+  root.querySelectorAll('.asx-pill').forEach(function (pill) {
+    pill.addEventListener('click', function () {
+      root.querySelectorAll('.asx-pill').forEach(function (p) { p.classList.remove('is-on'); p.setAttribute('aria-pressed', 'false'); });
+      pill.classList.add('is-on'); pill.setAttribute('aria-pressed', 'true');
+      kind = pill.dataset.kind; apply();
+    });
+  });
+  if (select) select.addEventListener('change', function () { module = select.value; apply(); });
+})();
+</script>
+{% endblock %}

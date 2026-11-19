@@ -1,0 +1,9 @@
+{% load i18n admin_urls %}
+{% comment %}History / View on site, beside a record's title — ghost pills.{% endcomment %}
+{% block object-tools-items %}
+  {% url opts|admin_urlname:'history' original.pk|admin_urlquote as history_url %}
+  <a href="{% add_preserved_filters history_url %}" class="ta-ghost"><i class="bi bi-clock-history"></i>{% translate "History" %}</a>
+  {% if has_absolute_url %}
+    <a href="{{ absolute_url }}" class="ta-ghost" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i>{% translate "View on site" %}</a>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,1 @@
+{% load org_branding %}{% org_brand as brand %}You already have a {{ brand.name|default:"Metanoia Group" }} account

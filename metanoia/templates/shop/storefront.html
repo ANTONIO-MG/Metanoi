@@ -1,0 +1,197 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static commerce %}
+{% comment %}
+Storefront: three aisles. Everything listed has already been narrowed by
+shop.scoping to what this viewer may buy; the filters only narrow it further.
+
+Sections: hero, one-on-one sessions, choose (aisles + filters + grid),
+floating cart.
+
+Context: products, aisle, aisles, aisle_counts, total_count, coaches,
+categories / institutions / programmes / modules with their sel_* selections,
+search, sort, scope, on_sale, shop_stats, is_admin_staff.
+
+The aisle pills and the filter form are hx-boosted onto ``#appContentCol``
+(which is hx-boost="false" for the rest of the app), so changing a filter
+swaps the grid rather than reloading the shell. The explicit ``action=`` and
+``requestSubmit()`` are required for that.
+
+Blocks: overrides ``additional_css`` and ``content``.
+{% endcomment %}
+
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/commerce.css' %}"><link rel="stylesheet" href="{% static 'css/metanoia-shop.css' %}?v=3">{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-2 ts">
+
+  <section class="t-panel ts-hero">
+    {% include 'partials/_metanoia_wordmark.html' %}
+    <div class="ts-hero__grid">
+      <div>
+        <span class="t-label">Metanoia shop</span>
+        <h1 class="t-h1 mt-2"><span class="t-rise"><span style="--i:0">Everything for</span></span><span class="t-rise"><span style="--i:1">your <em>studies</em><span class="t-dot">.</span></span></span></h1>
+        <p class="t-lead">Strategic Blueprints, study resources, 1-on-1 time with a coach, and Metanoia gear. Focused on what matters most, per module and per cycle.{% if request.user.is_staff %} You see the full catalogue as staff.{% endif %}</p>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          <a class="t-btn" href="#shopGrid">Browse the shop{% include 'partials/_t_chip.html' %}</a>
+          <a class="t-btn t-btn--ghost" href="{% url 'shop:my-orders' %}">My orders{% include 'partials/_t_chip.html' %}</a>
+          {% if is_admin_staff %}<a class="t-btn t-btn--ghost" href="{% url 'shop:add-product' %}">Add item{% include 'partials/_t_chip.html' %}</a>{% endif %}
+        </div>
+      </div>
+      <div class="ts-stack" aria-hidden="true">
+        {% for product in products %}{% if forloop.counter <= 2 %}
+          <div class="ts-stack__card ts-stack__card--{{ forloop.counter }}">{% include 'shop/_cover.html' with poster_static=True %}</div>
+        {% endif %}{% empty %}
+          <img class="ts-stack__seal" src="{% static 'images/brand/metanoia-seal.png' %}" alt="">
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {% if coaches %}
+  <section class="ts-oneonone" id="oneOnOne">
+    <div class="ts-oneonone__head">
+      <div>
+        <h2 class="t-h2 mb-1">One-on-one <em>sessions</em><span class="t-dot">.</span></h2>
+        <p class="to-lead">Book an hour with a coach. Pick a free hour on their weekly calendar.</p>
+      </div>
+      <form method="get" action="{% url 'shop:one-on-one' %}" class="to-search" role="search">
+        <div class="ts-search">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <label class="visually-hidden" for="coachSearchShop">Search coaches by name</label>
+          <input id="coachSearchShop" type="search" name="q" placeholder="Search educators and coaches">
+        </div>
+        <button class="ts-btn" type="submit">Search</button>
+      </form>
+    </div>
+    <div class="to-coaches">
+      {% for c in coaches|slice:":4" %}{% include 'shop/_coach_card.html' %}{% endfor %}
+    </div>
+    {% if coaches|length > 4 %}<p class="mt-3 mb-0"><a class="ts-btn ts-btn--line" href="{% url 'shop:one-on-one' %}">See all {{ coaches|length }} coaches</a></p>{% endif %}
+  </section>
+  {% endif %}
+
+  <section class="ts-choose" id="shopGrid">
+    <div class="ts-choose__head">
+      <h2 class="t-h2 mb-0">Choose what you <em>need</em><span class="t-dot">.</span></h2>
+      <div class="ts-choose__aside">
+        {% if aisle %}<span class="ts-tag">{% for key, label, f in aisles %}{% if key == aisle %}{{ label }}{% endif %}{% endfor %}</span>{% endif %}
+        <span>Secure checkout. Digital items open as soon as you've paid.</span>
+      </div>
+    </div>
+
+    <nav class="ts-pills" aria-label="Shop sections" hx-boost="true" hx-target="#appContentCol" hx-select="#appContentCol" hx-swap="innerHTML show:window:top" hx-push-url="true">
+      <a class="ts-pill {% if not aisle %}is-active{% endif %}" href="{% url 'shop:storefront' %}">All<span>{{ total_count }}</span></a>
+      {% for key, label, fulfilment in aisles %}
+        <a class="ts-pill {% if aisle == key %}is-active{% endif %}" href="{% url 'shop:storefront' %}?aisle={{ key }}"><i class="bi {{ fulfilment|fulfilment_icon }}"></i>{{ label }}<span>{% for k, n in aisle_counts.items %}{% if k == key %}{{ n }}{% endif %}{% endfor %}</span></a>
+      {% endfor %}
+    </nav>
+
+    <form method="get" action="{% url 'shop:storefront' %}" class="ts-filters" id="shopFilters"
+          hx-boost="true" hx-target="#appContentCol" hx-select="#appContentCol"
+          hx-swap="innerHTML show:window:top" hx-push-url="true">
+      <script>
+        function submitFilters(el) { var f = el.form; if (f.requestSubmit) { f.requestSubmit(); } else { f.submit(); } }
+      </script>
+      {% if aisle %}<input type="hidden" name="aisle" value="{{ aisle }}">{% endif %}
+      <div class="ts-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <label class="visually-hidden" for="shopSearch">Search the shop</label>
+        <input id="shopSearch" type="search" name="q" value="{{ search }}" placeholder="Search Blueprints, packs, sessions…">
+      </div>
+      {% if categories %}
+      <label class="visually-hidden" for="shopCategory">Category</label>
+      <select id="shopCategory" name="category" class="ts-select" onchange="submitFilters(this)">
+        <option value="">All categories</option>
+        {% for c in categories %}<option value="{{ c.pk }}" {% if sel_category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <label class="visually-hidden" for="shopScope">Who it is for</label>
+      <select id="shopScope" name="scope" class="ts-select" onchange="submitFilters(this)">
+        <option value="">For everyone &amp; me</option>
+        <option value="mine" {% if scope == 'mine' %}selected{% endif %}>My programme only</option>
+        <option value="general" {% if scope == 'general' %}selected{% endif %}>General items</option>
+      </select>
+      {% if institutions|length > 1 %}
+      <label class="visually-hidden" for="shopInstitution">Institution</label>
+      <select id="shopInstitution" name="institution" class="ts-select" onchange="submitFilters(this)">
+        <option value="">All institutions</option>
+        {% for i in institutions %}<option value="{{ i.pk }}" {% if sel_institution == i.pk|stringformat:"s" %}selected{% endif %}>{{ i.code }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      {% if programmes|length > 1 %}
+      <label class="visually-hidden" for="shopProgramme">Programme</label>
+      <select id="shopProgramme" name="programme" class="ts-select" onchange="submitFilters(this)">
+        <option value="">All programmes</option>
+        {% for pr in programmes %}<option value="{{ pr.pk }}" {% if sel_programme == pr.pk|stringformat:"s" %}selected{% endif %}>{{ pr.institution.code }} · {{ pr.name }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      {% if modules %}
+      <label class="visually-hidden" for="shopModule">Module</label>
+      <select id="shopModule" name="module" class="ts-select" onchange="submitFilters(this)">
+        <option value="">All modules</option>
+        {% for m in modules %}<option value="{{ m.pk }}" {% if sel_module == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.code }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <label class="visually-hidden" for="shopSort">Sort</label>
+      <select id="shopSort" name="sort" class="ts-select" onchange="submitFilters(this)">
+        <option value="">Featured first</option>
+        <option value="new" {% if sort == 'new' %}selected{% endif %}>Newest</option>
+        <option value="popular" {% if sort == 'popular' %}selected{% endif %}>Most popular</option>
+        <option value="price" {% if sort == 'price' %}selected{% endif %}>Price: low to high</option>
+        <option value="-price" {% if sort == '-price' %}selected{% endif %}>Price: high to low</option>
+      </select>
+      <label class="ts-toggle" for="shopSale"><input type="checkbox" name="sale" value="1" id="shopSale" {% if on_sale %}checked{% endif %} onchange="submitFilters(this)"><span>On sale</span></label>
+      <button class="visually-hidden" type="submit">Search</button>
+    </form>
+
+    {% if aisle == 'store' %}
+    <div class="ts-note"><i class="bi bi-truck"></i><div><b>Branded gear and printed study materials.</b> Hoodies, printed packs and Metanoia merch, delivered by courier to your door or a Pudo locker near you.</div></div>
+    {% elif aisle == 'sessions' %}
+    <div class="ts-note"><i class="bi bi-person-video3"></i><div><b>1-on-1 time with a coach.</b> Pick a coach and a time that is free on their calendar; the Teams link arrives as soon as you've paid.</div></div>
+    {% endif %}
+
+    <p class="ts-count">{{ products|length }} item{{ products|length|pluralize }}</p>
+
+    <div class="ts-grid">
+      {% for product in products %}
+        <article class="ts-card ts-card--poster" style="--i:{{ forloop.counter0 }}">
+          <div class="ts-card__art">{% include 'shop/_cover.html' %}</div>
+          <div class="ts-card__body">
+            <span class="ts-card__meta"><span>{{ product.card.caption }}</span>
+              <span class="ts-card__flags">
+                {% if product.has_discount %}<span class="ts-flag ts-flag--sale">−{{ product.discount_percent|pct }}</span>{% endif %}
+                {% if product.featured %}<span class="ts-flag">Featured</span>{% endif %}
+                {% if not product.in_stock %}<span class="ts-flag ts-flag--out">Sold out</span>{% endif %}
+              </span></span>
+            <a class="ts-card__title" href="{% url 'shop:product-detail' product.pk %}">{{ product.name }}</a>
+            {% if product.rating_count %}<span class="ts-stars"><i class="bi bi-star-fill"></i> {{ product.rating|floatformat:1 }} <small>({{ product.rating_count }})</small></span>{% endif %}
+            <div class="ts-card__foot">
+              <div class="ts-card__actions">
+                {% if product.in_stock and not product.is_booking and not product.active_variants %}
+                  <form method="post" action="{% url 'shop:add-to-cart' product.pk %}">{% csrf_token %}<input type="hidden" name="then" value="stay">
+                    <button class="ts-btn ts-btn--line" aria-label="Add {{ product.name }} to cart">Add to cart</button></form>
+                  <a class="ts-btn ts-btn--line" href="{% url 'shop:product-detail' product.pk %}">Details</a>
+                {% else %}
+                  <a class="ts-btn ts-btn--line" href="{% url 'shop:product-detail' product.pk %}" style="grid-column:1/-1">Details</a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </article>
+      {% empty %}
+        <div class="t-card ts-empty">
+          <i class="bi bi-bag"></i>
+          <h3 class="t-h3">{% if search or sel_category or scope or on_sale %}Nothing matches those filters{% else %}Nothing here yet{% endif %}</h3>
+          <p>{% if search or sel_category or scope or on_sale %}Try clearing a filter or searching for something broader.{% else %}New items appear here as soon as they're added.{% endif %}</p>
+          {% if is_admin_staff %}<a class="t-btn t-btn--sm" href="{% url 'shop:add-product' %}">Add the first item{% include 'partials/_t_chip.html' %}</a>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <a class="ts-float-cart{% if shop_stats.cart_count %} has-items{% endif %}" href="{% url 'shop:cart' %}">
+    <span class="ts-float-cart__ico"><i class="bi bi-bag-check"></i>{% if shop_stats.cart_count %}<b>{{ shop_stats.cart_count }}</b>{% endif %}</span>
+    <span class="ts-float-cart__text"><strong>Your cart</strong><small>{% if shop_stats.cart_count %}{{ shop_stats.cart_count }} item{{ shop_stats.cart_count|pluralize }} · checkout{% else %}Empty{% endif %}</small></span>
+  </a>
+</div></div>
+{% endblock %}

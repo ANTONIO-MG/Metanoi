@@ -1,0 +1,97 @@
+{% comment %}WhatsApp number verification, placed beside a phone field.
+
+  Renders only while ``wa_verify`` is on; finds the phone input by
+  ``data-wa-phone``. A convenience, not the gate: the form re-checks on submit
+  (apps.accounts.phone_verify). Context: ``wa_verify``, ``wa_verified`` (the number
+  already verified), ``wa_number`` (Metanoia's WhatsApp sender). The script's tick uses a
+  rough client-side match of the last nine digits, only to decide whether to show it:
+  the server's normalising is the real one, and the form re-checks it on submit.
+{% endcomment %}
+{% if wa_verify %}
+<div class="col-12 wa-verify" data-wa-verify data-verified="{{ wa_verified }}"
+     data-send-url="{% url 'accounts:phone-send-code' %}" data-check-url="{% url 'accounts:phone-check-code' %}">
+  <div class="wa-verify__box">
+    <div class="wa-verify__head"><i class="bi bi-whatsapp" aria-hidden="true"></i>
+      <span>Verify your WhatsApp number</span>
+      <span class="wa-verify__ok" data-wa-ok hidden><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Verified</span>
+    </div>
+    <div class="wa-verify__row" data-wa-controls>
+      <button type="button" class="btn btn-sm btn-success" data-wa-send>Send code</button>
+      <label class="visually-hidden" for="waCode">Code from WhatsApp</label>
+      <input id="waCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+             pattern="[0-9]{6}" class="form-control form-control-sm wa-verify__code" placeholder="6-digit code" data-wa-code hidden>
+      <button type="button" class="btn btn-sm btn-primary" data-wa-check hidden>Verify</button>
+    </div>
+    <div class="rf-help" data-wa-status role="status" aria-live="polite">We send a code to this number on WhatsApp to check it is yours. Messages about your account, codes and replies from the team come from {{ wa_number }}.</div>
+  </div>
+</div>
+<style>
+  .wa-verify__box{ border:1px solid rgba(37,211,102,.35); border-radius:.6rem; padding:.6rem .75rem; background:rgba(37,211,102,.06); }
+  .wa-verify__head{ display:flex; align-items:center; gap:.4rem; font-size:.8rem; font-weight:600; margin-bottom:.4rem; }
+  .wa-verify__head .bi-whatsapp{ color:#1da851; }
+  .wa-verify__ok{ margin-left:auto; color:#1a7f43; font-weight:600; }
+  .wa-verify__row{ display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+  .wa-verify__code{ width:9rem; letter-spacing:.2em; }
+  .wa-verify.is-error [data-wa-status]{ color:#c8102e; }
+</style>
+<script>
+(function () {
+  var box = document.querySelector('[data-wa-verify]');
+  if (!box) return;
+  var form = box.closest('form');
+  var phone = form && form.querySelector('[data-wa-phone]');
+  if (!phone) return;
+  var country = form.querySelector('input[name$="phone_country"]');
+  var send = box.querySelector('[data-wa-send]'), check = box.querySelector('[data-wa-check]');
+  var code = box.querySelector('[data-wa-code]'), status = box.querySelector('[data-wa-status]');
+  var ok = box.querySelector('[data-wa-ok]'), controls = box.querySelector('[data-wa-controls]');
+  var csrf = form.querySelector('input[name="csrfmiddlewaretoken"]');
+  var verified = box.getAttribute('data-verified') || '';
+  var intro = status.textContent;
+
+  function digits(v) { return (v || '').replace(/\D/g, ''); }
+  function say(text, isError) { status.textContent = text; box.classList.toggle('is-error', !!isError); }
+  function looksVerified() {
+    var d = digits(phone.value);
+    if (!verified || !d) return false;
+    return verified.slice(-9) === d.slice(-9);
+  }
+  function refresh() {
+    var done = looksVerified();
+    ok.hidden = !done; controls.hidden = done;
+    if (done) say('This number is verified.'); else if (status.textContent === 'This number is verified.') say(intro);
+  }
+  function post(url, extra) {
+    var body = new URLSearchParams({ number: phone.value, country: country ? country.value : '' });
+    Object.keys(extra || {}).forEach(function (k) { body.append(k, extra[k]); });
+    return fetch(url, { method: 'POST', credentials: 'same-origin', body: body,
+      headers: { 'X-CSRFToken': csrf ? csrf.value : '', 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, message: 'Something went wrong. Please try again.' }; }); });
+  }
+
+  send.addEventListener('click', function () {
+    if (!digits(phone.value)) { say('Type your WhatsApp number first.', true); phone.focus(); return; }
+    send.disabled = true; say('Sending…');
+    post(box.getAttribute('data-send-url')).then(function (res) {
+      send.disabled = false;
+      say(res.message, !res.ok);
+      if (res.ok) { send.textContent = 'Send again'; code.hidden = false; check.hidden = false; code.focus(); }
+    });
+  });
+  function verify() {
+    check.disabled = true; say('Checking…');
+    post(box.getAttribute('data-check-url'), { code: code.value }).then(function (res) {
+      check.disabled = false;
+      if (res.ok) { verified = digits(phone.value); code.value = ''; refresh(); say(res.message); }
+      else say(res.message, true);
+    });
+  }
+  check.addEventListener('click', verify);
+  code.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); verify(); } });
+  code.addEventListener('input', function () { if (digits(code.value).length === 6) verify(); });
+  phone.addEventListener('input', refresh);
+  phone.addEventListener('change', refresh);
+  refresh();
+})();
+</script>
+{% endif %}

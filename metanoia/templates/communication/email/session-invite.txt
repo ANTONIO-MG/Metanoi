@@ -1,0 +1,19 @@
+{% load org_branding %}{% org_brand as brand %}{{ meeting.title }}
+
+A {{ meeting.get_session_kind_display|lower }} has been scheduled for {{ when_local }}{% if duration_minutes %}, running about {{ duration_minutes }} minutes{% endif %}.
+That is the time in your own zone ({{ timezone_label }}).
+
+For: {{ audience_label }}
+{% if meeting.module %}Module: {{ meeting.module.display_name }}
+{% endif %}{% if meeting.week %}Covers: {{ meeting.week.display_title }}
+{% endif %}{% if meeting.calendar_event %}Prepares for: {{ meeting.calendar_event.title }}
+{% endif %}
+{% if meeting.description %}{{ meeting.description }}
+
+{% endif %}{% if meeting.record_automatically %}This session is recorded automatically — if you cannot make it, the recording, transcript and summary appear on the session page afterwards.
+
+{% endif %}Open the session: {{ session_url|email_url }}
+{% if footer.unsubscribe_url %}
+Unsubscribe: {{ footer.unsubscribe_url }}
+E-mail preferences: {{ footer.preferences_url }}{% endif %}{% if brand.terms_url %}
+Terms: {{ brand.terms_url }}{% endif %}{% if brand.privacy_url %} · Privacy: {{ brand.privacy_url }}{% endif %}

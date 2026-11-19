@@ -1,0 +1,18 @@
+{% comment %}Footer — contact line, copyright with the developer credit after it,
+and the footer note, all driven from the single control document .strings.json
+(brand / site sections). No social icons: the owner asked for them to go
+(2026-11-09). Optional rows only render when the value is filled in.{% endcomment %}
+<div class="footer">
+    <div class="copyright text-center">
+        {% if brand.contact.email or brand.contact.phone or brand.contact.address %}
+        <p class="small text-muted mb-1">
+            {% if brand.contact.email %}<a href="mailto:{{ brand.contact.email }}">{{ brand.contact.email }}</a>{% endif %}
+            {% if brand.contact.phone %} · <a href="tel:{{ brand.contact.phone }}">{{ brand.contact.phone }}</a>{% endif %}
+            {% if brand.contact.address %} · {{ brand.contact.address }}{% endif %}
+        </p>
+        {% endif %}
+
+        <p class="mb-0">{{ strings.footer.copyright|default:brand.copyright }} {% include 'partials/_built_by.html' %}</p>
+        {% if site.footer_note %}<p class="small text-muted mb-0">{{ site.footer_note }}</p>{% endif %}
+    </div>
+</div>

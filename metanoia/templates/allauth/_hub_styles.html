@@ -1,0 +1,29 @@
+<style>
+  /* allauth pages, in hub dress. Element markup: templates/allauth/elements/. */
+  .allauth-title{ font-weight:700; color:#1f2d4b; margin-bottom:.35rem; }
+  .allauth-hub .allauth-title{ color:#3E2415; }
+  .allauth-sub{ font-weight:700; font-size:1rem; margin:1.25rem 0 .5rem; color:#3E2415; }
+  .allauth-text{ color:#6B5E55; font-size:.92rem; }
+  .allauth-form label{ font-weight:600; font-size:.82rem; color:#3E2415; margin-bottom:.3rem; display:block; }
+  .allauth-form input:not([type=checkbox]):not([type=radio]):not([type=hidden]),
+  .allauth-form textarea, .allauth-form select{
+    display:block; width:100%; padding:.6rem .8rem; font-size:1rem; line-height:1.4; color:#3E2415;
+    background:#fff; border:1px solid #d2d6da; border-radius:.5rem; transition:border-color .15s, box-shadow .15s; }
+  .allauth-form input:focus, .allauth-form textarea:focus{ outline:0; border-color:#35d1f5; box-shadow:0 0 0 2px rgba(53,209,245,.25); }
+  .allauth-form input[name=code]{ letter-spacing:.35em; font-variant-numeric:tabular-nums; text-align:center; font-size:1.35rem; }
+  .allauth-form .helptext, .allauth-help{ display:block; font-size:.75rem; color:#6B5E55; margin-top:.25rem; }
+  .allauth-form .errorlist{ list-style:none; padding:0; margin:.35rem 0 0; color:#ea0606; font-size:.8rem; }
+  .allauth-field{ margin-bottom:1rem; }
+  .allauth-actions{ display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-top:1rem; }
+  .allauth-actions .btn{ margin-bottom:0; }
+  .allauth-panel{ max-width:46rem; }
+  #appContentCol .allauth-form, #appContentCol .allauth-text{ max-width:40rem; }
+  #appContentCol .allauth-qr{ margin-left:0; }
+  .allauth-panel .card-body > :last-child{ margin-bottom:0; }
+  .allauth-qr{ display:block; margin:1rem auto; max-width:220px; background:#fff; padding:.5rem; border-radius:.75rem; border:1px solid #e9ecef; }
+  .allauth-codes{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.08em; }
+  [data-bs-theme="dark"] .allauth-title{ color:#f3f5fa; }
+  [data-bs-theme="dark"] .allauth-sub, [data-bs-theme="dark"] .allauth-form label{ color:#dbe1ec; }
+  [data-bs-theme="dark"] .allauth-form input:not([type=checkbox]):not([type=radio]):not([type=hidden]),
+  [data-bs-theme="dark"] .allauth-form textarea{ background:#3E2415; color:#dbe1ec; border-color:rgba(255,255,255,.15); }
+</style>

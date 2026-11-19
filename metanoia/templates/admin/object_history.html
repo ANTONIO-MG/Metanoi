@@ -1,0 +1,46 @@
+{% extends "layouts/base.html" %}
+{% load i18n %}
+{% comment %}A record's change history — OVERRIDES the old admin theme's. Django's data in a
+hub table card.{% endcomment %}
+{% block content %}
+<div id="content-main" class="card ta-table-card">
+  <div id="change-history">
+  {% if action_list %}
+    <div class="table-responsive">
+    <table class="table ta-table mb-0">
+      <thead><tr>
+        <th scope="col">{% translate 'Date/time' %}</th>
+        <th scope="col">{% translate 'User' %}</th>
+        <th scope="col">{% translate 'Action' %}</th>
+      </tr></thead>
+      <tbody>
+      {% for action in action_list %}
+      <tr>
+        <th scope="row">{{ action.action_time|date:"DATETIME_FORMAT" }}</th>
+        <td>{% if action.user.get_full_name %}{{ action.user.get_full_name }}{% else %}{{ action.user.get_username }}{% endif %}</td>
+        <td class="ta-wrap">{{ action.get_change_message }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div class="ta-foot">
+      <nav class="ta-pager" aria-label="{% translate 'Pagination' %}">
+        {% if pagination_required %}
+        <ul class="ta-pager__pages">
+          {% for i in page_range %}
+            {% if i == action_list.paginator.ELLIPSIS %}<li>{{ action_list.paginator.ELLIPSIS }}</li>
+            {% elif i == action_list.number %}<li><span class="this-page">{{ i }}</span></li>
+            {% else %}<li><a href="?{{ page_var }}={{ i }}">{{ i }}</a></li>{% endif %}
+          {% endfor %}
+        </ul>
+        {% endif %}
+        <span class="ta-pager__count">{{ action_list.paginator.count }} {% blocktranslate count counter=action_list.paginator.count %}entry{% plural %}entries{% endblocktranslate %}</span>
+      </nav>
+    </div>
+  {% else %}
+    <div class="ta-empty"><i class="bi bi-clock-history"></i><p>{% translate 'This object doesn’t have a change history. It probably wasn’t added via this admin site.' %}</p></div>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

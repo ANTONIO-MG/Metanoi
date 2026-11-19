@@ -1,0 +1,13 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Two-minutely Metanoia Mail inbox check
+
+[Timer]
+OnCalendar=*:0/2
+AccuracySec=15s
+Persistent=false
+Unit=metanoia-mail.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,145 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}Super student — choose what to see as a student (core.student_view).
+
+Educators are offered only the programmes/modules they teach
+(``student_view_is_educator``).
+
+Context: `page_title`, `as_` (who to see it as — student or parent; the choice rides
+along in every option's form), `scope`, `module_count`, `groups` (per institution: its
+programmes, each with `preview_cohorts` — one intake of the programme with its own dates,
+sessions and cohort material), `student_view_label`, `student_view_audience`. The page
+offers "Everything" first, then one card per institution. Overrides `content`.
+{% endcomment %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid">
+
+  <div class="row page-titles mx-0">
+    <div class="col-12 p-md-0"><div class="welcome-text">
+      <h4 class="mb-1"><i class="bi bi-eye me-2"></i>{{ page_title }}</h4>
+      <p class="mb-0 text-muted small">
+        See and use the platform exactly as a student — or that student’s parent — does.
+        Pick who to be and what to view; you stay in the preview until you exit it from the bar at the top.
+      </p>
+    </div></div>
+  </div>
+
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-3" role="group" aria-label="View as">
+    <span class="text-muted small me-1">View as</span>
+    <a href="?as=student" class="btn btn-sm {% if as_ == 'student' %}btn-primary{% else %}btn-outline-primary{% endif %} mb-0"
+       {% if as_ == 'student' %}aria-current="true"{% endif %}><i class="bi bi-mortarboard me-1"></i>Student</a>
+    <a href="?as=parent" class="btn btn-sm {% if as_ == 'parent' %}btn-primary{% else %}btn-outline-primary{% endif %} mb-0"
+       {% if as_ == 'parent' %}aria-current="true"{% endif %}><i class="bi bi-people me-1"></i>Parent</a>
+    {% if as_ == 'parent' %}<span class="small text-muted">You’ll see the parent of a student registered for what you pick.</span>{% endif %}
+  </div>
+
+  {% if scope %}
+  <div class="alert alert-warning d-flex flex-wrap gap-2 align-items-center">
+    <i class="bi bi-eye-fill"></i>
+    <span class="flex-fill">You’re viewing as a {{ student_view_audience }} now — <strong>{{ student_view_label }}</strong>.</span>
+    <form method="post" action="{% url 'accounts:student-view-stop' %}" class="mb-0" hx-boost="false">{% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-dark mb-0">Exit preview</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="alert alert-info d-flex gap-2 align-items-start small">
+    <i class="bi bi-info-circle-fill mt-1"></i>
+    <div>
+      {% if student_view_is_educator %}
+      As an educator you can view <strong>the programmes and modules you teach</strong>.
+      {% else %}
+      As an administrator you are registered for <strong>every institution, programme and module</strong>,
+      the one-on-one programme included.
+      {% endif %}
+      Student view uses your own <em>preview student</em>: anything you do there — progress,
+      notes, quiz attempts — is recorded against it, never against your real account. It is
+      left out of class lists, counts, reports and e-mails, and chats are read-only.
+    </div>
+  </div>
+
+  {% if not groups %}
+  <div class="card"><div class="card-body text-center text-muted py-5">
+    <i class="bi bi-mortarboard fs-1 d-block mb-2"></i>
+    {% if student_view_is_educator %}
+    You aren’t listed as the coach of any active module yet, so there is nothing to view as a student.
+    {% else %}
+    There are no active programmes with modules yet.
+    {% endif %}
+  </div></div>
+  {% else %}
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <form method="post" action="{% url 'accounts:student-view-start' %}" class="mb-0" hx-boost="false">{% csrf_token %}<input type="hidden" name="as" value="{{ as_ }}">
+        <button type="submit" class="sv-option{% if scope and scope.is_global and scope.as_ == as_ %} is-current{% endif %}">
+          <i class="bi bi-globe2 fs-4 text-primary"></i>
+          <span class="flex-fill">
+            <strong class="d-block">Everything{% if not student_view_is_educator %} — global view{% endif %}</strong>
+            <span class="sv-meta">All {{ groups|length }} institution{{ groups|length|pluralize }} · {{ module_count }} module{{ module_count|pluralize }}{% if student_view_is_educator %} you teach{% endif %}</span>
+          </span>
+          {% if scope and scope.is_global and scope.as_ == as_ %}<span class="badge bg-warning text-dark">Viewing</span>{% endif %}
+          <i class="bi bi-chevron-right"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    {% for group in groups %}
+    {% with inst=group.institution %}
+    <div class="col-12 col-xl-6">
+      <div class="card h-100">
+        <div class="card-header border-0 pb-0 d-flex align-items-center gap-2">
+          <span class="sv-swatch" style="background: {{ inst.accent_colour|default:'#1F3864' }}"></span>
+          <h5 class="card-title mb-0 flex-fill">{{ inst.display_name }}</h5>
+        </div>
+        <div class="card-body vstack gap-2">
+          <form method="post" action="{% url 'accounts:student-view-start' %}" class="mb-0" hx-boost="false">{% csrf_token %}<input type="hidden" name="as" value="{{ as_ }}">
+            <input type="hidden" name="institution" value="{{ inst.pk }}">
+            <button type="submit" class="sv-option{% if scope and scope.institution_id == inst.pk and not scope.programme_id and scope.as_ == as_ %} is-current{% endif %}">
+              <i class="bi bi-buildings"></i>
+              <span class="flex-fill">
+                <strong class="d-block">All of {{ inst.label }}</strong>
+                <span class="sv-meta">{{ group.programmes|length }} programme{{ group.programmes|length|pluralize }} · {{ group.module_count }} module{{ group.module_count|pluralize }}</span>
+              </span>
+              {% if scope and scope.institution_id == inst.pk and not scope.programme_id and scope.as_ == as_ %}<span class="badge bg-warning text-dark">Viewing</span>{% endif %}
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </form>
+          {% for programme in group.programmes %}
+          <form method="post" action="{% url 'accounts:student-view-start' %}" class="mb-0" hx-boost="false">{% csrf_token %}<input type="hidden" name="as" value="{{ as_ }}">
+            <input type="hidden" name="programme" value="{{ programme.pk }}">
+            <button type="submit" class="sv-option{% if scope and scope.programme_id == programme.pk and not scope.cohort_id and scope.as_ == as_ %} is-current{% endif %}">
+              <i class="bi bi-mortarboard"></i>
+              <span class="flex-fill min-w-0">
+                <span class="d-block text-truncate">{{ programme.display_name }}</span>
+                <span class="sv-meta">{{ programme.full_code }} · {{ programme.preview_module_count }} module{{ programme.preview_module_count|pluralize }}</span>
+              </span>
+              {% if scope and scope.programme_id == programme.pk and not scope.cohort_id and scope.as_ == as_ %}<span class="badge bg-warning text-dark">Viewing</span>{% endif %}
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </form>
+          {% if programme.preview_cohorts %}
+          <div class="d-flex flex-wrap gap-1 ps-4 pb-1" aria-label="Cohorts of {{ programme.full_code }}">
+            <span class="sv-meta me-1 align-self-center">Cohort:</span>
+            {% for cohort in programme.preview_cohorts %}
+            <form method="post" action="{% url 'accounts:student-view-start' %}" class="mb-0" hx-boost="false">{% csrf_token %}<input type="hidden" name="as" value="{{ as_ }}">
+              <input type="hidden" name="cohort" value="{{ cohort.pk }}">
+              <button type="submit" title="{{ cohort.name|default:cohort.code }}"
+                      class="btn btn-sm mb-0 {% if scope and scope.cohort_id == cohort.pk and scope.as_ == as_ %}btn-warning{% else %}btn-outline-secondary{% endif %}">{{ cohort.code }}</button>
+            </form>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div></div>
+{% endblock %}

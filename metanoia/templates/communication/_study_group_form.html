@@ -1,0 +1,80 @@
+{% load people %}
+{% comment %}
+The study-group form, used by workspaces.html and workspace-detail.html. The people and modules listed are already the user's own
+scope (apps.communication.study_groups) and the form re-checks every posted id.
+
+Choosing a module narrows the list to that module's programme, and unticks anyone
+outside it, so what can be ticked is what the save will accept.
+
+Includes ``partials/_t_chip.html``.
+{% endcomment %}
+<form method="post" class="sg-form row g-3" data-sg-form>
+  {% csrf_token %}
+  {% if action %}<input type="hidden" name="action" value="{{ action }}">{% endif %}
+  {% if form.non_field_errors %}<div class="col-12"><div class="sg-error">{{ form.non_field_errors|striptags }}</div></div>{% endif %}
+
+  <div class="col-lg-5">
+    <div class="mb-3">
+      <label class="sg-label" for="{{ form.name.id_for_label }}">Group name</label>
+      {{ form.name }}
+      {% if form.name.errors %}<div class="sg-error">{{ form.name.errors|striptags }}</div>{% endif %}
+    </div>
+    <div class="mb-3">
+      <label class="sg-label" for="{{ form.module.id_for_label }}">Module</label>
+      <select name="{{ form.module.html_name }}" id="{{ form.module.id_for_label }}" class="form-control form-select" data-sg-module>
+        <option value="">No particular module</option>
+        {% for pm in form.fields.module.queryset %}
+          <option value="{{ pm.pk }}" data-programme="{{ pm.programme_id }}"{% if form.module.value|stringformat:'s' == pm.pk|stringformat:'s' %} selected{% endif %}>{{ pm.display_name }} ({{ pm.label }})</option>
+        {% endfor %}
+      </select>
+      <div class="sg-hint">{% if is_admin_staff %}Every module on the platform is listed.{% elif is_educator %}The modules you teach are listed.{% else %}Only the modules you are registered for are listed.{% endif %}</div>
+      {% if form.module.errors %}<div class="sg-error">{{ form.module.errors|striptags }}</div>{% endif %}
+    </div>
+    <div>
+      <label class="sg-label" for="{{ form.description.id_for_label }}">What the group is for</label>
+      {{ form.description }}
+      {% if form.description.errors %}<div class="sg-error">{{ form.description.errors|striptags }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <span class="sg-label" id="{{ prefix|default:'sg' }}-members-label">Members</span>
+    <div class="sg-picker" role="group" aria-labelledby="{{ prefix|default:'sg' }}-members-label">
+      <div class="sg-picker__bar">
+        <div class="sg-search">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input type="search" class="form-control form-control-sm" placeholder="Search by name" aria-label="Search people" data-sg-filter>
+        </div>
+        <span class="sg-picker__count"><span data-sg-count>{{ chosen_count }}</span> <span>selected</span></span>
+      </div>
+      <ul class="sg-picker__list" data-sg-list>
+        {% for row in member_rows %}
+          <li>
+            <label class="sg-person{% if row.checked %} is-checked{% endif %}" data-sg-person
+                   data-name="{{ row.user|person_name|lower }}"
+                   data-programmes="{% for p in row.programmes %}{{ p.pk }} {% endfor %}">
+              <input type="checkbox" class="form-check-input" name="members" value="{{ row.user.pk }}"{% if row.checked %} checked{% endif %}>
+              <img src="{{ row.user|person_avatar }}" alt="" loading="lazy">
+              <span class="sg-person__text">
+                <span class="sg-person__name">{{ row.user|person_name }}</span>
+                <span class="sg-person__sub">{% for p in row.programmes %}{{ p.label }}{% if not forloop.last %} · {% endif %}{% empty %}Already in the group{% endfor %}</span>
+              </span>
+            </label>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="sg-picker__none" data-sg-none{% if member_rows %} hidden{% endif %}>
+        {% if member_rows %}<span>Nobody matches that search.</span>{% else %}<span>Nobody else is registered on your programme yet.</span>{% endif %}
+      </div>
+    </div>
+    <div class="sg-hint">{% if is_admin_staff %}<span>Everyone registered on a programme is listed.</span>{% elif is_educator %}<span>People on the programmes you teach are listed.</span>{% else %}<span>Only people on your programme and institution are listed.</span>{% endif %} <span>You are in the group automatically.</span></div>
+    {% if form.members.errors %}<div class="sg-error">{{ form.members.errors|striptags }}</div>{% endif %}
+  </div>
+
+  <div class="col-12">
+    <div class="sg-form__actions">
+      <button type="submit" class="t-btn t-btn--sm">{{ submit_label }}{% include 'partials/_t_chip.html' %}</button>
+      {% if cancel_target %}<button type="button" class="btn btn-link btn-sm mb-0" data-bs-toggle="collapse" data-bs-target="{{ cancel_target }}">Cancel</button>{% endif %}
+    </div>
+  </div>
+</form>

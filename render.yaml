@@ -1,0 +1,48 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+services:
+  - type: web
+    name: metanoia
+    runtime: python
+    plan: free
+    region: frankfurt
+    rootDir: metanoia
+    branch: main
+    buildCommand: ./render-build.sh
+
+    startCommand: >-
+      gunicorn config.asgi:application
+      --worker-class uvicorn_worker.UvicornWorker
+      --bind 0.0.0.0:$PORT
+      --workers 1
+      --timeout 120
+      --access-logfile -
+      --error-logfile -
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.3
+
+      - key: SECRET_KEY
+        generateValue: true
+
+      - key: DEBUG
+        value: "false"
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: metanoia-db
+          property: connectionString
+
+      - key: PAYMENTS_ENABLED
+        value: "false"
+
+      - key: RUN_DB_WIPE
+        value: "false"
+
+databases:
+  - name: metanoia-db
+    plan: free
+    region: frankfurt
+    databaseName: metanoia
+    user: metanoia

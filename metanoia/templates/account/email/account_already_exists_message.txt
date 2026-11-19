@@ -1,0 +1,13 @@
+{% load org_branding %}{% org_brand as brand %}Hi,
+
+Someone — possibly you — tried to create a {{ brand.name|default:"Metanoia Group" }} account using {{ email }}.
+An account with that address already exists, so we didn't create a second one.
+
+If that was you and you've forgotten your password, set a new one here:
+
+{{ password_reset_url }}
+
+Wasn't you? You can safely ignore this e-mail — nothing has changed.
+
+--
+{{ brand.copyright|default:"Metanoia Group" }}

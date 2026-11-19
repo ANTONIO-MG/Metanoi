@@ -1,0 +1,257 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+The Metanoia calendar — one month, one query.
+
+Scoped by livesessions.audience.visible_sessions().
+
+All times render in the reader's own zone: UserPreferenceMiddleware has already
+activated it, so `{{ x|time }}` is local without any per-view conversion.
+
+Inline styles:
+
+- Grid columns use ``minmax(0,1fr)``, not a bare ``1fr``: a plain ``1fr``
+  track's floor is the widest thing inside it (a whole un-wrappable title), and
+  seven of those pushed the grid past the page. A zero floor lets each column
+  keep its seventh.
+- Every day cell is the same fixed height — ``CELL_LIMIT`` items and a "+N more"
+  line — so a busy day never stretches its week, or the month, down the page.
+  ``min-width:0`` because a grid item's automatic minimum is its content.
+- The popup shows one item, or a day's whole list.
+- Phones: seven text columns cannot be read at 390px, so each day shows its
+  icons only — tap the day for the list.
+
+The legend doubles as the filter — every source can be toggled off, and the
+choice rides in ``?show=`` so a filtered month is a shareable link.
+
+Every item is a button: it opens the popup with the whole entry (full title,
+time, module, where, what it is) and a link through to it. Items come from
+``views._calendar_item``; the popup reads ``#calDays``. On phones a tap on the day
+cell itself (icons only) opens the day's list.
+
+The month is swapped in by htmx on sidebar navigation, so the script lifts this
+month's popup onto ``<body>`` (clear of the content column's stacking), drops the
+previous month's and binds the click handler only once (``window.__calPopBound``).{% endcomment %}
+
+{% block additional_css %}
+<style>
+  .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--bs-border-color);
+            width:100%;max-width:100%;border:1px solid var(--bs-border-color);border-radius:.75rem;overflow:hidden}
+  .cal-head{background:var(--bs-tertiary-bg);padding:.5rem;font-size:.72rem;font-weight:700;
+            text-transform:uppercase;letter-spacing:.06em;text-align:center;color:var(--bs-secondary-color)}
+  .cal-day{background:var(--bs-body-bg);height:132px;padding:.35rem .35rem .3rem;position:relative;
+           min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:.18rem}
+  .cal-day.out{background:var(--bs-tertiary-bg)}
+  .cal-day.out .cal-date, .cal-day.out .cal-item{opacity:.5}
+  .cal-day.today{box-shadow:inset 0 0 0 2px var(--bs-primary)}
+  .cal-day.today .cal-date span{background:var(--bs-primary);color:#fff}
+  .cal-date{font-size:.78rem;font-weight:700;display:flex;justify-content:space-between;align-items:center;
+            text-decoration:none;color:inherit;margin-bottom:.1rem}
+  .cal-date span{display:inline-flex;width:1.6rem;height:1.6rem;border-radius:50%;align-items:center;justify-content:center}
+  .cal-date small{font-size:.62rem;font-weight:600;color:var(--bs-secondary-color)}
+  .cal-item{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:.3rem;width:100%;cursor:pointer;
+            font-size:.72rem;line-height:1.2;padding:.2rem .35rem;border-radius:.4rem;min-width:0;
+            background:color-mix(in srgb,var(--c) 10%,var(--bs-body-bg));border-left:3px solid var(--c);
+            transition:background .12s}
+  .cal-item:hover,.cal-item:focus-visible{background:color-mix(in srgb,var(--c) 20%,var(--bs-body-bg))}
+  .cal-item:focus-visible{outline:2px solid var(--c);outline-offset:1px}
+  .cal-item.past{opacity:.62}
+  .cal-item.live{font-weight:700}
+  .cal-ico{display:inline-flex;align-items:center;gap:1px;flex:none;color:var(--c);font-size:.78rem}
+  .cal-ico i+i{font-size:.62rem;opacity:.85}
+  .cal-item.live .cal-ico i+i{color:#dc3545;animation:calPulse 1.4s infinite}
+  @keyframes calPulse{50%{opacity:.35}}
+  .cal-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cal-txt b{font-weight:700;margin-right:.2rem;font-variant-numeric:tabular-nums}
+  .cal-more{all:unset;cursor:pointer;font-size:.68rem;font-weight:600;color:var(--bs-primary);margin-top:auto;padding:0 .3rem}
+  .cal-more:hover{text-decoration:underline}
+  .cal-dots{display:none}
+  .cal-chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;padding:.2rem .6rem;
+            border:1px solid var(--bs-border-color);border-radius:2rem;text-decoration:none;color:inherit}
+  .cal-chip:hover{background:var(--bs-tertiary-bg)}
+  .cal-chip.off{opacity:.45}
+  .cal-chip i{color:var(--c)}
+
+  .cal-pop .modal-content{border:0;border-radius:1.1rem;overflow:hidden}
+  .cal-pop .modal-header{border:0;padding:1rem 1.25rem .25rem}
+  .cal-pop .modal-body{padding:.5rem 1.25rem 1.25rem}
+  .cal-ev{border:1px solid var(--bs-border-color);border-left:4px solid var(--c);border-radius:.85rem;
+          padding:.85rem 1rem;margin-bottom:.65rem}
+  .cal-ev:last-child{margin-bottom:0}
+  .cal-ev__head{display:flex;gap:.7rem;align-items:flex-start}
+  .cal-ev__badge{flex:none;width:2.4rem;height:2.4rem;border-radius:.7rem;display:flex;align-items:center;justify-content:center;
+                 position:relative;background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c);font-size:1.15rem}
+  .cal-ev__badge i+i{position:absolute;right:-.35rem;bottom:-.35rem;font-size:.7rem;width:1.2rem;height:1.2rem;border-radius:50%;
+                     background:var(--bs-body-bg);box-shadow:0 0 0 2px var(--c);display:flex;align-items:center;justify-content:center}
+  .cal-ev__badge i+i+i{display:none}
+  .cal-ev__kind{font-size:.66rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--c)}
+  .cal-ev__title{font-weight:700;font-size:.95rem;line-height:1.3;margin:.1rem 0 .35rem;word-break:break-word}
+  .cal-ev__rows{list-style:none;padding:0;margin:0;font-size:.82rem;color:var(--bs-secondary-color)}
+  .cal-ev__rows li{display:flex;gap:.5rem;margin-top:.2rem;word-break:break-word}
+  .cal-ev__rows i{flex:none;width:1rem;text-align:center}
+  .cal-ev__flag{display:inline-block;font-size:.66rem;font-weight:700;padding:.12rem .5rem;border-radius:2rem;margin-left:.3rem;
+                background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c);vertical-align:middle}
+  .cal-ev__flag.live{background:#dc3545;color:#fff}
+  .cal-ev__go{margin-top:.7rem}
+
+  @media (max-width:991.98px){.cal-day{height:112px}.cal-item{font-size:.66rem}.cal-txt b{display:none}}
+  @media (max-width:575.98px){
+    .cal-head{padding:.4rem 0;font-size:.6rem;letter-spacing:.02em}
+    .cal-day{height:74px;padding:.25rem;cursor:pointer}
+    .cal-day .cal-item,.cal-day .cal-more{display:none}
+    .cal-date{justify-content:center}.cal-date small{display:none}
+    .cal-dots{display:flex;flex-wrap:wrap;gap:2px;justify-content:center}
+    .cal-dots i{color:var(--c);font-size:.72rem}
+    .cal-dots em{font-style:normal;font-size:.6rem;font-weight:700;color:var(--bs-secondary-color)}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3">
+
+  {% include 'livesessions/_calendar_toolbar.html' %}
+
+  <div class="card mb-3"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <a class="btn btn-sm btn-light" href="?m={{ prev_month }}"><i class="bi bi-chevron-left"></i></a>
+      <h5 class="mb-0">{{ focus|date:"F Y" }}</h5>
+      <a class="btn btn-sm btn-light" href="?m={{ next_month }}"><i class="bi bi-chevron-right"></i></a>
+    </div>
+
+    <div class="cal-legend d-flex flex-wrap gap-2 mb-3">
+      {% for item in legend %}
+        <a class="cal-chip{% if not item.on %} off{% endif %}"
+           href="?m={{ focus|date:'Y-m' }}&show={{ item.kind }}"
+           title="Show only {{ item.label|lower }}">
+          <i class="bi bi-{{ item.icon }}" style="--c:{{ item.colour }}"></i>{{ item.label }}
+        </a>
+      {% endfor %}
+      <a class="cal-chip" href="?m={{ focus|date:'Y-m' }}">Show all</a>
+    </div>
+
+    <div class="cal-grid">
+      <div class="cal-head">Mon</div><div class="cal-head">Tue</div><div class="cal-head">Wed</div>
+      <div class="cal-head">Thu</div><div class="cal-head">Fri</div><div class="cal-head">Sat</div>
+      <div class="cal-head">Sun</div>
+
+      {% for week in weeks %}{% for cell in week %}
+        <div class="cal-day{% if not cell.in_month %} out{% endif %}{% if cell.is_today %} today{% endif %}"
+             data-day="{{ cell.key }}">
+          <a class="cal-date" href="{% url 'livesessions:day' cell.key %}" title="Open {{ cell.date|date:'l j F' }}">
+            <span>{{ cell.date|date:"j" }}</span>{% if cell.all_entries %}<small>{{ cell.all_entries|length }}</small>{% endif %}</a>
+          {% for entry in cell.entries %}
+            <button type="button" class="cal-item{% if entry.live %} live{% endif %}{% if entry.past %} past{% endif %}"
+                    style="--c:{{ entry.colour }}" data-day="{{ cell.key }}" data-index="{{ forloop.counter0 }}"
+                    title="{{ entry.label }} · {{ entry.title }}">
+              <span class="cal-ico">{% for ic in entry.icons|slice:":2" %}<i class="bi bi-{{ ic }}"></i>{% endfor %}</span>
+              <span class="cal-txt">{% if entry.time %}<b>{{ entry.time }}</b>{% endif %}{{ entry.short }}</span>
+            </button>
+          {% endfor %}
+          {% if cell.overflow %}
+            <button type="button" class="cal-more" data-day="{{ cell.key }}">+{{ cell.overflow }} more</button>
+          {% endif %}
+          {% if cell.all_entries %}
+          <span class="cal-dots" aria-hidden="true">
+            {% for entry in cell.all_entries|slice:":4" %}<i class="bi bi-{{ entry.icons.0 }}" style="--c:{{ entry.colour }}"></i>{% endfor %}
+            {% if cell.all_entries|length > 4 %}<em>+{{ cell.all_entries|length|add:"-4" }}</em>{% endif %}
+          </span>
+          {% endif %}
+        </div>
+      {% endfor %}{% endfor %}
+    </div>
+  </div></div>
+
+  <div class="row g-3">
+  <div class="col-lg-8">
+  <div class="card h-100"><div class="card-body">
+    <h6 class="mb-3">Coming up</h6>
+    <div class="list-group list-group-flush">
+      {% for e in upcoming %}
+        <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap gap-2"
+           href="{{ e.url|default:'#' }}">
+          <span>
+            <i class="bi bi-{{ e.icon }} me-1" style="color:{{ e.colour }}"></i>
+            <strong>{{ e.title }}</strong>
+            {% if e.meta.live %}<span class="badge bg-success ms-1">Live now</span>{% endif %}
+            <br><small class="text-muted">{{ e.label }}{% if e.detail %} · {{ e.detail }}{% endif %}</small>
+          </span>
+          <span class="text-nowrap"><small>{{ e.local_start|date:"D d M, H:i" }}</small></span>
+        </a>
+      {% empty %}
+        <p class="text-muted mb-0">Nothing coming up.</p>
+      {% endfor %}
+    </div>
+  </div></div>
+  </div>
+  <div class="col-lg-4">{% include 'livesessions/_add_reminder.html' %}</div>
+  </div>
+
+</div></div>
+<div class="modal fade cal-pop" id="calPop" data-day-url="{% url 'livesessions:day' '2000-01-01' %}" tabindex="-1" aria-labelledby="calPopTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title mb-0" id="calPopTitle"></h5>
+          <a class="small" id="calPopDay" href="#"><i class="bi bi-calendar3 me-1"></i>Open the whole day</a>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="calPopBody"></div>
+    </div>
+  </div>
+</div>
+{{ day_items|json_script:"calDays" }}
+<script>
+(function () {
+  var fresh = document.getElementById('calPop');
+  document.querySelectorAll('body > .cal-pop').forEach(function (old) { if (old !== fresh) old.remove(); });
+  if (fresh && fresh.parentNode !== document.body) document.body.appendChild(fresh);
+  if (window.__calPopBound) return;
+  window.__calPopBound = true;
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function card(e) {
+    var rows = '';
+    if (e.when) rows += '<li><i class="bi bi-clock"></i><span>' + esc(e.when) + '</span></li>';
+    if (e.module) rows += '<li><i class="bi bi-journal-bookmark"></i><span>' + esc(e.module) + '</span></li>';
+    if (e.location) rows += '<li><i class="bi bi-geo-alt"></i><span>' + esc(e.location) + '</span></li>';
+    if (e.detail) rows += '<li><i class="bi bi-info-circle"></i><span>' + esc(e.detail) + '</span></li>';
+    var flags = (e.flags || []).map(function (f) {
+      return '<span class="cal-ev__flag' + (f === 'Live now' ? ' live' : '') + '">' + esc(f) + '</span>'; }).join('');
+    var icons = (e.icons || []).map(function (i) { return '<i class="bi bi-' + esc(i) + '"></i>'; }).join('');
+    var go = e.url ? '<a class="btn btn-sm btn-primary cal-ev__go" href="' + esc(e.url) + '">' +
+      (e.live ? 'Join now' : e.kind === 'session' ? 'Open the session' : 'Open') +
+      ' <i class="bi bi-arrow-right ms-1"></i></a>' : '';
+    return '<div class="cal-ev" style="--c:' + esc(e.colour) + '"><div class="cal-ev__head">' +
+      '<span class="cal-ev__badge">' + icons + '</span><div class="min-w-0 flex-grow-1">' +
+      '<div class="cal-ev__kind">' + esc(e.label) + flags + '</div>' +
+      '<div class="cal-ev__title">' + esc(e.title) + '</div>' +
+      '<ul class="cal-ev__rows">' + rows + '</ul>' + go + '</div></div></div>';
+  }
+  function open(key, index) {
+    var data = document.getElementById('calDays'), el = document.getElementById('calPop');
+    if (!data || !el) return;
+    var day = JSON.parse(data.textContent || '{}')[key]; if (!day) return;
+    var list = index == null ? day.entries : [day.entries[index]];
+    document.getElementById('calPopTitle').textContent = index == null
+      ? day.label + ' · ' + day.entries.length + ' item' + (day.entries.length === 1 ? '' : 's') : day.label;
+    document.getElementById('calPopDay').href = el.dataset.dayUrl.replace('2000-01-01', key);
+    document.getElementById('calPopBody').innerHTML = list.map(card).join('');
+    bootstrap.Modal.getOrCreateInstance(el).show();
+  }
+  document.addEventListener('click', function (ev) {
+    if (!document.getElementById('calDays')) return;
+    var item = ev.target.closest('.cal-item');
+    if (item) { ev.preventDefault(); open(item.dataset.day, +item.dataset.index); return; }
+    var more = ev.target.closest('.cal-more');
+    if (more) { ev.preventDefault(); open(more.dataset.day, null); return; }
+    var cell = ev.target.closest('.cal-day');
+    if (cell && !ev.target.closest('.cal-date') && cell.querySelector('.cal-dots')
+        && window.matchMedia('(max-width:575.98px)').matches) {
+      open(cell.dataset.day, null);
+    }
+  });
+})();
+</script>
+{% endblock %}

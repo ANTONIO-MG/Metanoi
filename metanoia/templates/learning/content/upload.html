@@ -1,0 +1,54 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+Upload documents with their .json sidecar and .md text. apps.learning.content_uploads.upload
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``content``.
+{% endcomment %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h1 class="h4 mb-1"><i class="bi bi-upload text-primary me-2"></i>Upload content</h1>
+    <p class="small text-muted mb-0">Choose the document together with its <code>.json</code> sidecar (where it goes) and its
+      <code>.md</code> text (what it says) — three files with the same name. You can select several documents' files at once;
+      they are matched by name. A <code>.md</code> that follows the <a href="{% url 'learning:content-format' %}">standard template</a>
+      converts exactly; anything else is drafted by the AI assistant. Either way you review the draft before it is used.</p>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card">
+  {% csrf_token %}
+  <div class="card-body">
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Files</label>
+      <input type="file" name="files" class="form-control" multiple required
+             accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.json,.jpg,.jpeg,.png">
+      <div class="form-text">e.g. <code>CGAU_B26S_T2_W1_Controls_StudyGuide_v1.pdf</code> + <code>….json</code> + <code>….md</code>. Max 40 MB in total.</div>
+    </div>
+
+    <details class="mb-3">
+      <summary class="small fw-semibold">No sidecar? Place it here instead (the sidecar wins where both are given)</summary>
+      <div class="row g-2 mt-1">
+        <div class="col-md-6"><label class="form-label small">Module</label>
+          <select name="offering" class="form-select form-select-sm"><option value="">—</option>
+            {% for o in offerings %}<option value="{{ o.pk }}" {% if form.offering == o.pk|stringformat:'s' %}selected{% endif %}>{{ o.programme.institution.code }} · {{ o.programme.code }} · {{ o.code }} — {{ o.name }}</option>{% endfor %}
+          </select></div>
+        <div class="col-md-6"><label class="form-label small">Document type</label>
+          <select name="doc_type" class="form-select form-select-sm"><option value="">— from the sidecar / file name —</option>
+            {% for k, label in doc_types %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-md-3"><label class="form-label small">Intake</label><input name="cohort" class="form-control form-control-sm" placeholder="B26S"></div>
+        <div class="col-md-3"><label class="form-label small">Prepares for</label>
+          <select name="assessment_kind" class="form-select form-select-sm"><option value="">—</option><option value="test">Test</option><option value="exam">Exam</option><option value="other">Module resources</option></select></div>
+        <div class="col-md-3"><label class="form-label small">Number</label><input name="assessment_sequence" type="number" min="1" max="9" class="form-control form-control-sm" placeholder="1"></div>
+        <div class="col-md-3"><label class="form-label small">Week</label><input name="week" type="number" min="1" max="30" class="form-control form-control-sm" placeholder="optional"></div>
+      </div>
+    </details>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" name="auto_draft" value="1" id="autoDraft" checked>
+      <label class="form-check-label small" for="autoDraft">Draft straight away (template first; the AI assistant only when the .md does not follow it)</label>
+    </div>
+    <button class="btn btn-primary"><i class="bi bi-upload me-1"></i>Upload &amp; draft</button>
+    <a class="btn btn-link" href="{% url 'learning:content-queue' %}">Back to the queue</a>
+  </div>
+</form>
+{% endblock %}

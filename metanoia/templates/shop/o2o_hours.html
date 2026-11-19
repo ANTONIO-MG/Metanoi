@@ -1,0 +1,159 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load commerce %}
+{% comment %}
+A one-on-one student's page (shop.views_one_on_one.hours): hours left per
+module, unpaid invoices, upcoming and past sessions, buy hours.
+
+Context: modules, rate, owed, outstanding, settled, pending, upcoming, past,
+notice_hours, grace, overtime_fee.
+
+Blocks: overrides ``content`` and ``additional_js``.
+{% endcomment %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-2">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h3 class="mb-0">My one-on-one sessions</h3>
+      <small class="text-muted">{{ rate|rand }} per module per hour · your modules stay open whatever you owe.</small>
+    </div>
+  </div>
+
+  {% if not settled %}
+  <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert">
+    <span><i class="bi bi-exclamation-triangle me-1"></i><strong>{{ owed|rand }} outstanding.</strong>
+      Please settle your session invoices — the next session can be booked once they are paid.</span>
+    <span class="d-flex flex-wrap gap-2">
+      {% for inv in outstanding %}<a class="btn btn-sm btn-dark mb-0" href="{{ inv.get_pay_url }}">Pay {{ inv.number }} · {{ inv.balance|rand }}</a>{% endfor %}
+    </span>
+  </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-3">Hours left</h5>
+        {% if modules %}
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead><tr class="text-xs text-uppercase text-muted"><th>Module</th><th class="text-end">Hours</th><th></th></tr></thead>
+            <tbody>
+            {% for row in modules %}
+              <tr>
+                <td class="text-sm text-wrap"><strong>{{ row.module.code }}</strong> — {{ row.module.display_name }}</td>
+                <td class="text-end">{{ row.hours|floatformat:"-2" }}</td>
+                <td class="text-end">
+                  {% if row.hours and settled and row.book %}<a class="btn btn-sm btn-primary mb-0" href="{{ row.book }}"><i class="bi bi-calendar-plus me-1"></i>Book</a>
+                  {% elif row.hours and not row.book %}<span class="text-xs text-muted">We will schedule this with you.</span>{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p class="text-muted mb-0">You are not registered for any modules yet.</p>
+        {% endif %}
+        {% if pending %}
+          <p class="text-xs text-muted mt-3 mb-1">Waiting for payment — the hours are added as soon as it clears:</p>
+          <ul class="list-unstyled text-sm mb-0">
+            {% for p in pending %}<li><a href="{{ p.invoice.get_pay_url }}">{{ p.invoice.number }}</a> ·
+              {% for line in p.lines.all %}{{ line.programme_module.code }} {{ line.hours }} h{% if not forloop.last %}, {% endif %}{% endfor %} · {{ p.invoice.balance|rand }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </div></div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-1">Buy hours</h5>
+        <p class="text-xs text-muted mb-3">Tick the modules and how many hours each. Pay, then book a time that suits you.</p>
+        {% if modules %}
+        <form method="post" id="buyHours">
+          {% csrf_token %}<input type="hidden" name="action" value="buy">
+          {% for row in modules %}
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+              <label class="text-sm mb-0" for="h{{ row.module.pk }}"><strong>{{ row.module.code }}</strong></label>
+              <select class="form-select form-select-sm w-auto" name="hours_{{ row.module.pk }}" id="h{{ row.module.pk }}" data-hours>
+                <option value="0">—</option>
+                {% for n in "x"|rjust:max_hours %}<option value="{{ forloop.counter }}">{{ forloop.counter }} h</option>{% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+          <div class="d-flex justify-content-between align-items-center p-2 rounded-3 bg-gray-100 my-3">
+            <span class="text-sm text-muted">Total</span><strong>R <span id="buyTotal">0.00</span></strong>
+          </div>
+          <div class="d-grid gap-2">
+            <button class="btn bg-gradient-info mb-0" name="pay" value="now"><i class="bi bi-credit-card me-1"></i>Pay now</button>
+            <button class="btn btn-outline-secondary mb-0" name="pay" value="eft"><i class="bi bi-envelope me-1"></i>E-mail me the invoice (EFT)</button>
+          </div>
+        </form>
+        {% endif %}
+      </div></div>
+    </div>
+  </div>
+
+  <div class="card mt-3"><div class="card-body">
+    <h5 class="mb-3">Upcoming sessions</h5>
+    {% for b in upcoming %}
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 border-bottom">
+        <div class="text-sm">
+          <strong>{{ b.label }}</strong> · {% if b.programme_module %}{{ b.programme_module.code }} · {% endif %}with {{ b.educator }}
+          {% if b.paid_by == 'account' and b.invoice and b.invoice.status != 'paid' %}<span class="badge bg-warning text-dark ms-1">Invoice open</span>{% endif %}
+        </div>
+        <div class="d-flex gap-2">
+          {% if b.meeting %}<a class="btn btn-sm btn-primary mb-0" href="{{ b.meeting.get_join_url }}"><i class="bi bi-camera-video me-1"></i>Join</a>{% endif %}
+          <form method="post" action="{% url 'shop:o2o-cancel' b.pk %}"
+                onsubmit="return confirm('Cancel this session? Cancelling less than {{ notice_hours }} hours before uses the hour.');">
+            {% csrf_token %}<button class="btn btn-sm btn-link text-danger mb-0">Cancel</button>
+          </form>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-muted mb-0">No sessions booked yet.</p>
+    {% endfor %}
+    <p class="text-xs text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Cancel at least {{ notice_hours }} hours
+      before and the hour comes back to you; later, it is used. A session that runs more than {{ grace }} minutes past its
+      booked time adds a {{ overtime_fee|rand }} invoice.</p>
+  </div></div>
+
+  {% if past %}
+  <div class="card mt-3"><div class="card-body">
+    <h5 class="mb-3">Past sessions</h5>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr class="text-xs text-uppercase text-muted"><th>When</th><th>Module</th><th>Status</th><th class="text-end">Invoices</th></tr></thead>
+      <tbody>
+      {% for b in past %}
+        <tr class="text-sm">
+          <td>{{ b.label }}</td>
+          <td>{{ b.programme_module.code|default:"—" }}</td>
+          <td>{{ b.get_status_display }}</td>
+          <td class="text-end">
+            {% if b.invoice %}<a href="{{ b.invoice.get_pay_url }}">{{ b.invoice.number }}</a> ({{ b.invoice.get_status_display|lower }}){% endif %}
+            {% if b.overtime_invoice %}<a href="{{ b.overtime_invoice.get_pay_url }}">{{ b.overtime_invoice.number }}</a> (overtime, {{ b.overtime_invoice.get_status_display|lower }}){% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div></div>
+  {% endif %}
+</div></div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+(function () {
+  var rate = {{ rate|floatformat:2|default:"300" }};
+  var out = document.getElementById('buyTotal');
+  if (!out) return;
+  function sum() {
+    var t = 0;
+    document.querySelectorAll('[data-hours]').forEach(function (s) { t += (parseInt(s.value, 10) || 0) * rate; });
+    out.textContent = t.toFixed(2);
+  }
+  document.querySelectorAll('[data-hours]').forEach(function (s) { s.addEventListener('change', sum); });
+  sum();
+})();
+</script>
+{% endblock %}

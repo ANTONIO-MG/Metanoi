@@ -1,0 +1,34 @@
+{% extends "layouts/base.html" %}
+{% load i18n admin_urls %}
+{% comment %}Delete one record — OVERRIDES the old admin theme's (orange "take me back",
+stray glyphs). What will go, then a red confirm and a way back to the record.{% endcomment %}
+{% block content %}
+<div id="content-main" class="card ta-delete">
+  <div class="card-body">
+  {% if perms_lacking %}
+    <h2 class="ta-h2"><i class="bi bi-shield-lock"></i>{% translate "You can’t delete this" %}</h2>
+    <p>{% blocktranslate with escaped_object=object %}Deleting the {{ object_name }} “{{ escaped_object }}” would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:{% endblocktranslate %}</p>
+    <ul class="ta-delete__list">{{ perms_lacking|unordered_list }}</ul>
+  {% elif protected %}
+    <h2 class="ta-h2"><i class="bi bi-shield-lock"></i>{% translate "Protected by other records" %}</h2>
+    <p>{% blocktranslate with escaped_object=object %}Deleting the {{ object_name }} “{{ escaped_object }}” would require deleting the following protected related objects:{% endblocktranslate %}</p>
+    <ul class="ta-delete__list">{{ protected|unordered_list }}</ul>
+  {% else %}
+    <div class="ta-delete__warn"><i class="bi bi-exclamation-triangle"></i>
+      <p>{% blocktranslate with escaped_object=object %}Are you sure you want to delete the {{ object_name }} “{{ escaped_object }}”? All of the following related items will be deleted:{% endblocktranslate %}</p>
+    </div>
+    {% include "admin/includes/object_delete_summary.html" %}
+    <ul class="ta-delete__list">{{ deleted_objects|unordered_list }}</ul>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="post" value="yes">
+      {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+      {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
+      <div class="ta-submit ta-submit--static">
+        <button type="submit" class="ta-danger ta-danger--solid"><i class="bi bi-trash3"></i>{% translate 'Yes, delete it' %}</button>
+        <a class="ta-ghost" href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}">{% translate "No, take me back" %}</a>
+      </div>
+    </form>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

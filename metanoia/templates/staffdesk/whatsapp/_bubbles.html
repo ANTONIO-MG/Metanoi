@@ -1,0 +1,34 @@
+{% load people whatsapp_format %}{% comment %}
+One bubble per WhatsAppMessage in ``conversation``.
+
+Used by the inbox page and by the poll endpoint, so new messages look exactly
+like the ones already shown.
+
+Include parameters: conversation (messages, oldest first), shared.
+{% endcomment %}
+{% for m in conversation %}
+{% ifchanged m.created_at|date:"Ymd" %}<div class="wa-day"><span>{{ m.created_at|date:"l j F Y" }}</span></div>{% endifchanged %}
+<div class="wa-msg wa-msg--{{ m.direction }}{% if m.kind == 'notification' or m.kind == 'template' or m.kind == 'code' %} wa-msg--auto{% endif %}" id="wa-m{{ m.pk }}" data-id="{{ m.pk }}">
+  {% if shared and m.person %}<div class="wa-msg__who">{% if m.direction == 'in' %}From{% else %}For{% endif %} {% person_link m.person %}</div>{% endif %}
+  {% if m.kind == 'image' %}
+    <a href="{% url 'staffdesk:whatsapp-media' m.pk %}" target="_blank" rel="noopener" class="wa-msg__media"><img src="{% url 'staffdesk:whatsapp-media' m.pk %}" alt="Photo{% if m.body %}: {{ m.body }}{% endif %}" loading="lazy"></a>
+  {% elif m.kind == 'audio' %}
+    <audio controls preload="none" src="{% url 'staffdesk:whatsapp-media' m.pk %}"></audio>
+  {% elif m.kind == 'video' %}
+    <video controls preload="none" src="{% url 'staffdesk:whatsapp-media' m.pk %}"></video>
+  {% elif m.kind == 'document' and m.media or m.kind == 'document' and m.media_id %}
+    <a class="wa-msg__file" href="{% url 'staffdesk:whatsapp-media' m.pk %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span>{{ m.media_filename|default:"Document" }}</span></a>
+  {% endif %}
+  {% if m.body %}<div class="wa-msg__body">{{ m.body|whatsapp }}</div>{% endif %}
+  <div class="wa-msg__meta">
+    <span>{{ m.created_at|date:"H:i" }}</span>
+    {% if m.direction == 'out' %}
+      <span>· {% if m.sent_by %}{{ m.sent_by|person_name }}{% elif m.kind == 'notification' %}Notification{% elif m.kind == 'code' %}Verification{% elif m.template %}Template{% else %}Bot{% endif %}</span>
+      <span class="wa-tick wa-tick--{{ m.status|default:'sent' }}" data-status title="{{ m.get_status_display }}{% if m.error %}: {{ m.error }}{% endif %}">
+        {% if m.status == 'read' %}<i class="bi bi-check2-all" aria-hidden="true"></i> Read{% elif m.status == 'delivered' %}<i class="bi bi-check2-all" aria-hidden="true"></i> Delivered{% elif m.status == 'failed' %}<i class="bi bi-exclamation-circle" aria-hidden="true"></i> Not delivered{% elif m.status == 'queued' %}<i class="bi bi-hourglass-split" aria-hidden="true"></i> Waiting for them to reply{% else %}<i class="bi bi-check2" aria-hidden="true"></i> Sent{% endif %}
+      </span>
+    {% elif m.command %}<span>· bot: {{ m.command }}</span>{% endif %}
+  </div>
+  {% if m.status == 'failed' and m.error %}<div class="wa-msg__error">{{ m.error }}</div>{% endif %}
+</div>
+{% endfor %}

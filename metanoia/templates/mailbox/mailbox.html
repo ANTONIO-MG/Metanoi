@@ -1,0 +1,184 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load static %}
+{% comment %}
+Metanoia Mail. The list and reading pane are swapped in place by static/js/mailbox.js;
+every link here also works as a plain page load.
+
+Regions, in order: the ribbon, the folder pane, the message list, the reading
+pane (``mailbox/_read.html``), the "send drafts in one go" dialog and the
+attachment preview (filled by ``mailbox.js``).{% endcomment %}
+
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/mailbox.css' %}?v=4">{% endblock %}
+
+{% block content %}
+<div class="mb-app" id="mbApp"
+     data-list-url="{% url 'mailbox:list' %}" data-action-url="{% url 'mailbox:action' %}"
+     data-sync-url="{% url 'mailbox:sync' %}" data-new-url="{% url 'mailbox:draft-new' %}"
+     data-contacts-url="{% url 'mailbox:contacts' %}" data-folder-url="{% url 'mailbox:folder-create' %}"
+     data-home-url="{% url 'mailbox:inbox' %}" data-outbox-url="{% url 'mailbox:drafts-outbox' %}" data-csrf="{{ csrf_token }}"
+     data-folder="{{ folder_key }}" data-account="{{ account.pk }}"
+     data-selected="{{ selected.pk|default:'' }}">
+
+  <header class="mb-ribbon">
+    <div class="mb-ribbon__brand">
+      <button type="button" class="mb-iconbtn mb-only-narrow" data-mb="toggle-folders" title="Folders"><i class="bi bi-list"></i></button>
+      <span class="mb-logo"><i class="bi bi-envelope-paper-fill"></i></span>
+      <strong>Metanoia Mail</strong>
+    </div>
+    <form class="mb-search" id="mbSearch" role="search" action="{% url 'mailbox:inbox' %}" method="get">
+      <i class="bi bi-search"></i>
+      <input type="hidden" name="folder" value="{{ folder_key }}">
+      <input type="search" name="q" value="{{ q }}" placeholder="Search mail and people" autocomplete="off" aria-label="Search">
+      <select name="scope" class="mb-search__scope" aria-label="Search in">
+        <option value="folder" {% if scope != 'all' %}selected{% endif %}>This folder</option>
+        <option value="all" {% if scope == 'all' %}selected{% endif %}>All folders</option>
+      </select>
+    </form>
+    <div class="mb-ribbon__end">
+      <button type="button" class="mb-iconbtn" data-mb="sync" title="Send / Receive"><i class="bi bi-arrow-repeat"></i></button>
+      <a class="mb-iconbtn" href="{% url 'mailbox:settings' %}" title="Mail settings"><i class="bi bi-gear"></i></a>
+    </div>
+  </header>
+
+  <div class="mb-commands" role="toolbar" aria-label="Message commands">
+    <button type="button" class="mb-cmd mb-cmd--primary" data-mb="new"><i class="bi bi-pencil-square"></i><span>New mail</span></button>
+    <button type="button" class="mb-cmd" data-mb="send-drafts" title="Pick drafts and send them in one go"><i class="bi bi-send-check"></i><span>Send drafts</span></button>
+    <span class="mb-sep"></span>
+    <button type="button" class="mb-cmd" data-mb="act" data-act="delete" data-needs="sel"><i class="bi bi-trash3"></i><span>Delete</span></button>
+    <button type="button" class="mb-cmd" data-mb="act" data-act="archive" data-needs="sel"><i class="bi bi-archive"></i><span>Archive</span></button>
+    <button type="button" class="mb-cmd" data-mb="act" data-act="{% if folder.role == 'junk' %}inbox{% else %}junk{% endif %}" data-needs="sel">
+      <i class="bi bi-slash-circle"></i><span>{% if folder.role == 'junk' %}Not junk{% else %}Junk{% endif %}</span></button>
+    <div class="dropdown d-inline-block">
+      <button type="button" class="mb-cmd" data-bs-toggle="dropdown" data-needs="sel"><i class="bi bi-folder-symlink"></i><span>Move to</span><i class="bi bi-chevron-down mb-caret"></i></button>
+      <ul class="dropdown-menu mb-menu">
+        {% for f in move_targets %}
+        <li><button class="dropdown-item" type="button" data-mb="act" data-act="move" data-folder="{{ f.pk }}" style="padding-left:{{ f.depth|add:1 }}rem">
+          <i class="bi {{ f.icon }} me-2"></i>{{ f.label }}</button></li>
+        {% endfor %}
+      </ul>
+    </div>
+    <span class="mb-sep"></span>
+    <button type="button" class="mb-cmd" data-mb="respond" data-mode="reply" data-needs="one"><i class="bi bi-reply"></i><span>Reply</span></button>
+    <button type="button" class="mb-cmd" data-mb="respond" data-mode="replyall" data-needs="one"><i class="bi bi-reply-all"></i><span>Reply all</span></button>
+    <button type="button" class="mb-cmd" data-mb="respond" data-mode="forward" data-needs="one"><i class="bi bi-forward"></i><span>Forward</span></button>
+    <span class="mb-sep"></span>
+    <button type="button" class="mb-cmd" data-mb="toggle-read" data-needs="sel"><i class="bi bi-envelope-open"></i><span>Read / Unread</span></button>
+    <button type="button" class="mb-cmd" data-mb="toggle-flag" data-needs="sel"><i class="bi bi-flag"></i><span>Flag</span></button>
+    <span class="mb-status" id="mbStatus" aria-live="polite"></span>
+  </div>
+
+  {% for a in errors %}
+  <div class="mb-banner"><i class="bi bi-exclamation-triangle-fill"></i>
+    <span><strong>{{ a.email_address }}</strong>: {{ a.last_error }}</span>
+    <a href="{% url 'mailbox:settings' %}?edit={{ a.pk }}">Fix in Mail settings</a></div>
+  {% endfor %}
+
+  <div class="mb-panes" id="mbPanes">
+    <nav class="mb-folders" id="mbFolders" aria-label="Folders">
+      {% for node in tree %}
+      <div class="mb-acct">
+        <div class="mb-acct__head" title="{{ node.account.email_address }}">
+          <i class="bi bi-chevron-down"></i><span>{{ node.account.email_address }}</span>
+        </div>
+        <ul>
+          {% for f in node.folders %}
+            {% if f.role == 'drafts' %}
+            <li><a href="?folder={{ f.pk }}" data-folder="{{ f.pk }}" class="mb-folder{% if folder_key == node.drafts_key %} is-on{% endif %}">
+              <i class="bi bi-pencil"></i><span>Drafts</span>
+              <b data-count-draft="d{{ node.account.pk }}">{% if node.local_drafts %}[{{ node.local_drafts }}]{% endif %}</b></a></li>
+            {% else %}
+            <li><a href="?folder={{ f.pk }}" data-folder="{{ f.pk }}" class="mb-folder{% if f.role == 'inbox' %} mb-folder--inbox{% endif %}{% if folder_key == f.pk|stringformat:'s' %} is-on{% endif %}"
+                   style="padding-left:{{ f.depth|add:1 }}rem">
+              <i class="bi {{ f.icon }}"></i><span>{{ f.label }}</span>
+              <b data-count="{{ f.pk }}" data-role="{{ f.role }}">{% if f.unread and f.role != 'sent' and f.role != 'trash' %}{{ f.unread }}{% endif %}</b></a></li>
+            {% endif %}
+            {% if forloop.first and not node.has_drafts_folder %}
+            <li><a href="?folder=d{{ node.account.pk }}" data-folder="d{{ node.account.pk }}" class="mb-folder{% if folder_key == node.drafts_key %} is-on{% endif %}">
+              <i class="bi bi-pencil"></i><span>Drafts</span>
+              <b data-count-draft="d{{ node.account.pk }}">{% if node.local_drafts %}[{{ node.local_drafts }}]{% endif %}</b></a></li>
+            {% endif %}
+          {% empty %}
+            <li class="mb-folders__empty">Importing folders… <button type="button" class="btn btn-link btn-sm p-0" data-mb="sync">Refresh</button></li>
+          {% endfor %}
+        </ul>
+        <button type="button" class="mb-newfolder" data-mb="new-folder" data-account="{{ node.account.pk }}"><i class="bi bi-plus-lg"></i>Create new folder</button>
+      </div>
+      {% endfor %}
+      <a class="mb-folders__settings" href="{% url 'mailbox:settings' %}"><i class="bi bi-plus-circle"></i>Add or manage mailboxes</a>
+    </nav>
+
+    <section class="mb-list" id="mbList" aria-label="Messages">
+      <div class="mb-list__head">
+        <label class="mb-check" title="Select all"><input type="checkbox" id="mbSelectAll"><span></span></label>
+        <h2 id="mbListTitle">{{ list_title }}</h2>
+        <div class="dropdown ms-auto">
+          <button type="button" class="mb-filter" data-bs-toggle="dropdown"><i class="bi bi-funnel"></i>
+            <span id="mbFilterLabel">{% if filter == 'unread' %}Unread{% elif filter == 'flagged' %}Flagged{% elif filter == 'attachments' %}Has files{% else %}All{% endif %}</span></button>
+          <ul class="dropdown-menu dropdown-menu-end mb-menu">
+            <li><button class="dropdown-item" type="button" data-mb="filter" data-filter="all">All</button></li>
+            <li><button class="dropdown-item" type="button" data-mb="filter" data-filter="unread">Unread</button></li>
+            <li><button class="dropdown-item" type="button" data-mb="filter" data-filter="flagged">Flagged</button></li>
+            <li><button class="dropdown-item" type="button" data-mb="filter" data-filter="attachments">Has files</button></li>
+          </ul>
+        </div>
+      </div>
+      <div class="mb-rows" id="mbRows" data-filter="{{ filter }}" data-q="{{ q }}" data-scope="{{ scope }}">
+        {% include 'mailbox/_list_rows.html' %}
+      </div>
+    </section>
+
+    <section class="mb-read" id="mbRead" aria-label="Reading pane">
+      {% if compose_ctx %}{% include 'mailbox/_compose.html' %}
+      {% elif read_ctx %}{% include 'mailbox/_read.html' %}
+      {% else %}{% include 'mailbox/_empty.html' %}{% endif %}
+    </section>
+  </div>
+</div>
+
+<div class="modal fade" id="mbSendDrafts" tabindex="-1" aria-labelledby="mbSendDraftsTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg"><div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title h5" id="mbSendDraftsTitle"><i class="bi bi-send-check me-2"></i>Send drafts</h2>
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body p-0">
+      <div class="mb-bulk__head">
+        <label class="mb-check" title="Select all"><input type="checkbox" data-bulk-all><span></span></label>
+        <span class="mb-bulk__col">To</span><span class="mb-bulk__col mb-bulk__col--grow">Subject</span>
+        <span class="mb-bulk__col mb-bulk__col--from">From</span>
+      </div>
+      <div class="mb-bulk__rows" data-bulk-rows><div class="mb-bulk__note">Loading drafts…</div></div>
+    </div>
+    <div class="modal-footer">
+      <span class="me-auto small text-muted" data-bulk-summary></span>
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+      <button type="button" class="btn btn-primary" data-bulk-send disabled><i class="bi bi-send-fill me-1"></i><span>Send selected</span></button>
+    </div>
+  </div></div>
+</div>
+
+<div class="modal fade mb-preview" id="mbPreview" tabindex="-1" aria-labelledby="mbPreviewTitle" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down"><div class="modal-content">
+    <div class="modal-header mb-preview__head">
+      <i class="bi bi-file-earmark mb-preview__icon" data-preview-icon aria-hidden="true"></i>
+      <div class="mb-preview__title">
+        <h2 class="modal-title h6" id="mbPreviewTitle" data-preview-name></h2>
+        <span class="mb-preview__size" data-preview-size></span>
+      </div>
+      <div class="mb-preview__actions">
+        <a class="btn btn-outline-secondary btn-sm" data-preview-open href="#" target="_blank" rel="noopener"
+           title="Open in new tab"><i class="bi bi-box-arrow-up-right"></i><span class="mb-preview__label">Open in new tab</span></a>
+        <a class="btn btn-primary btn-sm" data-preview-download href="#" download
+           title="Download"><i class="bi bi-download"></i><span class="mb-preview__label">Download</span></a>
+      </div>
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close preview"></button>
+    </div>
+    <div class="modal-body mb-preview__body" data-preview-body></div>
+  </div></div>
+</div>
+
+<script>
+Metanoia.whenReady(function () {
+  Metanoia.ensureScript("{% static 'js/mailbox.js' %}?v=4", function () { window.MetanoiaMail && window.MetanoiaMail.init(); });
+});
+</script>
+{% endblock %}

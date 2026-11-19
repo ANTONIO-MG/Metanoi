@@ -1,0 +1,6 @@
+{% load mailbox_tags %}<div class="{{ col|default:'col-12' }}">
+  <label class="form-label small" for="{{ f.id_for_label }}">{{ f.label }}</label>
+  {{ f|mb_widget }}
+  {% for e in f.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+  {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}
+</div>

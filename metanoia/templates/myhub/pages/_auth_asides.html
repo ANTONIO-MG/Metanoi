@@ -1,0 +1,14 @@
+{% comment %}The two cards under the headline on the sign-in pages: a brown
+"Questions first?" card with the WhatsApp number, and a cream "Your details
+are safe" card.{% endcomment %}
+<div class="t-aside t-aside--navy">
+  <i class="bi bi-chat" aria-hidden="true"></i>
+  <h3>Questions first?</h3>
+  <p>Fair. Message us on WhatsApp and you'll get a straight answer from a real person.</p>
+  {% if brand.contact.whatsapp_url %}<a class="t-pill-green" href="{{ brand.contact.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i>{{ brand.contact.whatsapp|default:"WhatsApp" }}</a>{% endif %}
+</div>
+<div class="t-aside t-aside--cloud">
+  <i class="bi bi-lock" aria-hidden="true"></i>
+  <h3>Your details are safe</h3>
+  <p>We use your details to run your learning account and stay in touch about it, in line with POPIA and our privacy policy.</p>
+</div>

@@ -1,0 +1,27 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Metanoia Group after-class run (recordings, transcripts, AI session packs)
+After=network-online.target postgresql@16-main.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/projects/Metanoia/metanoia
+ExecStart=/home/ubuntu/projects/Metanoia/metanoia/.environment/bin/python manage.py run_scheduled_jobs --tick sessions
+
+TimeoutStartSec=7200
+
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+{% comment %}The public Terms of Service page. The wording lives in
+``myhub/pages/_tos-body.html`` (also rendered to PDF by
+``manage.py export_terms_pdf``); this page wraps it with the navbar, terms
+styling and footer credit. Overrides ``content`` of ``base.html``.{% endcomment %}
+
+{% block content %}
+{% include 'partials/navbar.html' %}
+<main>
+  {% include 'partials/_terms_style.html' %}
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-9 mx-auto">
+        <nav class="d-flex flex-wrap gap-2 mb-3" aria-label="Legal documents">
+          <a class="btn btn-sm btn-primary-soft" href="{% url 'pages:terms-and-conditions' %}">Terms &amp; Conditions</a>
+          <a class="btn btn-sm btn-primary-soft" href="{% url 'pages:privacy-and-terms' %}#privacy">Privacy Policy</a>
+          <a class="btn btn-sm btn-outline-primary" href="{% static 'legal/metanoia-terms-of-service.pdf' %}" download><i class="bi bi-file-earmark-pdf me-1"></i>Download (PDF)</a>
+        </nav>
+        <div class="card" id="terms-of-service">
+          <div class="card-header">
+            <h1 class="card-title h4 mb-0">Terms of Service</h1>
+            <p class="mb-0 small text-muted">{{ brand.name }} website and public pages</p>
+          </div>
+          <div class="card-body">
+            {% include 'myhub/pages/_tos-body.html' %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="bg-mode py-3">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-6">
+        <ul class="nav lh-1">
+          <li class="nav-item"><a class="nav-link ps-0" href="{% url 'myhub:page-login' %}">Sign in</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'pages:terms-and-conditions' %}">Terms &amp; Conditions</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'pages:privacy-and-terms' %}#privacy">Privacy</a></li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <p class="text-lg-end mb-0">©{{ brand.year }} <a class="text-body" target="_blank" rel="noopener" href="{{ brand.company_url }}">{{ brand.name }}</a> All rights reserved.</p>
+        <p class="text-lg-end small text-muted mb-0">{% include 'partials/_built_by.html' %}</p>
+      </div>
+    </div>
+  </div>
+</footer>
+{% endblock content %}

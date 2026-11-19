@@ -1,0 +1,106 @@
+{% comment %}
+   Public Terms of Service — the rules for anyone who visits or uses Metanoia's
+   public website and pages (no account, no purchase needed). Purchases,
+   accounts, classes and materials are governed by the Terms & Conditions
+   (_terms-body.html); this document points there rather than repeating them.
+
+   Same markup rules as _terms-body.html (it is also rendered to PDF by
+   manage.py export_terms_pdf), and the same owner rule: no mention of AI.
+   Bump TOS_VERSION in apps/myhub/views.py when the wording changes materially.
+{% endcomment %}
+{% with co=brand.registered_name|default:brand.legal_name|default:brand.name contact_email=brand.contact.email|default:brand.support_email %}
+<div class="metanoia-terms">
+
+<p class="terms-meta">Version {{ tos_version|default:"2026-10b" }} · Effective 31 October 2026 · Applies to {{ brand.website|default:"https://metanoiagroup.co.za" }},
+  https://{{ brand.terms_host|default:"learn.metanoiagroup.co.za" }} and every public page, form and channel of {{ brand.name }}.</p>
+
+<div class="terms-key">
+  <p class="terms-key__title">In short</p>
+  <ul>
+    <li>These Terms of Service apply to everyone who visits or uses our public website and pages, whether or not you have an account.</li>
+    <li>If you create an account, enrol or buy anything, our <strong>Terms &amp; Conditions</strong> also apply. They include our <strong>no-refund policy</strong> and the fact that <strong>we do not guarantee a pass</strong>.</li>
+    <li>Information on our website is general and does not guarantee any result (clauses 4 and 5). Our liability is limited (clause 11).</li>
+    <li><strong>Refund Policy (section 13):</strong> fees are final once paid, apart from the refunds the law guarantees you. <strong>Shipping Policy (section 14):</strong> printed materials ship within South Africa only, by courier.</li>
+  </ul>
+</div>
+
+<h3>1. Who we are</h3>
+<p>The website is operated by {{ co }}{% if brand.registration_number %} (registration number {{ brand.registration_number }}){% endif %}, trading as {{ brand.name }} (“Metanoia”, “we”, “us”), a private company incorporated in South Africa{% if brand.contact.address %}, of {{ brand.contact.address }}{% endif %}. You can contact us at {{ contact_email }}{% if brand.contact.phone %} or {{ brand.contact.phone }}{% endif %}. The other information that section 43 of the Electronic Communications and Transactions Act 25 of 2002 requires is set out in clause 2 of our Terms &amp; Conditions.</p>
+
+<h3>2. Agreeing to these Terms of Service</h3>
+<p>2.1 By visiting or using the website, you agree to these Terms of Service and to our Privacy Policy. If you do not agree, please do not use the website.</p>
+<p>2.2 <strong>Accounts and purchases.</strong> Creating an account on the {{ brand.name }} Learning Hub, enrolling in a programme, booking a session or buying any product is governed by our <strong>Terms &amp; Conditions</strong>, which you accept at sign-up and before you pay. If these Terms of Service and the Terms &amp; Conditions conflict on those matters, the Terms &amp; Conditions apply.</p>
+<p>2.3 If you are under 18, you may browse the website, but a parent or guardian must agree on your behalf before you register, enrol or buy anything.</p>
+
+<h3>3. Using the website</h3>
+<p>You may use the website for lawful, personal and non-commercial purposes: to learn about Metanoia and our programmes, to contact us, to register and to buy. You may not:</p>
+<ul>
+  <li>use the website in a way that breaks any law, or infringes anyone's rights;</li>
+  <li>try to gain unauthorised access to the website, our systems or any account, or interfere with their security or operation — conduct that may be an offence under the Cybercrimes Act 19 of 2020;</li>
+  <li>copy, scrape, frame, mirror or extract content or data from the website by automated means, or reverse-engineer any part of it;</li>
+  <li>upload or send viruses, harmful code, spam or unsolicited advertising;</li>
+  <li>impersonate anyone, or falsely claim a connection with Metanoia; or</li>
+  <li>post or send anything unlawful, defamatory, offensive, misleading or that infringes someone else's rights.</li>
+</ul>
+
+<h3>4. Information on the website</h3>
+<p>4.1 The content of the website — programme descriptions, articles, videos, study tips, timetables and prices — is general information to help you decide whether Metanoia is right for you. It is not professional, legal, tax, accounting or financial advice, and it does not take your personal circumstances into account.</p>
+<p>4.2 We try to keep the website accurate and up to date, but we do not warrant that every item is complete, current or free of errors. Programme details, schedules and prices may change. The details that apply to you are those shown when you enrol or pay.</p>
+<p>4.3 <strong>Metanoia is an independent exam-coaching provider.</strong> We are not a university or registered higher-education institution, we do not award qualifications, and we are not affiliated with or endorsed by SAICA or any other professional or examining body, unless we say so in writing. Names of those bodies and their qualifications are used only to describe what our programmes help students prepare for.</p>
+
+<div class="terms-key">
+<h3>5. Results, testimonials and no guarantee</h3>
+<p>5.1 We teach students how to study and how to approach their exams. A student's result depends on their own effort, preparation and circumstances. <strong>We do not guarantee that any student will pass any exam or achieve any mark.</strong></p>
+<p>5.2 Testimonials, reviews, success stories and pass rates on the website are the real experiences of individual students, or our own records for a given period. They do not predict or promise what you will achieve.</p>
+</div>
+
+<h3>6. Intellectual property</h3>
+<p>6.1 The website and everything on it — text, graphics, logos, images, videos, documents, the {{ brand.name }} name and brand, and the software — belong to us or our licensors, and are protected by the Copyright Act 98 of 1978, the Trade Marks Act 194 of 1993 and other laws.</p>
+<p>6.2 You may view the website and print or download single pages for your own personal, non-commercial use, provided you keep all copyright notices. You may not otherwise copy, reproduce, republish, distribute, sell or create derivative works from any content without our prior written consent. You may link to our home page in a fair and lawful way that does not suggest any endorsement by us.</p>
+
+<h3>7. What you send us</h3>
+<p>7.1 When you complete a contact or enquiry form, send us a message, subscribe to updates, or leave a review or comment, you confirm that what you send is accurate, lawful and your own, and that you are entitled to share any personal information about other people that it contains.</p>
+<p>7.2 You allow us to use your enquiry to respond to you, and to publish your review or testimonial (with your first name or initials, unless you agree otherwise) on our website and in our marketing. We may edit it for length or clarity without changing its meaning, and may decline or remove any review in line with our guidelines and the law.</p>
+<p>7.3 <strong>Response times.</strong> We aim to reply to enquiries within 2 business days during office hours (Monday to Friday, 08:00 to 17:00 SAST, excluding public holidays). Clause 16 of our Terms &amp; Conditions sets out our full response targets.</p>
+
+<h3>8. Privacy and cookies</h3>
+<p>8.1 We process personal information you give us, or that we collect when you use the website, in line with the Protection of Personal Information Act 4 of 2013 (POPIA) and our Privacy Policy. We use it to respond to you, to provide and improve our website and programmes, to understand how visitors and students use our services so that we can better help them, and, only with your consent, to send you marketing. We do not sell your personal information.</p>
+<p>8.2 We use essential cookies to make the website work and, with your consent, analytics cookies to improve it. You can accept or decline non-essential cookies through the cookie banner and change your choice at any time.</p>
+<p>8.3 You may ask to access, correct or delete your personal information, object to its processing, or withdraw consent, by contacting our Information Officer at {{ contact_email }}. You may also complain to the Information Regulator (inforegulator.org.za).</p>
+
+<h3>9. Third-party links and services</h3>
+<p>The website may link to, or use, services operated by others — such as PayFast, YouTube, LinkedIn, WhatsApp, Google and third-party stores. We do not control them and are not responsible for their content, availability or privacy practices. Your use of them is governed by their own terms.</p>
+
+<h3>10. Availability and security</h3>
+<p>We aim to keep the website available, but we do not guarantee uninterrupted or error-free access. It may be unavailable because of maintenance, power or internet outages, or problems with providers we rely on. We take reasonable measures to keep the website secure, but cannot guarantee that it is free of viruses or other harmful components. Please use up-to-date security software.</p>
+
+<div class="terms-key">
+<h3>11. Limitation of liability</h3>
+<p>11.1 To the extent the law allows, the website is provided “as is” and “as available”, and we are not liable for any loss or damage arising from your use of, or inability to use, the website or its content, or from your reliance on information on it. This includes indirect or consequential loss, loss of data, and loss of income or opportunity.</p>
+<p>11.2 Nothing in these Terms of Service limits our liability for gross negligence or intentional misconduct, or any right you have under the Consumer Protection Act 68 of 2008 or other law that cannot be limited or excluded.</p>
+</div>
+
+<h3>12. Indemnity</h3>
+<p>You indemnify us against any claim, loss or cost (including reasonable legal costs) that arises because you breached these Terms of Service or used the website unlawfully, except to the extent that the loss was caused by our own fault.</p>
+
+<p class="terms-meta">Sections 13 and 14 below are our Refund Policy and Shipping Policy. They are the same as clauses 13 and 14 of our Terms &amp; Conditions, and words such as “Programme”, “Materials” and “Learning Hub” have the meanings given there.</p>
+
+{% include 'myhub/pages/_refund-policy.html' with n="13" %}
+
+{% include 'myhub/pages/_shipping-policy.html' with n="14" r="13" %}
+
+<h3>15. Changes</h3>
+<p>We may update these Terms of Service from time to time. The version and effective date at the top show which version applies. Changes take effect when published, and your continued use of the website after that means you accept them.</p>
+
+<h3>16. Governing law and disputes</h3>
+<p>16.1 These Terms of Service are governed by the laws of the Republic of South Africa. If you have a complaint, please contact us first at {{ contact_email }} so that we can try to resolve it.</p>
+<p>16.2 You keep your rights to approach the National Consumer Commission, the Consumer Goods and Services Ombud, the Information Regulator or a court with jurisdiction.</p>
+
+<h3>17. General</h3>
+<p>If any part of these Terms of Service is found invalid, the rest continues to apply. If we do not enforce a right immediately, we do not give it up. These Terms of Service, with our Privacy Policy and, where they apply, our Terms &amp; Conditions, are the whole agreement between you and us about your use of the website.</p>
+
+<h3>18. Contact</h3>
+<p>{{ co }}{% if brand.name != co %} t/a {{ brand.name }}{% endif %} · {{ contact_email }}{% if brand.contact.phone %} · {{ brand.contact.phone }}{% endif %}{% if brand.contact.address %} · {{ brand.contact.address }}{% endif %}</p>
+
+</div>
+{% endwith %}

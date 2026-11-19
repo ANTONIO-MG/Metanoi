@@ -1,0 +1,134 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}The free-slot finder, a fortnight at a time. Fully-booked days stay
+listed; every slot links into the create form with the start time filled in.
+
+Context: rows [{day, slots:[(start,end,minutes)], sessions, is_today,
+is_weekend}], start_day, end_day, days, minimum, open_from, open_to,
+weekdays_only, prev_from, next_from, total_slots, user_timezone.
+
+The search filters are a GET form, so a search is a bookmarkable URL.{% endcomment %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3">
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+      <h3 class="mb-0">Free slots</h3>
+      <small class="text-muted">
+        {{ start_day|date:"j M" }} – {{ end_day|date:"j M Y" }} ·
+        {{ total_slots }} slot{{ total_slots|pluralize }} of {{ minimum }} minutes or more
+        {% if user_timezone %} · times in {{ user_timezone }}{% endif %}
+      </small>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-light" href="{% url 'livesessions:calendar' %}">
+        <i class="bi bi-calendar3 me-1"></i>Month view</a>
+      <a class="btn btn-primary" href="{% url 'livesessions:session-create' %}">
+        <i class="bi bi-plus-lg me-1"></i>Schedule a session</a>
+    </div>
+  </div>
+
+  <div class="card mb-3"><div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-6 col-md-2">
+        <label class="form-label small text-muted mb-1" for="avFrom">From</label>
+        <input class="form-control form-control-sm" type="date" id="avFrom"
+               name="from" value="{{ start_day|date:'Y-m-d' }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small text-muted mb-1" for="avDays">Days ahead</label>
+        <select class="form-select form-select-sm" id="avDays" name="days">
+          <option value="7"{% if days == 7 %} selected{% endif %}>7 days</option>
+          <option value="14"{% if days == 14 %} selected{% endif %}>14 days</option>
+          <option value="21"{% if days == 21 %} selected{% endif %}>21 days</option>
+          <option value="28"{% if days == 28 %} selected{% endif %}>28 days</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small text-muted mb-1" for="avMin">At least</label>
+        <select class="form-select form-select-sm" id="avMin" name="min">
+          <option value="30"{% if minimum == 30 %} selected{% endif %}>30 minutes</option>
+          <option value="45"{% if minimum == 45 %} selected{% endif %}>45 minutes</option>
+          <option value="60"{% if minimum == 60 %} selected{% endif %}>1 hour</option>
+          <option value="90"{% if minimum == 90 %} selected{% endif %}>1½ hours</option>
+          <option value="120"{% if minimum == 120 %} selected{% endif %}>2 hours</option>
+        </select>
+      </div>
+      <div class="col-3 col-md-2">
+        <label class="form-label small text-muted mb-1" for="avFromHour">Day starts</label>
+        <input class="form-control form-control-sm" type="number" id="avFromHour"
+               name="from_hour" min="0" max="23" value="{{ open_from }}">
+      </div>
+      <div class="col-3 col-md-2">
+        <label class="form-label small text-muted mb-1" for="avToHour">Day ends</label>
+        <input class="form-control form-control-sm" type="number" id="avToHour"
+               name="to_hour" min="1" max="23" value="{{ open_to }}">
+      </div>
+      <div class="col-6 col-md-2 d-flex align-items-center gap-2">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="avWeekdays" name="weekdays"
+                 value="1"{% if weekdays_only %} checked{% endif %}>
+          <label class="form-check-label small" for="avWeekdays">Weekdays</label>
+        </div>
+        <button class="btn btn-sm btn-outline-primary ms-auto" type="submit">Apply</button>
+      </div>
+    </form>
+  </div></div>
+
+  <div class="d-flex justify-content-between mb-3">
+    <a class="btn btn-sm btn-light" href="?from={{ prev_from }}&amp;days={{ days }}&amp;min={{ minimum }}&amp;from_hour={{ open_from }}&amp;to_hour={{ open_to }}{% if weekdays_only %}&amp;weekdays=1{% endif %}">
+      <i class="bi bi-chevron-left me-1"></i>Earlier</a>
+    <a class="btn btn-sm btn-light" href="?from={{ next_from }}&amp;days={{ days }}&amp;min={{ minimum }}&amp;from_hour={{ open_from }}&amp;to_hour={{ open_to }}{% if weekdays_only %}&amp;weekdays=1{% endif %}">
+      Later<i class="bi bi-chevron-right ms-1"></i></a>
+  </div>
+
+  <div class="row g-3">
+    {% for row in rows %}
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card h-100{% if row.is_today %} border-primary{% endif %}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-baseline mb-2">
+            <h6 class="mb-0{% if row.is_weekend %} text-muted{% endif %}">
+              {{ row.day|date:"D j M" }}
+              {% if row.is_today %}<span class="badge bg-primary ms-1">Today</span>{% endif %}
+            </h6>
+            <small class="text-muted">
+              {% if row.sessions %}{{ row.sessions|length }} booked{% else %}Nothing booked{% endif %}
+            </small>
+          </div>
+
+          {% if row.slots %}
+            <div class="d-flex flex-wrap gap-2">
+              {% for start, end, minutes in row.slots %}
+                <a class="btn btn-sm btn-outline-success"
+                   href="{% url 'livesessions:session-create' %}?start={{ start|date:'c' }}"
+                   title="Schedule a session at {{ start|time:'H:i' }} on {{ row.day|date:'l j F' }}">
+                  {{ start|time:"H:i" }}–{{ end|time:"H:i" }}
+                  <span class="opacity-75">({{ minutes }} min)</span>
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted small mb-0">
+              {% if row.sessions %}Fully booked.{% else %}No gap of {{ minimum }} minutes or more.{% endif %}
+            </p>
+          {% endif %}
+
+          <a class="small d-inline-block mt-2" href="{% url 'livesessions:day' row.day|date:'Y-m-d' %}">
+            See the day <i class="bi bi-arrow-right-short"></i></a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+      <div class="col-12"><p class="text-muted">No days in this range.</p></div>
+    {% endfor %}
+  </div>
+
+  <p class="text-muted small mt-3 mb-0">
+    Gaps are worked out across <strong>every</strong> session on the platform — including ones
+    you cannot see — so a slot is never offered to two people at once. Your own connected
+    calendars are subtracted too, so a time that is free here is free for you as well.
+  </p>
+
+</div></div>
+{% endblock %}

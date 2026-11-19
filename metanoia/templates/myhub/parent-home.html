@@ -1,0 +1,135 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static people commerce %}
+{% comment %}A parent's home (apps.myhub.parent_home): the student(s) linked to them,
+and which one they are following. Choosing a child posts to
+accounts:parent-select-child, which keeps the choice in the session; progress,
+results and fees then open on that child (core.scoping.viewing_child).{% endcomment %}
+
+{% block additional_css %}
+<link href="{% static 'css/dashboard.css' %}" rel="stylesheet">
+<style>
+  .ph-kids{ display:grid; gap:1rem; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); }
+  .ph-kid{ position:relative; border:2px solid transparent; transition:border-color .15s, box-shadow .15s; }
+  .ph-kid.is-selected{ border-color:var(--dash-primary,#1d4ed8); box-shadow:0 0 0 4px rgba(29,78,216,.08); }
+  .ph-kid__top{ display:flex; gap:.85rem; align-items:center; }
+  .ph-kid__avatar{ width:56px; height:56px; border-radius:50%; object-fit:cover; flex:0 0 auto; }
+  .ph-kid__name{ font-weight:700; font-size:1.05rem; margin:0; }
+  .ph-kid__sub{ font-size:.82rem; color:#64748b; margin:0; }
+  .ph-kid__stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin:1rem 0; text-align:center; }
+  .ph-kid__stats b{ display:block; font-size:1.15rem; }
+  .ph-kid__stats span{ font-size:.72rem; color:#64748b; text-transform:uppercase; letter-spacing:.03em; }
+  .ph-badge{ position:absolute; top:.75rem; right:.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash vstack gap-4">
+
+  <section class="dash-hero">
+    <div class="dash-hero__inner">
+      <h1>Welcome, {{ account_stats.profile.name|default:user.get_username|truncatechars:34 }}</h1>
+      <p class="mb-0">
+        {% if cards|length > 1 %}Choose which of your children to follow. Their progress, results and fees open on the one you choose.
+        {% elif cards %}You are following {{ current.name }}.
+        {% else %}No student is linked to your account yet.{% endif %}
+      </p>
+    </div>
+  </section>
+
+  {% if cards %}
+  <div class="ph-kids" role="list" aria-label="My children">
+    {% for c in cards %}
+    <div class="dash-card ph-kid{% if c.selected %} is-selected{% endif %}" role="listitem">
+      <div class="dash-card__body">
+        {% if c.selected %}<span class="dash-chip dash-chip--primary ph-badge"><i class="bi bi-eye"></i> Following</span>{% endif %}
+        <div class="ph-kid__top">
+          <img class="ph-kid__avatar" src="{% if c.avatar_url %}{{ c.avatar_url }}{% else %}{% static 'images/avatar/default-neutral.svg' %}{% endif %}" alt="">
+          <div class="min-w-0">
+            <p class="ph-kid__name text-truncate">{{ c.name }}</p>
+            <p class="ph-kid__sub text-truncate">{% if c.programme %}{{ c.programme.display_name|default:c.programme }}{% else %}Not registered for a programme yet{% endif %}</p>
+          </div>
+        </div>
+        <div class="ph-kid__stats">
+          <div><b>{{ c.tiles.module_count|default:0 }}</b><span>Modules</span></div>
+          <div><b>{{ c.tiles.completion_pct|default:0 }}%</b><span>Tests 1–4</span></div>
+          <div><b class="{% if c.owed %}text-danger{% endif %}">{{ c.owed|rand }}</b><span>Owing</span></div>
+        </div>
+        {% if c.selected %}
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-sm btn-primary mb-0" href="{% url 'reports:my-progress' %}"><i class="bi bi-graph-up me-1"></i>Progress</a>
+          <a class="btn btn-sm btn-outline-primary mb-0" href="{% url 'finance:my-finances' %}"><i class="bi bi-pie-chart me-1"></i>Finances</a>
+          <a class="btn btn-sm btn-outline-primary mb-0" href="{% url 'finance:invoices' %}"><i class="bi bi-receipt me-1"></i>Invoices{% if c.owed_count %} ({{ c.owed_count }}){% endif %}</a>
+        </div>
+        {% else %}
+        <form method="post" action="{% url 'accounts:parent-select-child' %}" class="m-0">{% csrf_token %}
+          <input type="hidden" name="student" value="{{ c.user.pk }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary w-100 mb-0"><i class="bi bi-eye me-1"></i>Follow {{ c.name }}</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="dash-card"><div class="dash-card__body">
+    <div class="dash-empty"><i class="bi bi-person-plus"></i>
+      When your student sends you an invite (from their registration), open the link in that e-mail to link them here.
+      Already linked but not showing? <a href="{% url 'communication:message-metanoia' %}">Message the Metanoia team</a>.</div>
+  </div></div>
+  {% endif %}
+
+  {% if current %}
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="dash-card h-100">
+        <div class="dash-card__head">
+          <span class="dash-glyph dash-glyph--info"><i class="bi bi-graph-up"></i></span>
+          <h6>{{ current.name }}’s studies</h6>
+        </div>
+        <div class="dash-card__body">
+          <div class="dash-quick">
+            <a href="{% url 'reports:my-progress' %}"><i class="bi bi-graph-up" style="color:var(--dash-info)"></i>Progress &amp; analytics</a>
+            <a href="{% url 'reports:my-reports' %}"><i class="bi bi-patch-check" style="color:var(--dash-success)"></i>Results</a>
+            <a href="{% url 'livesessions:calendar' %}"><i class="bi bi-calendar-week" style="color:var(--dash-primary)"></i>Calendar</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="dash-card h-100">
+        <div class="dash-card__head">
+          <span class="dash-glyph dash-glyph--warning"><i class="bi bi-wallet2"></i></span>
+          <h6>{{ current.name }}’s fees</h6>
+        </div>
+        <div class="dash-card__body">
+          <p class="mb-2">{% if current.owed %}<strong class="text-danger">{{ current.owed|rand }}</strong> still to pay on {{ current.owed_count }} invoice{{ current.owed_count|pluralize }}.{% else %}Nothing owing right now.{% endif %}</p>
+          <div class="dash-quick">
+            <a href="{% url 'finance:my-finances' %}"><i class="bi bi-pie-chart" style="color:var(--dash-primary)"></i>Finances</a>
+            <a href="{% url 'finance:invoices' %}"><i class="bi bi-receipt" style="color:var(--dash-warning)"></i>Invoices</a>
+            <a href="{% url 'finance:statement' %}"><i class="bi bi-journal-text" style="color:var(--dash-info)"></i>Statement</a>
+            <a href="{% url 'finance:payment-history' %}"><i class="bi bi-clock-history" style="color:var(--dash-success)"></i>Payments</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="dash-card">
+    <div class="dash-card__head">
+      <span class="dash-glyph dash-glyph--primary"><i class="bi bi-people"></i></span>
+      <h6>Metanoia Community</h6>
+      <a class="dash-link" href="{% url 'pages:dashboard' %}">Open</a>
+    </div>
+    <div class="dash-card__body">
+      <div class="dash-quick">
+        <a href="{% url 'pages:dashboard' %}"><i class="bi bi-people" style="color:var(--dash-primary)"></i>Community feed</a>
+        <a href="{% url 'communication:message-metanoia' %}"><i class="bi bi-chat-heart" style="color:var(--dash-danger)"></i>Message Metanoia</a>
+        <a href="/communication/notifications/"><i class="bi bi-bell" style="color:var(--dash-warning)"></i>Notifications</a>
+        <a href="/shop/"><i class="bi bi-bag" style="color:var(--dash-success)"></i>Shop</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

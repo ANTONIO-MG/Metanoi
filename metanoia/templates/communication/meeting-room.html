@@ -1,0 +1,151 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load people %}
+{% comment %}
+Live-session launch page: Teams meetings can't be iframe-embedded.
+
+Sections: the Microsoft Teams launch card; the after-class artefacts, filled by
+apps.msteams after the session ends; and, for a historical session, the retired
+in-app video room's record. ``.copied-flash`` confirms a share only when the copy
+actually landed on the clipboard. The share button copies the link and a one-line
+invitation together; the Clipboard API needs a secure context, so it falls back to
+a hidden textarea and ``execCommand('copy')``.
+
+The join button goes through the identified hand-off, not straight at Teams: the
+redirect records who is going in while we still know, because Teams itself will
+only ever report the name they type. It also creates the Teams meeting there and
+then if the session does not have one yet (apps.livesessions.views.session_join).
+
+Automatic attendance: while this page is open and visible the heartbeat accrues
+real time against the backing class session — the student is off in the Teams
+client, but this launch tab stays open and is what we can actually measure.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``additional_css``, ``content``,
+``additional_js``. Includes ``livesessions/_host_start_note.html``,
+``partials/_presence.html``.
+{% endcomment %}
+
+{% block additional_css %}
+<style>
+  .meet-head{ gap:.75rem; }
+  .meet-actions .btn{ white-space:nowrap; }
+  .copied-flash{ animation:copied 1.6s ease; }
+  @keyframes copied{ 0%{ transform:scale(1) } 25%{ transform:scale(1.06) } 100%{ transform:scale(1) } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 meet-head">
+    <div class="min-w-0">
+      <h3 class="mb-0 text-truncate">{{ meeting.title }}</h3>
+      {% if meeting.scheduled_start %}
+        <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>{{ meeting.scheduled_start|date:"D d M, H:i" }}</small>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2 meet-actions">
+      <button type="button" class="btn btn-outline-primary" id="shareBtn"
+              data-share-url="{{ share_url }}" data-share-message="{{ share_message }}">
+        <i class="bi bi-share-fill me-1"></i><span id="shareLabel">Share link</span>
+      </button>
+      <a class="btn btn-light" href="{{ return_url }}"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+  </div>
+  {% if meeting.description %}<p class="text-muted">{{ meeting.description }}</p>{% endif %}
+
+  {% if meeting.is_teams %}
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <div class="mb-3"><i class="bi bi-microsoft-teams" style="font-size:3rem;color:#5b5fc7"></i></div>
+        <h4 class="mb-1">{{ meeting.title }}</h4>
+        <p class="text-muted mb-1">
+          {% if meeting.module %}{{ meeting.module.name }} · {% endif %}
+          {% if meeting.scheduled_start %}{{ meeting.scheduled_start|date:"D d M, H:i" }}{% endif %}
+        </p>
+        {% if meeting.is_live_now %}<span class="badge bg-danger mb-3">● Live now</span>{% elif meeting.is_upcoming %}<span class="badge bg-primary mb-3">Upcoming</span>{% else %}<span class="badge bg-secondary mb-3">Ended</span>{% endif %}
+        <div>
+          <a class="btn btn-primary btn-lg" href="{% url 'livesessions:session-join' meeting.pk %}">
+            <i class="bi bi-camera-video-fill me-2"></i>{% if can_manage %}Start or join the class in Teams{% else %}Join the Teams class{% endif %}</a>
+        </div>
+        {% if can_manage %}
+        {% include 'livesessions/_host_start_note.html' %}
+        {% else %}
+        <p class="text-muted small mt-3 mb-0">No Microsoft account needed — you'll join as a guest.
+          When Teams asks for your name, enter
+          <strong>{{ request.user.profile.first_name }} {{ request.user.profile.last_name }}</strong>
+          so the register matches you straight away.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if meeting.artifact.is_watchable or recap %}
+    <div class="card mt-3">
+      <div class="card-header border-0 pb-0"><h5 class="card-title mb-0">After the class</h5></div>
+      <div class="card-body">
+        {% if meeting.artifact.is_watchable %}
+        <a href="{{ meeting.get_absolute_url }}#recording" class="btn btn-outline-primary btn-sm mb-3">
+          <i class="bi bi-play-circle me-1"></i>Watch the recording</a>
+        {% endif %}
+        {% if recap %}
+        <h6 class="mb-1">Session summary</h6>
+        {% if recap_sections %}
+          <div class="small">
+          {% for section in recap_sections %}
+            {% if recap_sections|length > 1 or section.heading != 'Summary' %}<div class="fw-semibold mt-2">{{ section.heading }}</div>{% endif %}
+            {{ section.html|safe }}
+          {% endfor %}
+          </div>
+        {% else %}
+        <div class="small">{{ recap.content|linebreaksbr }}</div>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  {% else %}
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <div class="mb-3"><i class="bi bi-camera-video-off" style="font-size:3rem" aria-hidden="true"></i></div>
+        <h4 class="mb-1">{{ meeting.title }}</h4>
+        <p class="text-muted mb-0">This session used the old in-app video room, which has been retired.
+          Live sessions and group calls now run on Microsoft Teams.</p>
+      </div>
+    </div>
+  {% endif %}
+</div></div>
+
+{% include 'partials/_presence.html' with presence_session=meeting.class_session %}
+{% endblock %}
+
+{% block additional_js %}
+<script>
+(function(){
+  const btn = document.getElementById('shareBtn');
+  if(!btn) return;
+  const label = document.getElementById('shareLabel');
+  btn.addEventListener('click', async function(){
+    const text = btn.dataset.shareMessage || btn.dataset.shareUrl;
+    let ok = false;
+    try{ await navigator.clipboard.writeText(text); ok = true; }
+    catch(e){
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      }catch(e2){ ok = false; }
+    }
+    label.textContent = ok ? 'Link copied!' : 'Copy failed';
+    btn.classList.toggle('btn-success', ok);
+    btn.classList.toggle('btn-outline-primary', !ok);
+    btn.classList.add('copied-flash');
+    setTimeout(function(){
+      label.textContent = 'Share link';
+      btn.classList.remove('btn-success','copied-flash');
+      btn.classList.add('btn-outline-primary');
+    }, 2200);
+  });
+})();
+</script>
+
+{% endblock %}

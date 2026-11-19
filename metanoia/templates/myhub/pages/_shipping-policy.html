@@ -1,0 +1,52 @@
+{% comment %}
+   SHIPPING POLICY — one wording, included by both the Terms & Conditions
+   (_terms-body.html, as clause 14) and the Terms of Service (_tos-body.html).
+   Pass the clause number:  {% include 'myhub/pages/_shipping-policy.html' with n="14" r="13" %}
+   where r is the Refund Policy's clause number in the same document.
+   Delivery fees come live from the shop settings (SHOP_DELIVERY_* in .env) via
+   {% delivery_rates %}, so the policy always quotes what checkout charges.
+{% endcomment %}{% load commerce %}{% delivery_rates as rates %}
+<h3 id="shipping-policy">{{ n }}. Shipping Policy</h3>
+<p>{{ n }}.1 <strong>What we ship.</strong> We ship printed and physical products bought from the {{ brand.name }} study-materials store, such as printed study guides, workbooks and question packs. Everything else is delivered online and is never shipped: Programmes, classes, recordings, digital downloads, blueprints and mock exams. A digital item is available on the Learning Hub as soon as your payment is confirmed. If access has not opened within 24 hours of paying, contact us.</p>
+
+<p>{{ n }}.2 <strong>Where we ship.</strong> We deliver to addresses and Pudo lockers <strong>within South Africa only</strong>. We do not ship internationally.</p>
+
+<p>{{ n }}.3 <strong>Delivery options and courier.</strong> Parcels are delivered by our courier partner, currently The Courier Guy. At checkout you choose:</p>
+<ul>
+  <li><strong>Door-to-door:</strong> delivery to a street address (home, work or campus) on a business day during business hours; or</li>
+  <li><strong>Pudo locker:</strong> delivery to a Pudo locker you choose, where you collect the parcel with the code sent to you.</li>
+</ul>
+
+<p>{{ n }}.4 <strong>Delivery fees.</strong> The delivery fee is shown at checkout, before you pay, and is added to your order total. Our standard fees are{% if rates.door %} <strong>R{{ rates.door|floatformat:"2g" }}</strong> for door-to-door delivery{% endif %}{% if rates.door and rates.locker %} and{% endif %}{% if rates.locker %} <strong>R{{ rates.locker|floatformat:"2g" }}</strong> for delivery to a Pudo locker{% endif %}, per order{% if rates.free_over %}, and <strong>delivery is free on orders of R{{ rates.free_over|floatformat:"2g" }} or more</strong> in printed goods{% endif %}. Where live courier quotes are offered, the fee quoted at checkout applies instead. Fees include VAT where VAT applies.</p>
+
+<p>{{ n }}.5 <strong>Processing and dispatch.</strong> We aim to pack and hand in-stock items to the courier within <strong>3 business days</strong> after your payment clears. EFT payments clear when the funds reflect in our account, which can take up to 3 business days. Items that are printed to order, pre-ordered or temporarily out of stock are dispatched when they become available. In that case we tell you the expected dispatch date before or straight after you pay.</p>
+
+<p>{{ n }}.6 <strong>Delivery times.</strong> After dispatch, delivery usually takes:</p>
+<table class="terms-table">
+  <tr><td>Main centres (e.g. Johannesburg, Pretoria, Cape Town, Durban)</td><td>2 to 4 business days</td></tr>
+  <tr><td>Regional and outlying areas</td><td>3 to 7 business days</td></tr>
+  <tr><td>Pudo lockers</td><td>2 to 5 business days, depending on the locker's location</td></tr>
+</table>
+<p>These are estimates, not guarantees. Deliveries may take longer during peak periods (such as the weeks before exams and December), around public holidays, and because of weather, strikes, unrest, load-shedding or other events outside our control. Deliveries are not made on weekends or public holidays.</p>
+
+<p>{{ n }}.7 <strong>Tracking.</strong> Once your parcel is booked with the courier, we send you the tracking number and a tracking link by e-mail and on the Learning Hub, where your order also shows its delivery status.</p>
+
+<p>{{ n }}.8 <strong>Delays.</strong> If we cannot dispatch your order within the time stated, we will tell you, give you a new expected date and ask whether you still want the item. If you do not, you may cancel the delayed item and we refund what you paid for it, including its share of the delivery fee.</p>
+
+<p>{{ n }}.9 <strong>Your address and receiving the parcel.</strong></p>
+<ul>
+  <li>Give a complete and correct delivery address, a contact name and a working mobile number, as the courier uses them to arrange delivery. Check them before you pay. You cannot change the address after the parcel has been booked with the courier.</li>
+  <li>For door-to-door delivery, make sure someone can receive the parcel. The courier may ask for the recipient's name and signature or a code.</li>
+  <li>For Pudo lockers, collect the parcel within the collection period stated in the courier's notification. A parcel that is not collected in time is returned to us.</li>
+  <li>If a delivery fails, or a parcel is returned because the address was incorrect or incomplete, nobody was available, or it was not collected from the locker, we will contact you. Re-delivery is at your cost, at the delivery fee then charged.</li>
+</ul>
+
+<p>{{ n }}.10 <strong>Ownership and risk.</strong> Ownership of the goods passes to you once they are paid for and delivered. The risk of loss or damage passes to you when the parcel is delivered to your address or placed in your chosen Pudo locker. Until then, it stays with us.</p>
+
+<p>{{ n }}.11 <strong>Checking your parcel; damaged, missing or incorrect items.</strong> Please check your parcel when you receive it. If it is damaged, items are missing, or you received the wrong item, tell us at {{ contact_email }} as soon as possible, ideally within 3 business days, with your order number and photos of the parcel and its contents. We will replace the item or refund it, as set out in clause {{ r }}.10. Reporting quickly helps us claim from the courier, but it does not limit your rights under the Consumer Protection Act.</p>
+
+<p>{{ n }}.12 <strong>Lost parcels.</strong> If tracking shows that a parcel has not moved for 5 business days, or the courier confirms that it is lost, we open a claim with the courier and, without waiting for its outcome, send you a replacement or refund the item and its delivery fee.</p>
+
+<p>{{ n }}.13 <strong>Returns.</strong> How to cancel and return goods within 7 days of receiving them, or to return defective goods, is set out in clauses {{ r }}.9 and {{ r }}.10 of the Refund Policy. Please contact us before sending anything back, so that we can give you the return address and a reference.</p>
+
+<p>{{ n }}.14 <strong>Orders with both digital and printed items.</strong> The digital items are available immediately after payment. The printed items are shipped under this policy. A delay to the printed items does not affect your access to the digital ones.</p>

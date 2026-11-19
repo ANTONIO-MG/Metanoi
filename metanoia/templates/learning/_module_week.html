@@ -1,0 +1,55 @@
+{% comment %}
+One Schedule week: header + body. A ``deferred`` week ships an empty body filled
+later from learning:module-weeks; the body itself is _module_week_body.html.
+Admin / staff / the module's educators get a control to open the week to every
+student, paid or not.
+
+Context: wk (apps.learning.module_feed._week_row), offering, gate
+
+Includes ``learning/_module_week_body.html``.
+{% endcomment %}
+<div class="mf-week{% if wk.is_current %} mf-week--current{% endif %}{% if not wk.open %} mf-week--locked{% endif %}" id="week-{{ wk.week.pk }}">
+  <button class="mf-week__btn" type="button" data-bs-toggle="collapse"
+          data-bs-target="#mfWeek{{ wk.week.pk }}"
+          aria-expanded="{% if wk.is_current %}true{% else %}false{% endif %}"
+          aria-controls="mfWeek{{ wk.week.pk }}">
+    <span class="mf-week__dot"></span>
+    <span class="min-w-0">
+      <p class="mf-week__title">{% if not wk.open %}<i class="bi bi-lock-fill me-1" style="color:var(--mf-lock)" title="Locked"></i>{% endif %}{{ wk.week.display_title }}</p>
+      <p class="mf-week__meta">
+        {% if wk.week.reference %}{{ wk.week.reference }} · {% endif %}
+        {{ wk.total }} item{{ wk.total|pluralize }}
+        {% if wk.open and wk.locked %} · {{ wk.locked }} locked{% endif %}
+        {% if wk.week.starts_on %} · {{ wk.week.starts_on|date:"j M" }}{% if wk.week.ends_on %}–{{ wk.week.ends_on|date:"j M" }}{% endif %}{% endif %}
+        {% if not wk.open %} · <span class="mf-week__lock">Locked: pay to unlock</span>{% elif wk.reason == 'made_available' %} · Made available{% endif %}
+        {% if not wk.week.is_published %} · draft{% endif %}
+      </p>
+    </span>
+    <i class="bi bi-chevron-down mf-week__chev"></i>
+  </button>
+
+  {% if gate.can_author %}
+  <form class="mf-week__admin" method="post" action="{% url 'learning:module-week-availability' offering.pk wk.week.pk %}">{% csrf_token %}
+    <input type="hidden" name="make_available" value="{% if wk.week.make_available %}0{% else %}1{% endif %}">
+    <input type="hidden" name="next" value="{{ request.get_full_path }}#week-{{ wk.week.pk }}">
+    {% if wk.week.make_available %}
+      <span class="mf-tag mf-tag--success"><i class="bi bi-unlock"></i>Made available to all students</span>
+      <button class="btn btn-link btn-sm p-0 mb-0 text-xs" type="submit">Undo</button>
+    {% else %}
+      <button class="btn btn-link btn-sm p-0 mb-0 text-xs" type="submit"
+              title="Open this week to every student on the module, whether or not they have paid">
+        <i class="bi bi-unlock me-1"></i>Make available to all students</button>
+    {% endif %}
+  </form>
+  {% endif %}
+
+  <div class="collapse{% if wk.is_current %} show{% endif %}" id="mfWeek{{ wk.week.pk }}">
+    {% if wk.deferred %}
+      <div class="mf-week__body" data-mf-lazy="{{ wk.week.pk }}">
+        <p class="text-xs text-muted mb-0 ps-2"><span class="spinner-border spinner-border-sm me-1" role="status"></span>Loading this week…</p>
+      </div>
+    {% else %}
+      {% include 'learning/_module_week_body.html' %}
+    {% endif %}
+  </div>
+</div>

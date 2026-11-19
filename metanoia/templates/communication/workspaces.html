@@ -1,0 +1,72 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load static %}
+{% comment %}
+Study groups (the Workspace model): yours, and open groups on your modules.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``additional_css``, ``content``,
+``additional_js``. Includes ``partials/_t_chip.html``,
+``communication/_study_group_form.html``, ``communication/_study_group_card.html``.
+{% endcomment %}
+
+{% block additional_css %}
+<link href="{% static 'css/study-groups.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3 sg">
+
+  <div class="sg-head">
+    <div>
+      <h1 class="sg-head__title">Study groups</h1>
+      <p class="sg-head__lead">Share files and notes with classmates on your programme.</p>
+    </div>
+    <div class="sg-head__actions">
+      {% if my_groups or other_groups %}
+      <div class="sg-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" class="form-control" placeholder="Search groups" aria-label="Search groups" data-sg-group-filter>
+      </div>
+      {% endif %}
+      {% if not read_only %}
+      <button type="button" class="t-btn t-btn--sm" data-bs-toggle="collapse" data-bs-target="#sgNew"
+              aria-expanded="{{ open_new|yesno:'true,false' }}" aria-controls="sgNew">New study group{% include 'partials/_t_chip.html' %}</button>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not read_only %}
+  <section class="collapse{% if open_new %} show{% endif %}" id="sgNew">
+    <div class="sg-panel"><div class="sg-panel__body">
+      <h2 class="sg-panel__title">New study group</h2>
+      {% include 'communication/_study_group_form.html' with submit_label='Create study group' cancel_target='#sgNew' prefix='new' %}
+    </div></div>
+  </section>
+  {% endif %}
+
+  <div class="sg-section"><h2 class="sg-section__title">Your study groups</h2><span class="sg-section__count">{{ my_groups|length }}</span></div>
+  {% if my_groups %}
+    <div class="sg-grid">
+      {% for ws in my_groups %}{% include 'communication/_study_group_card.html' %}{% endfor %}
+    </div>
+  {% else %}
+    <div class="sg-empty">
+      <i class="bi bi-people" aria-hidden="true"></i>
+      <h2>No study groups yet</h2>
+      <p>Start one for a module, add a few classmates, and keep your files and notes in one place.</p>
+      {% if not read_only %}<button type="button" class="t-btn t-btn--sm mt-3" data-bs-toggle="collapse" data-bs-target="#sgNew">New study group{% include 'partials/_t_chip.html' %}</button>{% endif %}
+    </div>
+  {% endif %}
+
+  {% if other_groups %}
+    <div class="sg-section"><h2 class="sg-section__title">In your modules</h2><span class="sg-section__count">{{ other_groups|length }}</span></div>
+    <div class="sg-grid">
+      {% for ws in other_groups %}{% include 'communication/_study_group_card.html' %}{% endfor %}
+    </div>
+  {% endif %}
+  <p class="sg-empty mt-3" data-sg-groups-none hidden>No study group matches that search.</p>
+
+</div></div>
+{% endblock %}
+
+{% block additional_js %}
+<script src="{% static 'js/study-groups.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'communication/email/base_email.html' %}{% load org_branding %}
+{% comment %}
+Invoice pay-link request. Context: invoice, pay_url.
+
+Extends ``communication/email/base_email.html``; fills ``heading``, ``content``,
+``cta``. Includes ``communication/email/_button.html``.
+{% endcomment %}
+{% block heading %}Invoice {{ invoice.number }}{% endblock %}
+{% block content %}
+  <p style="margin:0 0 14px">Hi {{ invoice.customer|greeting_name }},</p>
+  <p style="margin:0 0 14px">You have an invoice awaiting payment.</p>
+  <table style="width:100%;border-collapse:collapse;margin:4px 0 14px">
+    <tr><td style="padding:6px 0;color:#6B5E55">Issued</td><td style="text-align:right">{{ invoice.issue_date }}</td></tr>
+    {% if invoice.due_date %}<tr><td style="padding:6px 0;color:#6B5E55">Due</td><td style="text-align:right">{{ invoice.due_date }}</td></tr>{% endif %}
+    <tr><td style="padding:6px 0;color:#6B5E55">Amount due</td><td style="text-align:right"><strong style="font-size:18px;color:#0B5FC6">R{{ invoice.balance }}</strong></td></tr>
+  </table>
+{% endblock %}
+{% block cta %}{% include 'communication/email/_button.html' with url=pay_url label="PAY NOW" %}{% endblock %}

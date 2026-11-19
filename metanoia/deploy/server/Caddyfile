@@ -1,0 +1,17 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+{
+	email info@metanoiagroup.co.za
+}
+
+learn.metanoiagroup.co.za {
+	encode zstd gzip
+	# Never serve /media/ from disk: paid files are access-checked by Django (deployment.md).
+	reverse_proxy 127.0.0.1:8000 {
+		flush_interval -1
+	}
+}
+
+http://{$SERVER_IP} {
+	redir https://learn.metanoiagroup.co.za{uri} permanent
+}

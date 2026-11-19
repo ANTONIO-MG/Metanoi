@@ -1,0 +1,85 @@
+{% load commerce people %}
+{% comment %}
+1-on-1 sessions on Online sessions (communication/meetings.html), from
+``{% one_on_one_sessions as oo %}``.
+
+Students: theirs, with join and reschedule. Educators: the ones booked with
+them, with cancel (the student is credited). Staff: every booking with
+?bookings=all.
+{% endcomment %}
+{% if oo.upcoming or oo.past or oo.is_educator or oo.is_staff %}
+<div class="card oo-card" id="one-on-one"><div class="card-body">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h4 class="mb-0">1-on-1 sessions</h4>
+      <small class="text-muted">{% if oo.view == 'teaching' %}Sessions students have booked with you.{% elif oo.view == 'all' %}Every booked session.{% else %}Your booked sessions with a coach.{% endif %}</small>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if oo.is_educator or oo.is_staff %}
+        <div class="btn-group btn-group-sm" role="group" aria-label="Whose sessions">
+          {% if oo.is_educator %}<a class="btn {% if oo.view == 'teaching' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?bookings=teaching#one-on-one">Booked with me</a>{% endif %}
+          <a class="btn {% if oo.view == 'mine' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?bookings=mine#one-on-one">Booked by me</a>
+          {% if oo.is_staff %}<a class="btn {% if oo.view == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?bookings=all#one-on-one">All</a>{% endif %}
+        </div>
+      {% endif %}
+      <a class="btn btn-sm btn-primary" href="{% url 'shop:one-on-one' %}"><i class="bi bi-plus-lg me-1"></i>Book a session</a>
+    </div>
+  </div>
+
+  {% if oo.credit %}<p class="small mb-3"><i class="bi bi-wallet2 me-1"></i>You have {{ oo.credit|rand }} account credit. It is offered at checkout on your next purchase.</p>{% endif %}
+
+  <div class="oo-list">
+  {% for b in oo.upcoming %}
+    <div class="oo-row">
+      <span class="oo-when"><small>{{ b.start|date:"D" }}</small><b>{{ b.start|date:"j" }}</b><small>{{ b.start|date:"M" }}</small></span>
+      <div class="oo-main">
+        <div class="oo-title">{{ b.product.name }}</div>
+        <div class="oo-sub">
+          <span><i class="bi bi-clock me-1" aria-hidden="true"></i>{{ b.start|time:"H:i" }}–{{ b.end|time:"H:i" }}</span>
+          {% if oo.view == 'teaching' %}{% person_chip b.student %}
+          {% elif oo.view == 'all' %}{% person_chip b.student %}<span>with</span>{% person_chip b.educator %}
+          {% else %}{% person_chip b.educator %}{% endif %}
+          {% if b.status == 'held' %}<span class="badge bg-warning text-dark">Awaiting payment</span>{% else %}<span class="badge bg-success">Confirmed</span>{% endif %}
+        </div>
+        {% if b.note and oo.view != 'mine' %}<div class="small text-muted mt-1"><i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>{{ b.note|truncatechars:160 }}</div>{% endif %}
+      </div>
+      <div class="oo-actions">
+        {% if b.status == 'held' and oo.view == 'mine' %}<a class="btn btn-sm btn-primary" href="{% url 'shop:cart' %}"><i class="bi bi-cart me-1"></i>Pay now</a>{% endif %}
+        {% if b.meeting and b.status == 'confirmed' %}<a class="btn btn-sm btn-primary" href="{{ b.meeting.get_join_url }}"><i class="bi bi-camera-video me-1"></i>Join</a>{% endif %}
+        {% if b.status == 'confirmed' %}
+          {% if b.can_reschedule or oo.is_staff %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'shop:product-detail' b.product.pk %}?reschedule={{ b.pk }}#book">Reschedule</a>
+          {% elif oo.view == 'mine' %}<span class="small text-muted align-self-center">Too close to move</span>{% endif %}
+        {% endif %}
+        {% if oo.is_staff and oo.view != 'mine' or oo.view == 'teaching' %}
+          <form method="post" action="{% url 'shop:cancel-booking' b.pk %}" onsubmit="var r = prompt('Reason for cancelling (the student sees this)'); if (r === null) { return false; } this.reason.value = r; return true;">
+            {% csrf_token %}<input type="hidden" name="reason" value=""><input type="hidden" name="view" value="{{ oo.view }}">
+            <button class="btn btn-sm btn-link text-danger">Cancel &amp; credit</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <p class="text-muted mb-0">No upcoming 1-on-1s. <a href="{% url 'shop:one-on-one' %}">Book an hour with a coach</a>.</p>
+  {% endfor %}
+  </div>
+
+  {% if oo.past %}
+  <details class="oo-past">
+    <summary>Past and cancelled 1-on-1s</summary>
+    <div class="table-responsive mt-2" style="position:relative"><table class="table table-sm mb-0">
+      <thead><tr><th>When</th><th>Session</th><th>With</th><th>Status</th><th class="text-end">Price</th></tr></thead>
+      <tbody>
+      {% for b in oo.past %}
+        <tr>
+          <td class="small">{{ b.start|date:"j M Y, H:i" }}</td><td>{{ b.product.name }}</td>
+          <td class="small">{% if oo.view == 'teaching' %}{{ b.student|person_name }}{% else %}{{ b.educator|person_name }}{% endif %}</td>
+          <td>{% if b.status == 'cancelled' %}<span class="badge bg-danger" title="{{ b.cancelled_reason }}">Cancelled</span>{% else %}<span class="badge bg-secondary">{{ b.get_status_display }}</span>{% endif %}</td>
+          <td class="text-end">{{ b.price|rand }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </details>
+  {% endif %}
+</div></div>
+{% endif %}

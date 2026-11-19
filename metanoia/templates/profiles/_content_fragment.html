@@ -1,0 +1,12 @@
+{% comment %}
+HTMX fragment base for profile pages.
+
+core.profiles.shell_base() extends this instead of profiles/shell.html when an
+HX request targets ``#profContent``, so only the active tab's content is
+rendered (no app chrome, header or rail). Full page loads still get
+profiles/shell.html.
+
+Blocks: defines ``profile_content`` (filled by the tab template).
+{% endcomment %}<div id="profContent">
+{% block profile_content %}{% endblock %}
+</div>

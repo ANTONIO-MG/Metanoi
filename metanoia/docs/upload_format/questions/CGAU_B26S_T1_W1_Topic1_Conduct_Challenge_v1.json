@@ -1,0 +1,16 @@
+{
+  "format": "metanoia-upload/1",
+  "doc_type": "questions",
+  "title": "Week 1 · Topic 1 Challenge — Conduct & Legislation",
+  "institution": "MILPARK",
+  "programme": "BCTA",
+  "module": "CGAU",
+  "cohort": "B26S",
+  "assessment": {"kind": "test", "sequence": 1},
+  "week": 1,
+  "topic": {"code": "T1", "title": "Conduct & Legislation"},
+  "audience": "students",
+  "used_on": "2026-08-06",
+  "marks": 13,
+  "notes": "Sample. Written parts are marked against the rubric rows; MCQ parts are marked instantly."
+}

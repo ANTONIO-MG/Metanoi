@@ -1,0 +1,166 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+Review one draft: where it goes, what students will see, what is wrong, the JSON.
+apps.learning.content_uploads.review / .action. Sections: the decision, what
+students will see, and placement.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``additional_css``, ``content``.
+{% endcomment %}
+{% block additional_css %}
+<style>
+  .rv-json{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.76rem; line-height:1.45; }
+  .rv-body{ max-height:420px; overflow:auto; border-left:3px solid var(--bs-border-color); padding-left:.9rem; }
+  .rv-body .lesson-callout{ border-left:4px solid var(--bs-primary); background:var(--bs-tertiary-bg); padding:.5rem .8rem; margin:.6rem 0; }
+  .rv-body table{ font-size:.8rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap justify-content-between gap-3">
+    <div>
+      <div class="small text-muted mb-1"><a href="{% url 'learning:content-queue' %}">Content queue</a> ›</div>
+      <h1 class="h5 mb-1">{{ item.title }}</h1>
+      <div class="small text-muted">{{ item.get_doc_type_display }} · {{ item.placement_label }} ·
+        {% if item.audience == 'staff' %}<span class="text-danger">staff only</span>{% else %}students{% endif %}
+        {% if item.metadata.origin == 'prompt' %} · <span class="badge bg-info-soft text-info">AI-written from a prompt</span>{% endif %}</div>
+    </div>
+    <div class="text-end">
+      <span class="badge bg-{{ item.tone }} fs-6">{{ item.get_status_display }}</span>
+      <div class="small text-muted mt-1">{{ item.get_draft_method_display|default:'' }}</div>
+      {% if item.reviewed_by %}<div class="small text-muted">by {{ item.reviewed_by.get_full_name|default:item.reviewed_by.email }} · {{ item.reviewed_at|date:'d M Y H:i' }}</div>{% endif %}
+    </div>
+  </div>
+  {% if item.message %}<div class="card-footer small">{{ item.message }}</div>{% endif %}
+</div>
+
+<div class="card mb-3 border-primary">
+  <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+    {% if item.status == 'published' %}
+      <span class="text-success fw-semibold me-2"><i class="bi bi-check-circle me-1"></i>Live for students.</span>
+      {% if feed_url %}<a class="btn btn-sm btn-outline-primary" href="{{ feed_url }}">Open the module</a>{% endif %}
+    {% elif item.status == 'approved' %}
+      <form method="post" action="{% url 'learning:content-action' item.public_id %}">{% csrf_token %}
+        <button name="action" value="publish" class="btn btn-success"><i class="bi bi-broadcast me-1"></i>Publish to {% if item.cohort %}{{ item.cohort.code }}{% else %}every intake{% endif %}</button></form>
+      {% if build_url %}<a class="btn btn-outline-secondary" href="{{ build_url }}">See it on the schedule (draft)</a>{% endif %}
+    {% elif item.status != 'rejected' %}
+      <form method="post" action="{% url 'learning:content-action' item.public_id %}" class="d-flex flex-wrap gap-2">{% csrf_token %}
+        {% if item.pack or item.draft_method == 'file' %}
+        <button name="action" value="approve_publish" class="btn btn-success" {% if item.problems %}disabled title="Fix the problems first"{% endif %}><i class="bi bi-check2-all me-1"></i>Approve &amp; publish</button>
+        <button name="action" value="approve" class="btn btn-outline-success" {% if item.problems %}disabled{% endif %}><i class="bi bi-check2 me-1"></i>Approve as draft</button>
+        {% endif %}
+        {% if item.files.exists or item.source_text %}
+        <button name="action" value="{% if item.pack %}redraft{% else %}draft{% endif %}" class="btn btn-outline-primary" {% if not ai_enabled and item.draft_method != 'template' %}title="AI is off — only template conversion will run"{% endif %}><i class="bi bi-stars me-1"></i>{% if item.pack %}Redraft{% else %}Draft it{% endif %}</button>
+        {% endif %}
+      </form>
+      <form method="post" action="{% url 'learning:content-action' item.public_id %}" class="d-flex gap-2 ms-auto">{% csrf_token %}
+        <input name="reason" class="form-control form-control-sm" placeholder="Reason (optional)">
+        <button name="action" value="reject" class="btn btn-sm btn-outline-danger">Reject</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if item.problems or item.warnings %}
+<div class="card border-warning mb-3">
+  <div class="card-body small">
+    {% if item.problems %}<div class="fw-semibold text-warning mb-1"><i class="bi bi-exclamation-triangle me-1"></i>{{ item.problems|length }} problem{{ item.problems|pluralize }} to fix before approving</div>
+    <ul class="font-monospace mb-2">{% for p in item.problems %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+    {% if item.warnings %}<ul class="text-muted mb-0">{% for w in item.warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    {% for week in preview %}
+    <div class="card mb-3">
+      <div class="card-header"><h2 class="h6 mb-0">{% if week.week %}Week {{ week.week }} · {% endif %}{{ week.title }}</h2></div>
+      <div class="card-body">
+        {% for it in week.items %}
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-baseline">
+            <h3 class="h6 mb-1"><span class="badge bg-secondary-soft text-secondary me-1">{{ it.type|cut:'_'|capfirst }}</span>{{ it.title }}</h3>
+            <span class="small text-muted">{% if it.sections %}{{ it.sections|length }} sections · ~{{ it.minutes }} min read{% else %}{{ it.parts|length }} part{{ it.parts|pluralize }} · {{ it.total_marks }} marks{% endif %}</span>
+          </div>
+          {% if it.sections %}
+            {% for s in it.sections %}
+            <details class="mb-1" {% if forloop.first %}open{% endif %}><summary class="small fw-semibold">{{ s.heading }}{% if s.video_url %} <i class="bi bi-play-btn text-danger"></i>{% endif %}</summary>
+              <div class="rv-body small mt-1">{{ s.body_html|safe }}</div></details>
+            {% endfor %}
+          {% else %}
+            {% if it.scenario_html %}<details class="mb-2"><summary class="small fw-semibold">Scenario</summary><div class="rv-body small mt-1">{{ it.scenario_html|safe }}</div></details>{% endif %}
+            {% for p in it.parts %}
+            <div class="border rounded p-2 mb-2 small">
+              <div class="d-flex justify-content-between"><strong>({{ p.ref }}) {{ p.required|truncatechars:400 }}</strong><span class="badge bg-light text-dark">{{ p.marks }}</span></div>
+              {% if p.choices %}
+                <ul class="list-unstyled mb-0 mt-1">{% for c in p.choices %}<li>{% if c.correct %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %} {{ c.text }}</li>{% endfor %}</ul>
+                {% if p.explanation %}<div class="text-muted mt-1"><i class="bi bi-lightbulb"></i> {{ p.explanation }}</div>{% endif %}
+              {% elif p.rubric %}
+                <ul class="mb-0 mt-1">{% for r in p.rubric %}<li><span class="badge bg-success-soft text-success">{{ r.marks }}</span> {{ r.point }}{% if r.authority %} <span class="text-muted">— {{ r.authority }}</span>{% endif %}</li>{% endfor %}</ul>
+              {% elif p.lines %}
+                <table class="table table-sm mb-0 mt-1">{% for l in p.lines %}<tr><td>{{ l.label }}</td><td class="text-muted">{{ l.authority }}</td><td class="text-end font-monospace">{{ l.amount }}</td><td class="text-end">{{ l.marks }}</td></tr>{% endfor %}</table>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="card mb-3"><div class="card-body small text-muted">
+      {% if item.draft_method == 'file' %}This document is placed as a file on the schedule — there is no lesson or quiz to preview.
+      {% else %}No draft yet.{% endif %}
+    </div></div>
+    {% endfor %}
+
+    {% if pack_json %}
+    <details class="card mb-3">
+      <summary class="card-header small fw-semibold">Edit the draft (content-pack JSON)</summary>
+      <form method="post" action="{% url 'learning:content-action' item.public_id %}" class="card-body">{% csrf_token %}
+        <textarea name="pack_json" rows="22" class="form-control rv-json">{{ pack_json }}</textarea>
+        <button name="action" value="save_json" class="btn btn-sm btn-primary mt-2">Save &amp; re-check</button>
+      </form>
+    </details>
+    {% endif %}
+    {% if item.metadata.prompt %}
+    <div class="card mb-3"><div class="card-body small"><div class="fw-semibold mb-1">The brief</div><div style="white-space:pre-wrap">{{ item.metadata.prompt }}</div></div></div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-4">
+    <form method="post" action="{% url 'learning:content-action' item.public_id %}" class="card mb-3">{% csrf_token %}
+      <div class="card-header"><h2 class="h6 mb-0">Where it goes</h2></div>
+      <div class="card-body small">
+        <label class="form-label small">Module</label>
+        <select name="offering" class="form-select form-select-sm mb-2">
+          {% for o in offerings %}<option value="{{ o.pk }}" {% if o.pk == item.programme_module_id %}selected{% endif %}>{{ o.programme.institution.code }} · {{ o.programme.code }} · {{ o.code }}</option>{% endfor %}
+        </select>
+        <label class="form-label small">Intake</label>
+        <select name="cohort" class="form-select form-select-sm mb-2"><option value="">Every intake (shared)</option>
+          {% for c in cohorts %}<option value="{{ c.pk }}" {% if c.pk == item.cohort_id %}selected{% endif %}>{{ c.code }}</option>{% endfor %}</select>
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label small">Type</label>
+            <select name="doc_type" class="form-select form-select-sm">{% for k, label in doc_types %}<option value="{{ k }}" {% if k == item.doc_type %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+          <div class="col-6"><label class="form-label small">Audience</label>
+            <select name="audience" class="form-select form-select-sm"><option value="students">Students</option><option value="staff" {% if item.audience == 'staff' %}selected{% endif %}>Staff only</option></select></div>
+          <div class="col-4"><label class="form-label small">For</label>
+            <select name="phase_kind" class="form-select form-select-sm"><option value="test">Test</option><option value="exam" {% if item.phase_kind == 'exam' %}selected{% endif %}>Exam</option><option value="other" {% if item.phase_kind == 'other' %}selected{% endif %}>Other</option></select></div>
+          <div class="col-4"><label class="form-label small">No.</label><input name="phase_sequence" type="number" min="1" value="{{ item.phase_sequence }}" class="form-control form-control-sm"></div>
+          <div class="col-4"><label class="form-label small">Week</label><input name="week_number" type="number" min="1" value="{{ item.week_number|default:'' }}" class="form-control form-control-sm"></div>
+        </div>
+        <button name="action" value="place" class="btn btn-sm btn-outline-primary mt-2" {% if item.status == 'approved' or item.status == 'published' %}disabled{% endif %}>Save placement</button>
+      </div>
+    </form>
+
+    <div class="card mb-3">
+      <div class="card-header"><h2 class="h6 mb-0">Files</h2></div>
+      <ul class="list-group list-group-flush small">
+        {% for f in files %}<li class="list-group-item d-flex justify-content-between"><a href="{% url 'learning:content-file' item.public_id f.pk %}">{{ f.original_name|truncatechars:42 }}</a><span class="text-muted">{{ f.get_role_display }}</span></li>
+        {% empty %}<li class="list-group-item text-muted">No files — written by the AI assistant.</li>{% endfor %}
+      </ul>
+    </div>
+    {% if item.result.summary %}<div class="card mb-3"><div class="card-body small"><div class="fw-semibold">Imported</div>{{ item.result.summary }}</div></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

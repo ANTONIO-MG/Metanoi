@@ -1,0 +1,346 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static commerce %}
+{% comment %}
+Invoice / estimate editor, Wave style: customer and dates up top, a
+line table (search Products & services to fill name + price, or type a free
+line), live totals, notes. Customer and items are chosen through the search
+pickers in static/js/finance-lookup.js. Context: kind, form, lines (formset),
+picker (see views_books._picker_context).
+
+The inline script has three parts: the invoice discount (one rand amount off the
+whole invoice, with bundle savings mirroring apps.shop.pricing.bundle_savings),
+the customer picker and the item lines. The customer box shows the chosen customer's
+label, which is not treated as a search for it.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``additional_css``, ``content``.
+Includes ``shop/_field.html``.
+{% endcomment %}
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/commerce.css' %}">{% endblock %}
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3 tc">
+  <div class="tc-head">
+    <div><a class="small" href="{% if kind == 'estimate' %}{% url 'finance:estimates' %}{% else %}{% url 'finance:invoices' %}{% endif %}"><i class="bi bi-arrow-left me-1"></i>{% if kind == 'estimate' %}Estimates{% else %}Invoices{% endif %}</a>
+      <h3 class="mt-1">{{ page_title }}</h3>
+      <p>{% if kind == 'estimate' %}A quote the customer can accept online; it converts to an invoice in one click.{% else %}Saved as a draft until you send or approve it.{% endif %}</p></div>
+  </div>
+  <form method="post" novalidate id="docForm">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="tc-alert tc-alert--danger mb-3"><i class="bi bi-exclamation-circle"></i><div>{{ form.non_field_errors }}</div></div>{% endif %}
+    <div class="tc-card">
+      <div class="tc-section">
+        <div class="row g-3">
+          <div class="col-lg-5">
+            <label class="form-label" for="customerSearch">Customer <span class="text-danger" aria-hidden="true">*</span></label>
+            {{ form.customer }}
+            <div class="tc-pick"><i class="bi bi-search" aria-hidden="true"></i>
+              <input id="customerSearch" class="form-control tc-pick__input" type="text" value="{{ picker.customer.label|default:'' }}"
+                     placeholder="Search by name, e-mail or phone" aria-describedby="customerMeta"></div>
+            <div class="form-text" id="customerMeta" data-customer-meta>{% if not picker.customer %}Filter by institution, programme or role in the search panel.{% endif %}</div>
+            {% if form.customer.errors %}<div class="tc-field-error">{{ form.customer.errors|join:" " }}</div>{% endif %}
+          </div>
+          <div class="col-sm-4 col-lg-2">{% include 'shop/_field.html' with field=form.issue_date %}</div>
+          <div class="col-sm-4 col-lg-2">{% if kind == 'estimate' %}{% include 'shop/_field.html' with field=form.valid_until %}{% else %}{% include 'shop/_field.html' with field=form.due_date %}{% endif %}</div>
+          <div class="col-sm-4 col-lg-3">{% include 'shop/_field.html' with field=form.po_number %}</div>
+          <div class="col-12">{% include 'shop/_field.html' with field=form.summary %}</div>
+        </div>
+      </div>
+
+      <div class="tc-section">
+        <div class="tc-section__title"><i class="bi bi-list-ul"></i><h6>Items</h6>{% if vat_registered %}<small>Prices include {{ vat_rate }}% VAT</small>{% endif %}</div>
+        {{ lines.management_form }}
+        {% if lines.non_form_errors %}<div class="tc-field-error">{{ lines.non_form_errors }}</div>{% endif %}
+        <div class="tc-table-wrap">
+          <table class="tc-table tc-doclines" id="lineTable">
+            <thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Price (R)</th>{% if kind != 'invoice' %}<th class="r">Disc. %</th>{% endif %}<th class="r">Amount</th><th></th></tr></thead>
+            <tbody>
+              {% for lf in lines %}
+              <tr data-line>
+                {% for h in lf.hidden_fields %}{{ h }}{% endfor %}
+                <td class="col-desc"><div class="tc-pick"><i class="bi bi-search" aria-hidden="true"></i>{{ lf.description }}</div><div class="tc-linked" data-linked hidden></div><div class="mt-1">{{ lf.detail }}</div>
+                  {% if lf.description.errors %}<div class="tc-field-error">{{ lf.description.errors|join:" " }}</div>{% endif %}</td>
+                <td class="col-num">{{ lf.quantity }}</td><td class="col-num">{{ lf.unit_price }}</td>{% if kind != 'invoice' %}<td class="col-num">{{ lf.discount_percent }}</td>{% endif %}
+                <td class="col-amt" data-amount>—</td>
+                <td>{% if lf.instance.pk %}<label class="small text-danger">{{ lf.DELETE }} <span class="visually-hidden">Remove</span><i class="bi bi-trash"></i></label>{% else %}<button type="button" class="btn btn-sm btn-link text-danger" data-remove aria-label="Remove line"><i class="bi bi-trash"></i></button>{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <template id="lineTemplate">
+          <tr data-line>{% for h in lines.empty_form.hidden_fields %}{{ h }}{% endfor %}
+            <td class="col-desc"><div class="tc-pick"><i class="bi bi-search" aria-hidden="true"></i>{{ lines.empty_form.description }}</div><div class="tc-linked" data-linked hidden></div><div class="mt-1">{{ lines.empty_form.detail }}</div></td>
+            <td class="col-num">{{ lines.empty_form.quantity }}</td><td class="col-num">{{ lines.empty_form.unit_price }}</td>{% if kind != 'invoice' %}<td class="col-num">{{ lines.empty_form.discount_percent }}</td>{% endif %}
+            <td class="col-amt" data-amount>—</td>
+            <td><button type="button" class="btn btn-sm btn-link text-danger" data-remove aria-label="Remove line"><i class="bi bi-trash"></i></button></td></tr>
+        </template>
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+          <button type="button" class="btn btn-sm tc-btn-soft" data-add-line><i class="bi bi-plus-lg me-1"></i>Add an item</button>
+          <a class="small" href="{{ picker.urls.manage }}" target="_blank" rel="noopener">Manage products &amp; services <i class="bi bi-box-arrow-up-right"></i></a>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-3">
+          {% if kind == 'invoice' %}
+          <div class="tc-discount" data-discount style="max-width:30rem;flex:1 1 18rem">
+            {{ form.discount_choice }}
+            <label class="form-label" for="discountPick"><i class="bi bi-tag me-1"></i>Discount on this invoice</label>
+            <select class="form-control form-select" id="discountPick" aria-describedby="discountHelp">
+              <option value="auto">Automatic — bundles such as “All 4 modules”</option>
+              <option value="none">No discount</option>
+              {% for d in discount_options %}<option value="promo:{{ d.id }}">{{ d.name }} — {% if d.kind == 'percent' %}{{ d.value|floatformat:"-2" }}% off{% else %}R{{ d.value|floatformat:2 }} off{% endif %}</option>{% endfor %}
+              <option value="custom">Custom amount…</option>
+            </select>
+            <div class="row g-2 mt-1">
+              <div class="col-7">{{ form.discount_label }}</div>
+              <div class="col-5"><div class="input-group"><span class="input-group-text">R</span>{{ form.discount_amount }}</div></div>
+            </div>
+            <div class="form-text" id="discountHelp" data-discount-help>One rand amount off the whole invoice.</div>
+            {% if form.discount_amount.errors %}<div class="tc-field-error">{{ form.discount_amount.errors|join:" " }}</div>{% endif %}
+          </div>
+          {% else %}<div></div>{% endif %}
+          <div class="tc-totals" style="min-width:16rem">
+            <div><span>Subtotal</span><span data-t="gross">R0.00</span></div>
+            <div class="is-saving"><span>Discount<small class="d-block text-muted" data-t="dlabel"></small></span><span data-t="discount">−R0.00</span></div>
+            <div class="is-total"><span>Total</span><span data-t="total">R0.00</span></div>
+            {% if vat_registered %}<div class="is-muted"><span>Includes VAT</span><span data-t="vat">R0.00</span></div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="tc-section">
+        <div class="row g-3">
+          <div class="col-md-8">{% include 'shop/_field.html' with field=form.notes %}</div>
+          <div class="col-md-4">{% include 'shop/_field.html' with field=form.footer %}</div>
+        </div>
+      </div>
+      <div class="tc-savebar">
+        <a class="btn btn-link" href="{% if object.pk %}{{ object.get_absolute_url }}{% elif kind == 'estimate' %}{% url 'finance:estimates' %}{% else %}{% url 'finance:invoices' %}{% endif %}">Cancel</a>
+        <button class="btn btn-outline-secondary" name="then" value="save">Save{% if creating %} as draft{% endif %}</button>
+        <button class="btn btn-primary" name="then" value="send"><i class="bi bi-send me-1"></i>Save &amp; send</button>
+      </div>
+    </div>
+  </form>
+</div></div>
+{{ picker|json_script:"docPicker" }}
+{{ discount_options|json_script:"docDiscounts" }}
+<script src="{% static 'js/finance-lookup.js' %}"></script>
+<script>
+(function () {
+  var form = document.getElementById('docForm'); if (!form) { return; }
+  var picker = JSON.parse(document.getElementById('docPicker').textContent), opt = picker.options;
+  var esc = TCLookup.esc, csrf = form.querySelector('[name="csrfmiddlewaretoken"]').value;
+  var vatRate = {{ vat_rate|default:0 }}, vatOn = {{ vat_registered|yesno:"true,false" }};
+  var total = form.querySelector('[name="lines-TOTAL_FORMS"]'), body = form.querySelector('#lineTable tbody');
+  function money(n) { return 'R' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+  function num(row, sel) { var el = row.querySelector(sel); return el ? parseFloat(el.value || 0) || 0 : 0; }
+  var promos = JSON.parse(document.getElementById('docDiscounts').textContent);
+  var dBox = form.querySelector('[data-discount]');
+  var dChoice = form.querySelector('[name="discount_choice"]'), dPick = document.getElementById('discountPick');
+  var dAmount = form.querySelector('[name="discount_amount"]'), dLabel = form.querySelector('[name="discount_label"]');
+  var dHelp = form.querySelector('[data-discount-help]');
+  function promo(id) { for (var i = 0; i < promos.length; i++) { if (String(promos[i].id) === String(id)) { return promos[i]; } } return null; }
+  function lineProduct(row, bundle) {
+    var pid = (row.querySelector('[name$="-product"]') || {}).value;
+    if (pid && bundle.products.indexOf(parseInt(pid, 10)) !== -1) { return parseInt(pid, 10); }
+    var desc = ((row.querySelector('[name$="-description"]') || {}).value || '').trim().toLowerCase();
+    for (var i = 0; i < bundle.product_names.length; i++) {
+      var n = (bundle.product_names[i] || '').trim().toLowerCase();
+      if (n && desc.indexOf(n) === 0) { return bundle.products[i]; }
+    }
+    return null;
+  }
+  /**
+   * Bundle discounts earned by the current lines. Mirrors
+   * ``apps.shop.pricing.bundle_savings``: biggest bundle first, every named item
+   * must be present, and an item counts towards one bundle only.
+   */
+  function bundlesEarned(rows) {
+    var list = promos.filter(function (p) { return p.bundle; }).sort(function (a, b) { return parseFloat(b.value) - parseFloat(a.value); });
+    var taken = {}, off = 0, names = [];
+    list.forEach(function (b) {
+      var have = {}, pool = 0;
+      rows.forEach(function (r) { var pk = lineProduct(r.row, b); if (pk !== null && !taken[pk]) { have[pk] = (have[pk] || 0) + r.gross; } });
+      if (!b.products.length || !b.products.every(function (pk) { return have[pk] !== undefined; })) { return; }
+      b.products.forEach(function (pk) { pool += have[pk]; });
+      if (pool <= 0 || (parseFloat(b.min_spend) && pool < parseFloat(b.min_spend))) { return; }
+      b.products.forEach(function (pk) { taken[pk] = true; });
+      off += Math.min(parseFloat(b.value), pool); names.push(b.name);
+    });
+    return {off: off, label: names.join(' + ')};
+  }
+  function syncDiscount(rows, lines) {
+    if (!dBox) { return 0; }
+    var choice = dPick.value; dChoice.value = choice;
+    var manual = choice === 'custom';
+    dAmount.readOnly = !manual; dLabel.readOnly = !manual;
+    if (choice === 'auto') {
+      var b = bundlesEarned(rows);
+      dAmount.value = b.off ? b.off.toFixed(2) : '0.00'; dLabel.value = b.label;
+      dHelp.textContent = b.off ? 'Applied automatically: ' + b.label + '.' : 'No bundle applies to these items yet — it is added automatically when one does (e.g. all 4 modules).';
+    } else if (choice === 'none') {
+      dAmount.value = '0.00'; dLabel.value = ''; dHelp.textContent = 'This invoice has no discount.';
+    } else if (choice.indexOf('promo:') === 0) {
+      var p = promo(choice.slice(6));
+      if (p) {
+        var v = p.kind === 'percent' ? Math.round(lines * parseFloat(p.value)) / 100 : parseFloat(p.value);
+        dAmount.value = Math.min(v, lines).toFixed(2); dLabel.value = p.name;
+      }
+      dHelp.textContent = 'Taken off the whole invoice, as a rand amount.';
+    } else {
+      dHelp.textContent = 'Type the rand amount to take off the whole invoice, and what it is for.';
+    }
+    return Math.min(Math.max(parseFloat(dAmount.value) || 0, 0), Math.max(lines, 0));
+  }
+  if (dBox) {
+    dPick.value = dChoice.value || 'auto';
+    if (dPick.value !== dChoice.value) { dPick.value = 'custom'; }
+  }
+
+  function recalc() {
+    var gross = 0, disc = 0, rows = [];
+    body.querySelectorAll('[data-line]').forEach(function (row) {
+      var del = row.querySelector('[name$="-DELETE"]');
+      var dead = del && del.checked; row.classList.toggle('is-deleted', !!dead);
+      var q = num(row, '[name$="-quantity"]'), p = num(row, '[name$="-unit_price"]'), d = Math.min(Math.max(num(row, '[name$="-discount_percent"]'), 0), 100);
+      var g = q * p, off = Math.round(g * d) / 100;
+      row.querySelector('[data-amount]').textContent = money(g - off);
+      if (!dead) { gross += g; disc += off; rows.push({row: row, gross: g}); }
+    });
+    disc += syncDiscount(rows, gross - disc);
+    var t = gross - disc;
+    form.querySelector('[data-t="gross"]').textContent = money(gross);
+    form.querySelector('[data-t="discount"]').textContent = '−' + money(disc);
+    var dl = form.querySelector('[data-t="dlabel"]'); if (dl) { dl.textContent = dLabel ? dLabel.value : ''; }
+    form.querySelector('[data-t="total"]').textContent = money(t);
+    var v = form.querySelector('[data-t="vat"]'); if (v && vatOn) { v.textContent = money(Math.round(t * vatRate / (100 + vatRate) * 100) / 100); }
+  }
+
+  var custHidden = form.querySelector('[name="customer"]'), custInput = document.getElementById('customerSearch');
+  var custMeta = form.querySelector('[data-customer-meta]'), chosen = picker.customer;
+  function custDetail(c) {
+    return [c.role, (c.studies || []).join(', '), c.phone].filter(Boolean).join(' · ');
+  }
+  if (chosen) { custMeta.textContent = custDetail(chosen); }
+  var customers = new TCLookup({
+    url: picker.urls.customers, label: 'Customers', fields: opt.customer_fields, autoHighlight: true,
+    filters: [
+      {key: 'institution', label: 'Institution', options: opt.institutions},
+      {key: 'programme', label: 'Programme', options: opt.programmes},
+      {key: 'role', label: 'Role', options: opt.roles}
+    ],
+    empty: function (q) { return q ? 'Nobody matches “' + esc(q) + '”. Try fewer words, another field, or clear the filters.' : 'Nobody matches these filters.'; },
+    render: function (c, words, h) {
+      var initials = (c.name || '?').split(/\s+/).map(function (p) { return p.charAt(0); }).join('').slice(0, 2).toUpperCase();
+      return '<span class="tc-lookup__avatar" aria-hidden="true">' + h.esc(initials) + '</span>' +
+        '<span class="tc-lookup__main"><b>' + h.mark(c.name, words) + '</b><small>' + h.mark([c.email, c.phone].filter(Boolean).join(' · '), words) + '</small></span>' +
+        '<span class="tc-lookup__side">' + (c.role ? '<span class="tc-chip">' + h.esc(c.role) + '</span>' : '') +
+        (c.studies && c.studies.length ? '<small>' + h.esc(c.studies.join(', ')) + '</small>' : '') + '</span>';
+    }
+  });
+  customers.attach(custInput, {
+    selectOnFocus: true,
+    queryFor: function (input, q) { return chosen && q === chosen.label ? '' : q; },
+    onPick: function (c, input) { chosen = c; custHidden.value = c.id; input.value = c.label; custMeta.textContent = custDetail(c); },
+    onClose: function (input) {
+      if (!input.value.trim()) { chosen = null; custHidden.value = ''; custMeta.textContent = ''; }
+      else if (chosen) { input.value = chosen.label; }
+    }
+  });
+
+  var known = picker.products || {};
+  function linkChip(row) {
+    var hid = row.querySelector('[name$="-product"]'), box = row.querySelector('[data-linked]');
+    var p = hid && known[hid.value];
+    if (!box) { return; }
+    if (!p) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    box.innerHTML = '<i class="bi bi-link-45deg" aria-hidden="true"></i><span>' + esc(p.sku) + ' · ' + esc(p.for) +
+      (p.unit ? ' · per ' + esc(p.unit) : '') + (p.unlocks ? ' · unlocks access when paid' : '') + '</span>' +
+      '<button type="button" class="btn btn-link btn-sm p-0" data-unlink aria-label="Unlink ' + esc(p.name) + ' from this line"><i class="bi bi-x-lg"></i></button>';
+    box.querySelector('[data-unlink]').addEventListener('click', function () { hid.value = ''; linkChip(row); });
+  }
+  function useItem(p, row) {
+    known[String(p.id)] = p;
+    var hid = row.querySelector('[name$="-product"]'), d = row.querySelector('[name$="-description"]');
+    var pr = row.querySelector('[name$="-unit_price"]'), dt = row.querySelector('[name$="-detail"]');
+    if (hid) { hid.value = p.id; } if (d) { d.value = p.name; } if (pr) { pr.value = p.price; }
+    if (dt && !dt.value) { dt.value = p.summary || ''; }
+    linkChip(row); recalc();
+  }
+  var items = new TCLookup({
+    url: picker.urls.items, label: 'Products and services', fields: opt.item_fields,
+    filters: [
+      {key: 'type', label: 'Type', options: [{id: 'product', label: 'Products'}, {id: 'service', label: 'Services'}]},
+      {key: 'institution', label: 'Institution', options: [{id: 'general', label: 'General (everyone)'}].concat(opt.institutions)},
+      {key: 'programme', label: 'Programme', options: opt.programmes},
+      {key: 'category', label: 'Category', options: opt.categories},
+      {key: 'source', label: 'Kind', options: opt.sources}
+    ],
+    empty: function (q) { return q ? 'Nothing in Products &amp; services matches “' + esc(q) + '”. Press Enter to keep it as a one-off line, or add it below.' : 'Nothing matches these filters.'; },
+    render: function (p, words, h) {
+      return '<span class="tc-lookup__main"><b>' + h.mark(p.name, words) + '</b>' +
+        '<small>' + h.mark([p.sku, p.for, p.category].filter(Boolean).join(' · '), words) + '</small>' +
+        (p.summary ? '<small class="tc-lookup__muted">' + h.mark(p.summary, words) + '</small>' : '') + '</span>' +
+        '<span class="tc-lookup__side"><b class="num">' + h.money(p.price) + '</b>' + (p.unit ? '<small>per ' + h.esc(p.unit) + '</small>' : '') +
+        '<span class="tc-chip ' + (p.kind === 'Service' ? 'tc-chip--cyan' : 'tc-chip--primary') + '">' + h.esc(p.kind) + '</span></span>';
+    },
+    footer: function () {
+      return '<button type="button" class="btn btn-sm btn-link" data-quick><i class="bi bi-plus-lg me-1"></i>New product or service</button>' +
+        '<a class="btn btn-sm btn-link" href="' + esc(picker.urls.manage) + '" target="_blank" rel="noopener">Manage list</a>';
+    },
+    onFooter: function (lookup, actions, q) {
+      actions.querySelector('[data-quick]').addEventListener('click', function () { quickForm(lookup, q); });
+    }
+  });
+  function quickForm(lookup, q) {
+    var box = lookup.panel.querySelector('[data-extra]');
+    box.hidden = false;
+    box.innerHTML = '<div class="tc-lookup__quick"><b>New product or service</b>' +
+      '<div class="row g-2 mt-1">' +
+      '<div class="col-sm-5"><label class="form-label small" for="qName">Name</label><input id="qName" class="form-control form-control-sm" value="' + esc(q) + '"></div>' +
+      '<div class="col-sm-3"><label class="form-label small" for="qKind">Type</label><select id="qKind" class="form-select form-select-sm"><option value="service">Service</option><option value="product">Product</option></select></div>' +
+      '<div class="col-6 col-sm-2"><label class="form-label small" for="qPrice">Price (R)</label><input id="qPrice" class="form-control form-control-sm" type="number" step="0.01" min="0"></div>' +
+      '<div class="col-6 col-sm-2"><label class="form-label small" for="qUnit">Per</label><input id="qUnit" class="form-control form-control-sm" placeholder="each"></div></div>' +
+      '<div class="tc-field-error" data-qerr></div>' +
+      '<div class="d-flex gap-2 mt-2"><button type="button" class="btn btn-sm btn-primary" data-qsave>Add and use</button>' +
+      '<button type="button" class="btn btn-sm btn-link" data-qcancel>Cancel</button>' +
+      '<a class="btn btn-sm btn-link ms-auto" href="' + esc(picker.urls.add_item) + '" target="_blank" rel="noopener">Full form (institution, module…)</a></div></div>';
+    box.querySelector('#qName').focus();
+    box.querySelector('[data-qcancel]').addEventListener('click', function () { box.hidden = true; lookup.input && lookup.input.focus(); });
+    box.querySelector('[data-qsave]').addEventListener('click', function () {
+      var body = new FormData();
+      body.append('name', box.querySelector('#qName').value); body.append('kind', box.querySelector('#qKind').value);
+      body.append('price', box.querySelector('#qPrice').value); body.append('unit', box.querySelector('#qUnit').value);
+      fetch(picker.urls.quick, {method: 'POST', body: body, credentials: 'same-origin', headers: {'X-CSRFToken': csrf, 'Accept': 'application/json'}})
+        .then(function (r) { return r.json(); }).then(function (data) {
+          if (data.item) { lookup.pickRow(data.item); return; }
+          box.querySelector('[data-qerr]').textContent = Object.keys(data.errors || {}).map(function (k) { return k + ': ' + data.errors[k]; }).join(' ') || 'Could not save.';
+        }).catch(function () { box.querySelector('[data-qerr]').textContent = 'Could not save — check your connection.'; });
+    });
+  }
+
+  function wire(row) {
+    var desc = row.querySelector('[name$="-description"]');
+    if (desc) {
+      items.attach(desc, {
+        onPick: function (p, input) { useItem(p, input.closest('[data-line]')); }
+      });
+    }
+    linkChip(row);
+    var rm = row.querySelector('[data-remove]');
+    if (rm) { rm.addEventListener('click', function () { row.remove(); recalc(); }); }
+  }
+  function addLine() {
+    var i = parseInt(total.value, 10);
+    body.insertAdjacentHTML('beforeend', document.getElementById('lineTemplate').innerHTML.replace(/__prefix__/g, i));
+    total.value = i + 1;
+    var row = body.lastElementChild; var q = row.querySelector('[name$="-quantity"]'); if (q && !q.value) { q.value = 1; }
+    var dp = row.querySelector('[name$="-discount_percent"]'); if (dp && !dp.value) { dp.value = 0; }
+    wire(row); recalc();
+  }
+  body.querySelectorAll('[data-line]').forEach(wire);
+  form.addEventListener('input', recalc); form.addEventListener('change', recalc);
+  form.querySelector('[data-add-line]').addEventListener('click', addLine);
+  if (!body.querySelector('[data-line]')) { addLine(); }
+  recalc();
+})();
+</script>
+{% endblock %}

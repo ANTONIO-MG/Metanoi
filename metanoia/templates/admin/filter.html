@@ -1,0 +1,11 @@
+{% load i18n %}
+{% comment %}One list filter — OVERRIDES the old admin theme's. Django's <details> (filters.js
+remembers which are open); the choices are the hub's chips.{% endcomment %}
+<details class="ta-filter" data-filter-title="{{ title }}" open>
+  <summary>{{ title|capfirst }}</summary>
+  <ul>
+  {% for choice in choices %}
+    <li{% if choice.selected %} class="selected"{% endif %}><a href="{{ choice.query_string|iriencode }}"{% if choice.selected %} aria-current="true"{% endif %}>{{ choice.display }}</a></li>
+  {% endfor %}
+  </ul>
+</details>

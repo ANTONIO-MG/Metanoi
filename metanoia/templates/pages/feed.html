@@ -1,0 +1,431 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static %}
+{% comment %}The Metanoia Community feed. Tabs switch community (?c=<slug>); the share and
+report modals at the bottom are driven by static/js/community.js.
+
+Inline styles cover the multi-attachment gallery on feed posts, the Metanoia
+Community tabs and the feed lightbox (real-size media / scrollable document over
+a blurred backdrop). The lightbox lives in the content block so it survives an
+HTMX boosted swap. It delegates on the document, so it must initialise once:
+``window.__flbInit`` guards re-runs.
+
+The lightbox shows images / videos at real size and documents in a scrollable viewer,
+with close, prev / next and a Save (download) button; media are grouped per post via
+``data-flb-group``. Closing empties the stage, which also stops a playing video.{% endcomment %}
+
+{% block additional_css %}
+<style>
+  .feed-gallery{ display:grid; gap:4px; }
+  .feed-gallery--2, .feed-gallery--3, .feed-gallery--4, .feed-gallery--more{ grid-template-columns:1fr 1fr; }
+  .feed-gallery--3 .feed-tile:nth-child(3){ grid-column:1 / -1; aspect-ratio:2 / 1; }
+  .feed-tile{ position:relative; display:block; overflow:hidden; background:#f1f3f5;
+    aspect-ratio:1 / 1; border-radius:.4rem; text-decoration:none; color:inherit; }
+  .feed-tile img, .feed-tile video{ width:100%; height:100%; object-fit:cover; display:block; }
+  .feed-tile--doc{ display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:.4rem; padding:.6rem; border:1px solid #e6e8ee; }
+  .feed-tile--doc .bi{ font-size:2.2rem; color:#d6293e; }
+  .feed-tile--doc .fname{ font-size:.72rem; max-width:100%; }
+  .feed-tile--video .feed-play{ position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; color:#fff; font-size:2.4rem; text-shadow:0 1px 6px rgba(0,0,0,.5); pointer-events:none; }
+  .feed-more{ position:absolute; inset:0; background:rgba(0,0,0,.55); color:#fff; display:flex;
+    align-items:center; justify-content:center; font-size:1.6rem; font-weight:700; }
+  [data-bs-theme="dark"] .feed-tile{ background:#232741; }
+  [data-bs-theme="dark"] .feed-tile--doc{ border-color:#343a5a; }
+
+  .community-tabs{ display:flex; gap:.4rem; overflow-x:auto; padding-bottom:.25rem; scrollbar-width:thin; }
+  .community-tabs .btn{ white-space:nowrap; }
+  .feed-mention{ color:#0B5FC6; font-weight:600; background:rgba(11,95,198,.08); border-radius:.25rem; padding:0 .15rem; }
+  .feed-removed{ opacity:.7; }
+  .feed-shared{ background:rgba(62,36,21,.03); }
+  .mention-menu{ position:absolute; z-index:1060; min-width:240px; max-width:320px; max-height:260px; overflow:auto;
+    background:#fff; border:1px solid #e6e8ee; border-radius:.5rem; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:.25rem 0; }
+  .mention-menu button{ display:flex; align-items:center; gap:.5rem; width:100%; border:0; background:none;
+    padding:.35rem .75rem; text-align:left; font-size:.85rem; }
+  .mention-menu button:hover, .mention-menu button.is-active{ background:rgba(11,95,198,.08); }
+  .mention-menu img{ width:24px; height:24px; border-radius:50%; object-fit:cover; }
+  [data-bs-theme="dark"] .mention-menu{ background:#1d2136; border-color:#343a5a; }
+
+  .flb{ position:fixed; inset:0; z-index:20000; display:flex; align-items:center; justify-content:center; }
+  .flb[hidden]{ display:none; }
+  .flb__backdrop{ position:absolute; inset:0; background:rgba(8,10,18,.72);
+    backdrop-filter:blur(9px); -webkit-backdrop-filter:blur(9px); }
+  .flb__stage{ position:relative; z-index:1; display:flex; align-items:center; justify-content:center;
+    max-width:94vw; max-height:90vh; }
+  .flb__stage img, .flb__stage video{ max-width:94vw; max-height:90vh; border-radius:.5rem;
+    box-shadow:0 24px 70px rgba(0,0,0,.55); background:#000; display:block; }
+  .flb__doc{ width:min(92vw,920px); height:90vh; border:0; border-radius:.5rem; background:#fff; }
+  .flb__fallback{ background:#fff; color:#1a2035; border-radius:.6rem; padding:2.2rem 2rem; text-align:center;
+    max-width:88vw; box-shadow:0 24px 70px rgba(0,0,0,.5); }
+  .flb__fallback .bi{ font-size:3rem; color:#d6293e; }
+  .flb__btn{ position:absolute; z-index:3; display:inline-flex; align-items:center; justify-content:center;
+    gap:.35rem; background:rgba(20,22,34,.62); color:#fff; border:0; border-radius:2rem; cursor:pointer;
+    text-decoration:none; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  .flb__btn:hover{ background:rgba(20,22,34,.9); color:#fff; }
+  .flb__close{ top:16px; right:16px; width:44px; height:44px; border-radius:50%; font-size:1.4rem; line-height:1; }
+  .flb__download{ top:16px; right:72px; height:44px; padding:0 1rem; font-size:.85rem; font-weight:600; }
+  .flb__nav{ top:50%; transform:translateY(-50%); width:50px; height:50px; border-radius:50%; font-size:1.7rem; line-height:1; }
+  .flb__prev{ left:16px; } .flb__next{ right:16px; }
+  .flb__nav[hidden], .flb__count[hidden]{ display:none; }
+  .flb__count{ position:absolute; z-index:3; bottom:16px; left:50%; transform:translateX(-50%); color:#fff;
+    background:rgba(20,22,34,.62); padding:.25rem .7rem; border-radius:2rem; font-size:.8rem; }
+  .flb__name{ position:absolute; z-index:3; top:20px; left:18px; color:#fff; max-width:46vw; font-size:.85rem;
+    text-shadow:0 1px 4px rgba(0,0,0,.6); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <div class="col-lg-8 vstack gap-4">
+    <div class="card card-body py-2">
+      <div class="community-tabs" role="tablist" aria-label="Communities">
+        <a class="btn btn-sm {% if not active_community %}btn-primary{% else %}btn-light{% endif %}" href="{% url 'pages:dashboard' %}">
+          <i class="bi bi-collection me-1"></i>All</a>
+        {% for c in communities %}
+        <a class="btn btn-sm {% if active_community.pk == c.pk %}btn-primary{% else %}btn-light{% endif %}" href="?c={{ c.slug }}"
+           title="{{ c.description|default:c.name }}">
+          {% if c.is_default %}<i class="bi bi-globe2 me-1"></i>{% else %}<i class="bi bi-mortarboard me-1"></i>{% endif %}{{ c.name }}</a>
+        {% endfor %}
+        {% if is_moderator %}
+        <a class="btn btn-sm btn-outline-danger ms-auto" href="{% url 'communication:community-moderation' %}">
+          <i class="bi bi-shield-check me-1"></i>Moderation</a>
+        {% endif %}
+      </div>
+      <small class="text-muted mt-1">
+        {% if active_community %}{% if active_community.is_default %}Everyone on Metanoia — students, coaches, parents, the team and community members.{% else %}Everyone in {{ active_community.name }}{% if active_community.programme.full_name %} ({{ active_community.programme.full_name }}){% endif %}.{% endif %}
+        {% else %}Everything from your communities{% if explore and not explore.on %} — the Metanoia Community and your own{% endif %}.{% endif %}
+        {% if member_limits %}Community members can post 5 times an hour.{% endif %}
+      </small>
+    </div>
+
+    {% include 'partials/_composer.html' %}
+    {% include 'partials/_feed.html' %}
+  </div>
+
+  <div class="col-lg-4">
+    <div class="vstack gap-4">
+
+      {% if is_community %}
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-stars text-warning me-2"></i>Ready for more?</h6>
+          <p class="small text-muted">Become a Metanoia student for your modules, live classes, mock exams and coaching.</p>
+          <a class="btn btn-sm btn-primary" href="{% url 'accounts:become-student' %}">Become a student</a>
+          <a class="btn btn-sm btn-light" href="{% url 'communication:message-metanoia' %}"><i class="bi bi-chat-heart me-1"></i>Message Metanoia</a>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if explore %}
+      <div class="card" id="exploreCommunities">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <h6 class="card-title mb-1"><i class="bi bi-binoculars text-info me-2"></i>Explore other communities</h6>
+            <form method="post" action="{% url 'communication:community-explore' %}" class="flex-shrink-0">
+              {% csrf_token %}
+              <input type="hidden" name="on" value="{% if explore.on %}0{% else %}1{% endif %}">
+              <button type="submit" class="btn btn-sm mb-0 {% if explore.on %}btn-light{% else %}btn-outline-primary{% endif %}"
+                      aria-pressed="{% if explore.on %}true{% else %}false{% endif %}">
+                {% if explore.on %}Turn off{% else %}Turn on{% endif %}</button>
+            </form>
+          </div>
+          {% if not explore.on %}
+            <p class="small text-muted mb-0">You see the Metanoia Community and your own programme's community.
+              Turn this on to browse and join the others.</p>
+          {% else %}
+            <p class="small text-muted">Join any of these. Turning exploring off takes you back to your own two.</p>
+            <div class="vstack gap-2">
+              {% for o in explore.others %}
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-mortarboard text-muted"></i>
+                <span class="flex-grow-1 min-w-0 small">
+                  {% if o.joined %}<a class="fw-semibold text-reset" href="?c={{ o.community.slug }}">{{ o.community.name }}</a>
+                  {% else %}<span class="fw-semibold">{{ o.community.name }}</span>{% endif %}
+                  {% if o.community.programme.full_name %}<span class="d-block text-muted text-truncate">{{ o.community.programme.full_name }}</span>{% endif %}
+                </span>
+                {% if o.joined %}
+                <form method="post" action="{% url 'communication:leave-community' o.community.slug %}">{% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-light mb-0">Leave</button></form>
+                {% else %}
+                <form method="post" action="{% url 'communication:join-community' o.community.slug %}">{% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-primary mb-0">Join</button></form>
+                {% endif %}
+              </div>
+              {% empty %}
+              <p class="small text-muted mb-0">There are no other communities yet.</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if rail_week or rail_readiness.pct is not None %}
+      <div class="card">
+        <div class="card-header border-0 pb-0">
+          <h6 class="card-title mb-0"><i class="bi bi-compass text-primary me-2"></i>This week</h6>
+        </div>
+        <div class="card-body pt-2">
+          {% if rail_week %}
+            <a class="text-reset text-decoration-none d-block" href="/learning/modules/{{ rail_week.module_id }}/feed/">
+              <span class="d-block fw-semibold">{{ rail_week.title }}</span>
+              <small class="text-muted d-block">{{ rail_week.module }} · {{ rail_week.phase }}</small>
+              {% if rail_week.days_left is not None %}
+              <small class="text-muted"><i class="bi bi-hourglass-split me-1"></i>
+                {% if rail_week.days_left > 0 %}{{ rail_week.days_left }} day{{ rail_week.days_left|pluralize }} left in this week
+                {% else %}Last day of this week{% endif %}</small>
+              {% endif %}
+            </a>
+          {% else %}
+            <p class="small text-muted mb-0">No study week is running right now.</p>
+          {% endif %}
+
+          {% if rail_readiness.pct is not None %}
+          <hr class="my-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <small class="text-muted">Readiness · {{ rail_readiness.phase }}</small>
+            <span class="badge bg-{{ rail_readiness.tone }} bg-opacity-10 text-{{ rail_readiness.tone }}">{{ rail_readiness.label }}</span>
+          </div>
+          <div class="progress" style="height:6px">
+            <div class="progress-bar bg-{{ rail_readiness.tone }}" style="width:{{ rail_readiness.pct }}%"></div>
+          </div>
+          <small class="text-muted d-block mt-1">{{ rail_readiness.basis }}</small>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if not is_community %}
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center border-0 pb-0">
+          <h6 class="card-title mb-0"><i class="bi bi-calendar2-event text-danger me-2"></i>Key dates</h6>
+          <a class="small" href="{% url 'livesessions:calendar' %}">Calendar</a>
+        </div>
+        <div class="card-body pt-2 vstack gap-2">
+          {% for d in rail_dates %}
+          <a class="d-flex align-items-center text-reset text-decoration-none" href="{{ d.url|default:'#' }}">
+            <span class="badge bg-{{ d.tone }} bg-opacity-10 text-{{ d.tone }} me-2 text-center" style="min-width:52px">
+              {{ d.date|date:"j M" }}</span>
+            <span class="flex-grow-1 min-w-0">
+              <span class="d-block small fw-semibold text-truncate">{{ d.label }}</span>
+              <small class="text-muted">{{ d.kind }}{% if d.source %} · {{ d.source }}{% endif %}</small>
+            </span>
+            <small class="text-muted flex-shrink-0 ms-2">
+              {% if d.days_away == 0 %}Today{% else %}in {{ d.days_away }}d{% endif %}</small>
+          </a>
+          {% empty %}
+          <p class="small text-muted mb-0">No dates in the next six months.
+            <a href="/community/settings/">Add your own</a>.</p>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center border-0 pb-0">
+          <h6 class="card-title mb-0"><i class="bi bi-bell text-warning me-2"></i>Notifications</h6>
+          <a class="small" href="/communication/notifications/">See all</a>
+        </div>
+        <div class="card-body pt-2 vstack gap-2">
+          {% for n in rail_notifications %}
+          <a class="d-flex align-items-start text-reset text-decoration-none" href="{{ n.url|default:'/communication/notifications/' }}">
+            <i class="bi bi-dot fs-4 lh-1 {% if not n.is_read %}text-primary{% else %}text-muted{% endif %}"></i>
+            <span class="flex-grow-1 min-w-0">
+              <span class="d-block small {% if not n.is_read %}fw-semibold{% endif %} text-truncate">{{ n.title|default:n.verb }}</span>
+              <small class="text-muted">{{ n.created_at|timesince }} ago</small>
+            </span>
+          </a>
+          {% empty %}
+          <p class="small text-muted mb-0">No notifications yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center border-0 pb-0">
+          <h6 class="card-title mb-0"><i class="bi bi-person-vcard text-success me-2"></i>{% if is_community %}The Metanoia team{% else %}Educators &amp; staff{% endif %}</h6>
+          {% if not is_community and not is_parent %}<a class="small" href="/community/members/">Directory</a>{% endif %}
+        </div>
+        <div class="card-body pt-2 vstack gap-3">
+          {% for p in rail_people %}
+          <div class="d-flex align-items-center">
+            <a class="avatar me-2" href="{% if is_community or is_parent %}{% url 'accounts:person-card' p.pk %}{% else %}{% url 'accounts:member-profile' p.pk %}{% endif %}">
+              {% if p %}
+                <img class="avatar-img rounded-circle" src="{{ p.avatar_url }}" alt="{{ p }}">
+              {% else %}
+                <span class="avatar-img rounded-circle bg-primary text-white d-flex align-items-center justify-content-center">
+                  {{ p.first_name|first|default:p.user.email|first|upper }}</span>
+              {% endif %}
+            </a>
+            <div class="flex-grow-1 min-w-0">
+              <a class="d-block small fw-semibold text-truncate text-reset" href="{% if is_community or is_parent %}{% url 'accounts:person-card' p.pk %}{% else %}{% url 'accounts:member-profile' p.pk %}{% endif %}">{{ p }}</a>
+              <span class="small text-muted text-capitalize">{{ p.get_user_type_display }}</span>
+            </div>
+            {% if p.user_id != request.user.pk %}
+            <a class="btn btn-sm btn-primary-soft flex-shrink-0" title="Message {{ p.first_name }}"
+               href="{% url 'communication:chat-direct' p.user_id %}"><i class="bi bi-chat-left-text"></i></a>
+            {% endif %}
+          </div>
+          {% empty %}
+          <p class="small text-muted mb-0">No educators or staff listed yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <p class="small text-center text-muted">{{ brand.copyright|default:"© Metanoia Group" }}</p>
+      <p class="small text-center text-muted mb-0"><a class="text-reset" href="{% url 'pages:privacy-and-terms' %}#terms">Terms &amp; Conditions</a> · {% include 'partials/_built_by.html' %}</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal fade" id="feedShareModal" tabindex="-1" aria-labelledby="feedShareTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" action="">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title" id="feedShareTitle"><i class="bi bi-share me-2"></i>Share to another community</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label small" for="shareCommunity">Community</label>
+        <select class="form-select mb-3" name="community" id="shareCommunity" required>
+          {% for c in communities %}<option value="{{ c.slug }}" {% if c.is_default %}data-default="1"{% endif %}>{{ c.name }}</option>{% endfor %}
+        </select>
+        <label class="form-label small" for="shareBody">Say something about it (optional)</label>
+        <textarea class="form-control" name="body" id="shareBody" rows="3" data-autosize data-mention-input
+                  data-community-from="#shareCommunity" placeholder="Why are you sharing this? Type @ to tag someone"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light mb-0" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary mb-0"><i class="bi bi-share me-1"></i>Share</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="feedReportModal" tabindex="-1" aria-labelledby="feedReportTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" action="">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title" id="feedReportTitle"><i class="bi bi-flag me-2"></i>Report this post</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">The Metanoia team will look at it. Your report is private — the author is not told who reported it.</p>
+        {% for value, label in report_reasons %}
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="reason" id="reason-{{ value }}" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
+          <label class="form-check-label" for="reason-{{ value }}">{{ label }}</label>
+        </div>
+        {% endfor %}
+        <label class="form-label small mt-3" for="reportNote">Anything else we should know? (optional)</label>
+        <textarea class="form-control" name="note" id="reportNote" rows="2" maxlength="500"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light mb-0" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger mb-0"><i class="bi bi-flag me-1"></i>Send report</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="{% static 'js/community.js' %}" defer></script>
+
+<script>
+(function () {
+  if (window.__flbInit) return;
+  window.__flbInit = 1;
+  var overlay = null, items = [], idx = 0;
+
+  function esc(s){ return (s || '').replace(/[&<>"]/g, function (c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function ext(name, src){ var s = (name || src || '').split('?')[0]; return (s.split('.').pop() || '').toLowerCase(); }
+
+  function build(){
+    overlay = document.createElement('div');
+    overlay.className = 'flb'; overlay.hidden = true;
+    overlay.innerHTML =
+      '<div class="flb__backdrop"></div>' +
+      '<span class="flb__name"></span>' +
+      '<a class="flb__btn flb__download" download><i class="bi bi-download"></i><span>Save</span></a>' +
+      '<button type="button" class="flb__btn flb__close" title="Close" aria-label="Close">&times;</button>' +
+      '<button type="button" class="flb__btn flb__nav flb__prev" aria-label="Previous">&#8249;</button>' +
+      '<button type="button" class="flb__btn flb__nav flb__next" aria-label="Next">&#8250;</button>' +
+      '<div class="flb__stage"></div>' +
+      '<span class="flb__count"></span>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.flb__backdrop').addEventListener('click', close);
+    overlay.querySelector('.flb__close').addEventListener('click', close);
+    overlay.querySelector('.flb__prev').addEventListener('click', function () { go(-1); });
+    overlay.querySelector('.flb__next').addEventListener('click', function () { go(1); });
+  }
+
+  function render(){
+    var it = items[idx], stage = overlay.querySelector('.flb__stage');
+    stage.innerHTML = '';
+    if (it.type === 'image') {
+      var img = document.createElement('img'); img.src = it.src; img.alt = it.name || ''; stage.appendChild(img);
+    } else if (it.type === 'video') {
+      var v = document.createElement('video'); v.src = it.src; v.controls = true; v.autoplay = true; stage.appendChild(v);
+    } else {
+      var e = ext(it.name, it.src);
+      if (e === 'pdf' || e === 'txt') {
+        var f = document.createElement('iframe'); f.className = 'flb__doc'; f.src = it.src; stage.appendChild(f);
+      } else {
+        var box = document.createElement('div'); box.className = 'flb__fallback';
+        box.innerHTML = '<i class="bi bi-file-earmark-text-fill"></i>' +
+          '<p class="mt-2 mb-1 fw-semibold">' + esc(it.name || 'Document') + '</p>' +
+          '<p class="text-muted small mb-3">This file type can’t preview here — download it to open.</p>' +
+          '<a class="btn btn-primary" href="' + esc(it.src) + '" download><i class="bi bi-download me-1"></i>Download</a>';
+        stage.appendChild(box);
+      }
+    }
+    var dl = overlay.querySelector('.flb__download');
+    dl.href = it.src; dl.setAttribute('download', it.name || '');
+    overlay.querySelector('.flb__name').textContent = it.name || '';
+    var multi = items.length > 1;
+    overlay.querySelector('.flb__prev').hidden = !multi;
+    overlay.querySelector('.flb__next').hidden = !multi;
+    var count = overlay.querySelector('.flb__count');
+    count.hidden = !multi; count.textContent = (idx + 1) + ' / ' + items.length;
+  }
+
+  function go(step){ idx = (idx + step + items.length) % items.length; render(); }
+
+  function open(group, startSrc){
+    if (!overlay) build();
+    var nodes = document.querySelectorAll('.flb-item[data-flb-group="' + group + '"]');
+    items = Array.prototype.map.call(nodes, function (n) {
+      return { type: n.dataset.flbType, src: n.dataset.flbSrc, name: n.dataset.flbName }; });
+    if (!items.length) return;
+    idx = 0;
+    for (var i = 0; i < items.length; i++) { if (items[i].src === startSrc) { idx = i; break; } }
+    render();
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function close(){
+    if (!overlay) return;
+    overlay.hidden = true;
+    overlay.querySelector('.flb__stage').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('.flb-item');
+    if (!t) return;
+    e.preventDefault();
+    open(t.dataset.flbGroup, t.dataset.flbSrc);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!overlay || overlay.hidden) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft') go(-1);
+    else if (e.key === 'ArrowRight') go(1);
+  });
+})();
+</script>
+{% endblock %}

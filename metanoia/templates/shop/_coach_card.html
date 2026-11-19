@@ -1,0 +1,21 @@
+{% load commerce people %}
+{% comment %}
+One coach who offers 1-on-1s: picture, "First Last", rate per hour, the days
+they take sessions, and a link to their week.
+
+Include parameter: ``c`` — one entry of shop.views._educators_offering.
+{% endcomment %}
+<article class="to-coach">
+  <a class="to-coach__face" href="{% url 'shop:one-on-one-educator' c.person.pk %}" tabindex="-1" aria-hidden="true">
+    <span class="t-ring"><img src="{{ c.person|person_avatar }}" alt="" loading="lazy"></span>
+  </a>
+  <div class="to-coach__body">
+    <a class="to-coach__name" href="{% url 'shop:one-on-one-educator' c.person.pk %}">{{ c.person|person_name }}</a>
+    <span class="to-coach__role">{% if c.person.user_type == 'educator' %}Educator{% else %}Metanoia coach{% endif %}</span>
+    {% if c.weekdays %}<span class="to-coach__days"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>{{ c.weekdays|join:" · " }}</span></span>{% endif %}
+  </div>
+  <div class="to-coach__foot">
+    <span class="ts-price"><b>{{ c.rate.hourly_rate|rand }}</b><small>per hour</small></span>
+    <a class="ts-btn" href="{% url 'shop:one-on-one-educator' c.person.pk %}">See the week</a>
+  </div>
+</article>

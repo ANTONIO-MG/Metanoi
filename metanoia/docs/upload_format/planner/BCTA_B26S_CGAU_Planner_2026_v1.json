@@ -1,0 +1,11 @@
+{
+  "format": "metanoia-upload/1",
+  "doc_type": "planner",
+  "title": "CGAU B26S — 2026 planner",
+  "institution": "MILPARK",
+  "programme": "BCTA",
+  "module": "CGAU",
+  "cohort": "B26S",
+  "assessment": {"kind": "other", "sequence": 1},
+  "audience": "students"
+}

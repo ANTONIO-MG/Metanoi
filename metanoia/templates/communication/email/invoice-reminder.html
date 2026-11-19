@@ -1,0 +1,19 @@
+{% extends 'communication/email/base_email.html' %}{% load org_branding %}
+{% comment %}
+Unpaid-invoice reminder. Context: invoice, pay_url, stage (before_3 | due | after_7 | manual).
+
+Extends ``communication/email/base_email.html``; fills ``heading``, ``content``,
+``cta``. Includes ``communication/email/_button.html``.
+{% endcomment %}
+{% block heading %}{% if stage == 'after_7' %}Invoice {{ invoice.number }} is overdue{% elif stage == 'due' %}Invoice {{ invoice.number }} is due today{% else %}A friendly reminder{% endif %}{% endblock %}
+{% block content %}
+  <p style="margin:0 0 14px">Hi {{ invoice.customer|greeting_name }},</p>
+  <p style="margin:0 0 14px">{% if stage == 'after_7' %}Our records show invoice <strong>{{ invoice.number }}</strong> is still unpaid, {{ invoice.days_overdue }} days after it was due. If you've already paid, thank you — please reply with your proof of payment and we'll match it.{% elif stage == 'due' %}Invoice <strong>{{ invoice.number }}</strong> is due today.{% else %}Invoice <strong>{{ invoice.number }}</strong> is due on {{ invoice.due_date|date:"j F Y" }}.{% endif %}</p>
+  <table style="width:100%;border-collapse:collapse;margin:4px 0 14px">
+    {% if invoice.summary %}<tr><td style="padding:6px 0;color:#6B5E55">For</td><td style="text-align:right">{{ invoice.summary }}</td></tr>{% endif %}
+    <tr><td style="padding:6px 0;color:#6B5E55">Due</td><td style="text-align:right">{{ invoice.due_date|date:"j F Y" }}</td></tr>
+    <tr><td style="padding:6px 0;color:#6B5E55">Amount due</td><td style="text-align:right"><strong style="font-size:18px;color:#0B5FC6">R{{ invoice.balance|floatformat:2 }}</strong></td></tr>
+    <tr><td style="padding:6px 0;color:#6B5E55">EFT reference</td><td style="text-align:right">{{ invoice.payment_reference }}</td></tr>
+  </table>
+{% endblock %}
+{% block cta %}{% include 'communication/email/_button.html' with url=pay_url label="PAY NOW" %}{% endblock %}

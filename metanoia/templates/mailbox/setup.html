@@ -1,0 +1,36 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load static %}
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/mailbox.css' %}?v=1">{% endblock %}
+{% block content %}
+<div class="mb-setup">
+  <div class="mb-setup__card">
+    <span class="mb-logo mb-logo--lg"><i class="bi bi-envelope-paper-fill"></i></span>
+    <h1>Connect your Metanoia mailbox</h1>
+    <p class="text-muted">Read, send and file your Metanoia e-mail right here — with attachments, folders and
+      notifications when new mail arrives — and send invoices and documents straight from the Learning Hub.</p>
+
+    {% if not server.is_configured %}
+      <div class="alert alert-warning text-start">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        The Metanoia mail server has not been set up yet.
+        {% if can_manage %}Add the IMAP and SMTP settings first.{% else %}Ask an administrator to add the mail server settings.{% endif %}
+      </div>
+      {% if can_manage %}<a class="btn btn-primary" href="{% url 'mailbox:settings' %}"><i class="bi bi-gear me-1"></i>Open Mail settings</a>{% endif %}
+    {% else %}
+      <form method="post" action="{% url 'mailbox:settings' %}" class="text-start mt-3">{% csrf_token %}
+        <input type="hidden" name="form" value="account">
+        <div class="mb-3"><label class="form-label">Your Metanoia e-mail address</label>
+          <input class="form-control" type="email" name="acct-email_address" required value="{{ form.initial.email_address|default:'' }}"
+                 placeholder="name@{{ server.domain|default:'metanoiagroup.co.za' }}"></div>
+        <div class="mb-3"><label class="form-label">Mailbox password</label>
+          <input class="form-control" type="password" name="acct-password" required autocomplete="new-password"></div>
+        <div class="mb-3"><label class="form-label">Your name as recipients see it</label>
+          <input class="form-control" type="text" name="acct-display_name" value="{{ form.initial.display_name|default:'' }}"></div>
+        <input type="hidden" name="acct-notify_new_mail" value="on"><input type="hidden" name="acct-is_default" value="on">
+        <button class="btn btn-primary w-100"><i class="bi bi-plug me-1"></i>Connect mailbox</button>
+        <p class="small text-muted mt-2 mb-0">Server: {{ server.imap_host }} (incoming) · {{ server.smtp_host }} (outgoing).
+          <a href="{% url 'mailbox:settings' %}">Advanced settings</a></p>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

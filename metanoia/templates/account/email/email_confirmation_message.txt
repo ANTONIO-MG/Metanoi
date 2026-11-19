@@ -1,0 +1,11 @@
+{% load org_branding %}{% org_brand as brand %}Hi,
+
+Please confirm your e-mail address for {{ brand.name|default:"Metanoia Group" }} by visiting:
+
+{{ activate_url }}
+
+If you didn't deliberately request this, please ignore this e-mail — your
+address won't be confirmed and nothing will change.
+
+--
+{{ brand.copyright|default:"Metanoia Group" }}

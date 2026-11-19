@@ -1,0 +1,69 @@
+{% extends 'communication/email/base_email.html' %}
+{% comment %}
+E-mail 2 of 2 on registration: the invoice, or the receipt.
+
+One template covers both so the two arrive looking identical — only the wording
+and the attached PDF differ. ``paid`` picks which:
+
+  * ``paid=False`` — they took the free week and will pay by EFT. The body talks
+    about the **trial period** and nothing else; the invoice PDF is attached.
+  * ``paid=True``  — the card has cleared. The body confirms the payment; the
+    receipt PDF is attached.
+
+**No figures in the body**, on either branch: no total, no balance, no line
+items, no due date, no invoice number in the running text. Those all live in the
+attachment, which is the document worth keeping and the one a sponsor or a bank
+will accept. Repeating them here only created two versions of the same numbers
+that could disagree after a credit note.
+
+The pay button is not a figure — it is the action they need — so it stays on the
+unpaid branch.
+
+Context: first_name, invoice, paid, trial_ends, trial_days, pay_url,
+attachment_label.
+
+Extends ``communication/email/base_email.html``; fills ``preheader``, ``heading``,
+``content``, ``cta``, ``expiry_note``. Includes ``communication/email/_button.html``.
+{% endcomment %}
+
+{% block preheader %}{% if paid %}Your receipt is attached.{% else %}Your invoice is attached — your free week has started.{% endif %}{% endblock %}
+{% block heading %}{% if paid %}Your receipt{% else %}Your invoice{% endif %}{% endblock %}
+
+{% block content %}
+  <p style="margin:0 0 14px">Hi {{ first_name|default:"there" }},</p>
+
+  {% if paid %}
+    <p style="margin:0 0 14px">
+      Thank you — your payment has gone through and every module you registered for
+      is unlocked. Nothing else is needed from you.
+    </p>
+    <p style="margin:0 0 14px">
+      <strong>Your receipt is attached to this e-mail</strong> as a PDF. Keep it for
+      your records; the same document is always available in the platform under
+      <strong>Finance</strong>.
+    </p>
+  {% else %}
+    <p style="margin:0 0 14px">
+      <strong>Your free week has started.</strong> The whole platform is open to you
+      {% if trial_ends %}until <strong>{{ trial_ends|date:"l, j F Y" }}</strong>{% else %}for the next {{ trial_days|default:7 }} days{% endif %}
+      — every module, every live class, every document, with nothing held back.
+    </p>
+    <p style="margin:0 0 14px">
+      <strong>Your invoice is attached to this e-mail</strong> as a PDF. Settle it by
+      EFT{% if trial_ends %} before {{ trial_ends|date:"j F" }}{% else %} before the week is out{% endif %}
+      and your modules stay open without interruption. If it is not settled by then,
+      your modules lock until it is — nothing is lost, and everything reopens the
+      moment payment reflects.
+    </p>
+    <p style="margin:0 0 14px">
+      The banking details are on the attached PDF. You can also pay by card using the
+      button below, which settles it immediately.
+    </p>
+  {% endif %}
+{% endblock %}
+
+{% block cta %}{% if not paid %}{% include 'communication/email/_button.html' with url=pay_url label="PAY NOW BY CARD" %}{% endif %}{% endblock %}
+
+{% block expiry_note %}
+  Keep the attached {{ attachment_label|default:"document" }} for your records.{% if brand.support_email %} Questions about this {% if paid %}receipt{% else %}invoice{% endif %}? {{ brand.support_email }}.{% endif %}
+{% endblock %}

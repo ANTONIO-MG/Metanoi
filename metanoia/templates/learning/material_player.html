@@ -1,0 +1,23 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}A YouTube recording played on the platform for students and parents —
+never prints its YouTube address (see material_open).{% endcomment %}
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3">
+  <nav class="small mb-3" aria-label="breadcrumb">
+    <a href="{{ back }}"><i class="bi bi-arrow-left me-1"></i>{{ offering.display_name }}</a>
+  </nav>
+  <div class="card"><div class="card-body">
+    <h4 class="mb-1">{{ material.title }}</h4>
+    {% if material.description %}<p class="text-muted mb-3">{{ material.description }}</p>{% endif %}
+    <div class="mp-frame" oncontextmenu="return false;">
+      <iframe src="{{ embed_url }}" title="{{ material.title }}" allowfullscreen
+              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+              referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+  </div></div>
+</div></div>
+<style>
+  .mp-frame{ position:relative; aspect-ratio:16/9; background:#000; border-radius:.5rem; overflow:hidden; }
+  .mp-frame iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+</style>
+{% endblock %}

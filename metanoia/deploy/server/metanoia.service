@@ -1,0 +1,22 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Metanoia Group (Django ASGI via gunicorn/uvicorn)
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=notify
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/projects/Metanoia/metanoia
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/ubuntu/projects/Metanoia/metanoia/.environment/bin/gunicorn config.asgi:application --worker-class uvicorn_worker.UvicornWorker --workers 4 --max-requests 2000 --max-requests-jitter 200 --bind 127.0.0.1:8000 --access-logfile - --error-logfile -
+NoNewPrivileges=true
+PrivateTmp=true
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

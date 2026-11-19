@@ -1,0 +1,91 @@
+{% extends 'communication/email/base_email.html' %}
+{% comment %}
+E-mail 1 of 2 on registration: the thank-you and what they signed up for.
+
+Registration sends exactly two e-mails and they do not overlap:
+
+  1. **this one** — thank you, what you registered for, and how to get going;
+  2. registration-document.html — the invoice or the receipt, as a PDF.
+
+So there is deliberately no money anywhere on this page: no total, no balance,
+no invoice number, no due date, no pay button. A reader who wants the figures
+opens the attachment on the other e-mail, which is the document they can file or
+forward to a sponsor. Splitting it that way is the point — the previous version
+put the total on this e-mail *and* attached the PDF *and* let a third "invoice"
+e-mail go out beside it, so three messages arrived saying overlapping things.
+
+There is also no personal detail: no e-mail address, no phone number, no
+physical address, no ID number. The recipient knows who they are, and an e-mail
+that recites their contact details is a small leak to anyone reading over their
+shoulder or to whoever they forward the thread to.
+
+Context: first_name, institution, programme, modules, login_url.
+
+Extends ``communication/email/base_email.html``; fills ``preheader``, ``heading``,
+``content``, ``cta``, ``expiry_note``. Includes ``communication/email/_button.html``.
+{% endcomment %}
+
+{% block preheader %}Thank you for registering{% if programme %} for {{ programme }}{% endif %} — here's how to get started.{% endblock %}
+{% block heading %}Thank you for registering{% endblock %}
+
+{% block content %}
+  <p style="margin:0 0 14px">Hi {{ first_name|default:"there" }},</p>
+
+  <p style="margin:0 0 16px">
+    You're registered, and we're glad you're here. Here's what you signed up for:
+  </p>
+
+  <table class="kv" role="presentation" style="margin:4px 0 20px">
+    {% if institution %}
+    <tr>
+      <td class="kv-label">Institution</td>
+      <td class="kv-value"><strong>{{ institution }}</strong></td>
+    </tr>
+    {% endif %}
+    {% if programme %}
+    <tr>
+      <td class="kv-label kv-rule">Programme</td>
+      <td class="kv-value kv-rule"><strong>{{ programme }}</strong></td>
+    </tr>
+    {% endif %}
+    {% if modules %}
+    <tr>
+      <td class="kv-label kv-rule">Module{{ modules|length|pluralize }}</td>
+      <td class="kv-value kv-rule">
+        {% for m in modules %}<strong>{{ m }}</strong>{% if not forloop.last %}<br>{% endif %}{% endfor %}
+      </td>
+    </tr>
+    {% endif %}
+  </table>
+
+  <p style="margin:0 0 8px"><strong>Getting started — four steps</strong></p>
+  <table class="steps" role="presentation" style="margin:0 0 18px">
+    <tr><td><strong>1.</strong>&nbsp; Sign in with the button below.</td></tr>
+    <tr><td><strong>2.</strong>&nbsp; Finish your profile — it takes a minute, and it is what your coach sees.</td></tr>
+    <tr><td><strong>3.</strong>&nbsp; Open <strong>My Modules</strong> and pick one, then open its <strong>Schedule</strong>
+        — the blueprint and study guide sit at the top, then weeks 1–4, the mock exam and the finals.</td></tr>
+    <tr><td><strong>4.</strong>&nbsp; Check <strong>Calendar</strong> for your live classes and coaching intensives.
+        We'll remind you before each one.</td></tr>
+  </table>
+
+  <p style="margin:0 0 8px"><strong>Where to find things</strong></p>
+  <table class="steps" role="presentation" style="margin:0 0 18px">
+    <tr><td><strong>Dashboard</strong> — your feed and what's due next.</td></tr>
+    <tr><td><strong>Messages &amp; Notifications</strong> — your coaches, your cohort, and every reminder.</td></tr>
+    <tr><td><strong>Support</strong> (bottom of the sidebar) — how-to guides and answers to common questions.</td></tr>
+  </table>
+
+  <p style="margin:0 0 14px">
+    Academic questions go to your educator or the academic staff from Messages;
+    anything technical goes to an administrator. Reach out early and often — nobody
+    here should be stuck in silence.
+  </p>
+
+  <p style="margin:0 0 14px">Understand it. Apply it. Pass it. Let's make this year count.</p>
+{% endblock %}
+
+{% block cta %}{% include 'communication/email/_button.html' with url=login_url label="GO TO YOUR DASHBOARD" %}{% endblock %}
+
+{% block expiry_note %}
+  Your invoice{% if paid %} and receipt{% endif %} comes in a separate e-mail, with the PDF attached.{% if brand.support_email %} Questions? {{ brand.support_email }}.{% endif %}
+{% endblock %}

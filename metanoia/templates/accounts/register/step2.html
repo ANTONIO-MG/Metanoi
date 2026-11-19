@@ -1,0 +1,578 @@
+{% extends 'layouts/auth.html' %}
+{% comment %}Registration wizard, step 2 — "How would you like to register?".
+
+Two paths, chosen with plain links (``?path=programme`` / ``?path=oneonone``) so they work
+without JavaScript; the script switches between them in place:
+- Programme & modules (group classes, billed per module per month);
+- One-on-one coaching (billed per module per hour at `one_on_one_rate`). Each module gets
+  an hours box ("later" = 0, buy later) and nothing is compulsory.
+One picker serves both paths; the hidden ``track`` input says which. Below it, on the
+one-on-one path only, "Institution or programme not listed?" posts a request staff
+complete by hand (accounts.OneOnOneRequest, `one_on_one_form`).
+
+Context: `reg_path`, `reg` (saved `programme_id`, `cohort_id`, `module_ids`), `institutions`
+and `institutions_data` (JSON for the picker), `reg_hours` (saved hours per module),
+`other` (typed "Other institution" values and `errors`), `posted_institution`,
+`one_on_one_rate`, `one_on_one_form`. Overrides `title`, `card_col`, `oblique`,
+`auth_card`, `extra_css` and `extra_js`.
+
+Picker behaviour (inline script):
+- The chosen institution is shown in its own words (name, description, logo), so a
+  student can confirm they picked the right one before choosing a programme.
+- "Other institution": the institution + cohort/year boxes open and are required (the
+  server checks again); the cohort picker steps aside, as the cohort is typed instead.
+  The one-on-one request form's institution select does the same for its two boxes.
+- Programmes with ``mandatory`` (IAC and the like): every module is compulsory, so all are
+  ticked and stay ticked (group path only).
+- A bundle discount applies once every module it names is ticked — the same rule the
+  review page and the invoice use (apps.shop.pricing). Bundles are for monthly group
+  classes only.
+- On the one-on-one path a module row holds an hours select, so the row is a div and only
+  the module name is the label (a select inside a label would toggle the tick on every
+  click). The green state is restored on Back.
+- A prior selection is restored on Back from step 3, or when the page is sent back with
+  errors.
+
+Styling notes: programme options are plain bordered cards rather than
+``.btn-outline-secondary`` — the Bootstrap button's own border/background rules (and its
+hover/focus/active states) kept overriding the "selected" utilities, so the choice never
+looked chosen; owning the whole style means the green state cannot be argued with. The
+selected programme's tick is drawn in CSS, so it never depends on an icon font. The old
+theme sets ``.form-check-input:checked{background-color:transparent;
+border-color:transparent}`` and pushes the tick off with ``background-position:100%``, so a
+checked box renders as a bare filled square with no mark; the boxes therefore reuse
+``.tick-green`` (from auth_base.html), and ``.tick-round`` is its radio-shaped variant for
+the cohort picker.
+{% endcomment %}
+{% load static %}
+{% block title %}Choose · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+{% block card_col %}col-xl-9 col-lg-11{% endblock %}
+{% block oblique %}{% endblock %}
+
+{% block auth_card %}
+<div class="card mt-7 mb-4 shadow-lg">
+  <div class="card-body p-4">
+    {% include 'accounts/register/_steps.html' with step=2 %}
+
+    <div class="text-center mb-3">
+      <h4 class="font-weight-bolder text-info text-gradient mb-1">How would you like to register?</h4>
+      <p class="text-sm text-muted mb-0">Group classes, billed <strong>per module, per month</strong> —
+        or <strong>one-on-one coaching</strong> with an educator, billed <strong>per module, per hour</strong>.</p>
+    </div>
+
+    <div class="reg-paths mb-4" role="tablist" aria-label="How would you like to register?">
+      <a href="?path=programme" class="reg-path{% if reg_path == 'programme' %} is-selected{% endif %}" data-path="programme"
+         role="tab" aria-selected="{% if reg_path == 'programme' %}true{% else %}false{% endif %}" aria-controls="pathProgramme">
+        <span class="reg-path-ic" aria-hidden="true"><i class="bi bi-mortarboard"></i></span>
+        <span class="reg-path-body"><strong class="d-block">Programme &amp; modules</strong>
+          <span class="text-xs text-muted">Your institution's programme — modules, live classes, mock exams.</span></span>
+        <span class="reg-path-rate">per module / month</span>
+      </a>
+      <a href="?path=oneonone" class="reg-path{% if reg_path == 'oneonone' %} is-selected{% endif %}" data-path="oneonone"
+         role="tab" aria-selected="{% if reg_path == 'oneonone' %}true{% else %}false{% endif %}" aria-controls="oneOnOne">
+        <span class="reg-path-ic reg-path-ic--o2o" aria-hidden="true"><i class="bi bi-person-video3"></i></span>
+        <span class="reg-path-body"><strong class="d-block">One-on-one coaching</strong>
+          <span class="text-xs text-muted">Your programme's modules, taught privately — pay per session hour.</span></span>
+        <span class="reg-path-rate">R {{ one_on_one_rate|floatformat:0 }} <span class="text-xs text-muted fw-normal">/ module / hour</span></span>
+      </a>
+    </div>
+
+    <div id="pathProgramme" role="tabpanel">
+    <p class="text-xs text-success mb-3" id="o2oIntro" {% if reg_path != 'oneonone' %}hidden{% endif %}><i class="bi bi-person-video3 me-1"></i>One-on-one:
+      choose your institution, programme, cohort and modules as usual, then how many hours you want for each now
+      (R {{ one_on_one_rate|floatformat:0 }} per module per hour). Your modules open straight away; you book sessions once your hours are paid.</p>
+    {% if not institutions %}
+      <div class="alert alert-warning text-sm">No institutions are set up yet. An administrator can run
+        <code>python manage.py seed_sample_structure</code> or add one in the admin.</div>
+    {% endif %}
+
+    <form method="post" id="chooseForm">
+      {% csrf_token %}
+      <input type="hidden" name="programme_id" id="programmeId" value="{{ reg.programme_id|default:'' }}">
+      <input type="hidden" name="cohort_id" id="cohortId" value="{{ reg.cohort_id|default:'' }}">
+      <input type="hidden" name="track" id="trackInput" value="{% if reg_path == 'oneonone' %}one_on_one{% else %}class{% endif %}">
+
+      <div class="mb-3">
+        <label class="form-label text-sm fw-bold" for="institutionSelect">Institution</label>
+        <select class="form-control form-select" id="institutionSelect" name="institution_id">
+          <option value="">Select your institution…</option>
+        </select>
+      </div>
+
+      <div class="row g-3 mb-3" id="otherWrap" {% if not other.is_other %}hidden{% endif %}>
+        {% if other.errors %}
+        <div class="col-12"><div class="alert alert-danger text-sm py-2 mb-0" role="alert" data-persist>
+          <i class="bi bi-exclamation-octagon-fill me-1"></i>You chose “Other institution” — please type your institution and your cohort or year.</div></div>
+        {% endif %}
+        <div class="col-md-7">
+          <label class="form-label text-sm fw-bold" for="otherInstitution">Your institution <span class="req" title="Required">*</span></label>
+          <input type="text" class="form-control{% if other.errors.institution %} is-invalid{% endif %}" id="otherInstitution"
+                 name="other_institution" maxlength="160" value="{{ other.institution }}" autocomplete="organization"
+                 placeholder="e.g. University of Johannesburg"
+                 {% if other.errors.institution %}aria-invalid="true" aria-describedby="otherInstitutionErr"{% endif %}>
+          {% if other.errors.institution %}<div class="invalid-feedback d-block text-xs" id="otherInstitutionErr" data-persist>{{ other.errors.institution }}</div>{% endif %}
+        </div>
+        <div class="col-md-5">
+          <label class="form-label text-sm fw-bold" for="otherCohort">Cohort or year <span class="req" title="Required">*</span></label>
+          <input type="text" class="form-control{% if other.errors.cohort %} is-invalid{% endif %}" id="otherCohort"
+                 name="other_cohort" maxlength="60" value="{{ other.cohort }}" placeholder="e.g. 2027 intake, or 3rd year"
+                 {% if other.errors.cohort %}aria-invalid="true" aria-describedby="otherCohortErr"{% endif %}>
+          {% if other.errors.cohort %}<div class="invalid-feedback d-block text-xs" id="otherCohortErr" data-persist>{{ other.errors.cohort }}</div>{% endif %}
+        </div>
+        <p class="col-12 text-xs text-muted mb-0 d-none" id="otherNoProgrammes"><i class="bi bi-info-circle me-1"></i>We do not run a
+          standard programme for other institutions yet — choose <a href="?path=oneonone" data-path-link="oneonone">One-on-one coaching</a> above and tell us what you study in the form below it.</p>
+      </div>
+
+      <div class="mb-3 d-none" id="institutionCard">
+        <div class="d-flex align-items-start gap-3 p-3 rounded-3 border" id="institutionCardInner">
+          <img id="institutionLogo" src="" alt="" class="d-none"
+               style="max-height:52px;max-width:110px;object-fit:contain">
+          <div>
+            <h6 class="mb-1" id="institutionName"></h6>
+            <p class="text-xs text-muted mb-0" id="institutionDesc"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3 d-none" id="programmeWrap">
+        <label class="form-label text-sm fw-bold">Programmes offered <span class="text-muted fw-normal">— tick the one you're doing</span></label>
+        <div id="programmeList" class="d-grid gap-2"></div>
+      </div>
+
+      <div class="mb-3 d-none" id="cohortWrap">
+        <label class="form-label text-sm fw-bold">Current cohort <span class="text-muted fw-normal">— tick your intake</span></label>
+        <div id="cohortList" class="d-grid gap-2"></div>
+      </div>
+
+      <div class="mb-3 d-none" id="moduleWrap">
+        <label class="form-label text-sm fw-bold">Modules <span class="text-muted fw-normal">— tick the ones you're registering for</span></label>
+        <p class="text-xs text-info mb-2 d-none" id="modMandatoryNote"><i class="bi bi-info-circle me-1"></i>All modules
+          are compulsory for this programme, so they are all selected for you.</p>
+        <div id="moduleList" class="d-grid gap-2"></div>
+      </div>
+
+      <p class="text-xs text-success mb-2 d-none" id="bundleHint"><i class="bi bi-tag-fill me-1"></i><span id="bundleHintText"></span></p>
+      <div class="d-flex justify-content-between align-items-center p-3 rounded-3 bg-gray-100 d-none" id="totalWrap">
+        <span class="text-sm text-muted"><span id="modCount">0</span> module(s) selected
+          <span class="d-block text-success d-none" id="bundleLine"><span id="bundleLabel"></span> −R <span id="bundleOff">0.00</span></span></span>
+        <span class="fw-bold text-lg">R <span id="totalAmt">0.00</span> <span class="text-sm text-muted fw-normal" id="totalUnit">/ month</span></span>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-4">
+        <button type="submit" name="nav" value="back" class="btn btn-light mb-0" formnovalidate>
+          <i class="bi bi-arrow-left-circle me-2"></i>Back
+        </button>
+        <button type="submit" class="btn bg-gradient-info mb-0">Complete registration details<i class="bi bi-arrow-right-circle ms-2"></i></button>
+      </div>
+    </form>
+
+    </div>
+
+    <section class="o2o mt-4" id="oneOnOne" aria-labelledby="o2oTitle" {% if reg_path != 'oneonone' %}hidden{% endif %}>
+      <div class="o2o-head">
+        <span class="o2o-ic" aria-hidden="true"><i class="bi bi-question-circle"></i></span>
+        <span class="o2o-title">
+          <strong id="o2oTitle">Institution or programme not listed?</strong>
+          <span class="d-block text-xs text-muted">Tell us where and what you are studying and we will set up one-on-one coaching for you.</span>
+        </span>
+        <span class="o2o-rate"><span>R {{ one_on_one_rate|floatformat:0 }}</span> <span class="text-xs text-muted fw-normal">/ hour</span></span>
+      </div>
+      <form method="post" action="{% url 'accounts:register-one-on-one' %}" class="o2o-body" novalidate>
+        {% csrf_token %}
+        {% if one_on_one_form.errors %}<div class="alert alert-danger text-sm py-2" role="alert" data-persist>
+          <i class="bi bi-exclamation-octagon-fill me-1"></i>Please check the details highlighted below.</div>{% endif %}
+        {% with f=one_on_one_form %}
+        <div class="row g-3">
+          <div class="rf col-12">
+            <label class="rf-label" for="{{ f.institution_choice.id_for_label }}">Institution <span class="req" title="Required">*</span></label>
+            <select name="{{ f.institution_choice.html_name }}" id="{{ f.institution_choice.id_for_label }}"
+                    class="form-control form-select{% if f.institution_choice.errors %} is-invalid{% endif %}" data-o2o-institution
+                    {% if f.institution_choice.errors %}aria-invalid="true"{% endif %}>
+              <option value="">Select your institution…</option>
+              {% for i in f.fields.institution_choice.queryset %}
+              <option value="{{ i.pk }}" {% if i.is_other %}data-other="1"{% endif %}
+                      {% if f.institution_choice.value|stringformat:"s" == i.pk|stringformat:"s" %}selected{% endif %}>{{ i.display_name }}</option>
+              {% endfor %}
+            </select>
+            {% if f.institution_choice.errors %}<div class="rf-err">{{ f.institution_choice.errors|striptags }}</div>{% endif %}
+          </div>
+          <div class="col-12" data-o2o-other {% if not f.other_institution.value and not f.other_institution.errors and not f.other_cohort.errors %}hidden{% endif %}>
+            <div class="row g-3">
+              {% include 'accounts/register/_field.html' with field=f.other_institution col='col-md-7' req=True %}
+              {% include 'accounts/register/_field.html' with field=f.other_cohort col='col-md-5' req=True %}
+            </div>
+          </div>
+          {% include 'accounts/register/_field.html' with field=f.programme col='col-12' %}
+          {% include 'accounts/register/_field.html' with field=f.start_date col='col-6' %}
+          {% include 'accounts/register/_field.html' with field=f.end_date col='col-6' %}
+          {% include 'accounts/register/_field.html' with field=f.modules %}
+          {% include 'accounts/register/_field.html' with field=f.notes %}
+        </div>
+        {% endwith %}
+        <p class="text-xs text-muted mt-3 mb-3"><i class="bi bi-info-circle me-1"></i><span>Sessions are R {{ one_on_one_rate|floatformat:0 }} per module per hour, invoiced once your educator is confirmed. Nothing is charged now.</span></p>
+        <div class="d-grid d-sm-flex justify-content-sm-end">
+          <button type="submit" class="btn bg-gradient-success mb-0"><i class="bi bi-send me-2"></i>Send my request</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+
+{{ institutions_data|json_script:"instData" }}
+{{ reg_hours|json_script:"regHours" }}
+{% endblock %}
+
+{% block extra_css %}
+{% include 'accounts/register/_reg_styles.html' %}
+<style>
+  .reg-paths{ display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+  @media (max-width: 640px){ .reg-paths{ grid-template-columns:1fr; } }
+  .reg-path{ display:flex; align-items:center; gap:.75rem; padding:.85rem 1rem; border:1px solid #e3e6ee;
+    border-radius:.75rem; background:#fff; color:#3E2415; text-decoration:none;
+    transition:border-color .15s, background-color .15s, box-shadow .15s; }
+  .reg-path:hover{ border-color:#a8e6cf; color:#3E2415; }
+  .reg-path:focus-visible{ outline:2px solid #0B5FC6; outline-offset:2px; }
+  .reg-path.is-selected{ border-color:#2dce89; background:#f2fbf7; box-shadow:0 0 0 2px rgba(45,206,137,.18); }
+  .reg-path-body{ flex:1 1 auto; min-width:0; }
+  .reg-path-ic{ flex:0 0 40px; width:40px; height:40px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; background:#e8f1fd; color:#0B5FC6; font-size:1.15rem; }
+  .reg-path-ic--o2o{ background:#eaf8f1; color:#1aae6f; }
+  .reg-path-rate{ flex:0 0 auto; font-weight:700; font-size:.85rem; white-space:nowrap; }
+  [data-bs-theme="dark"] .reg-path{ background:#16213a; border-color:#2a3654; color:#e8edf7; }
+  [data-bs-theme="dark"] .reg-path.is-selected{ background:rgba(45,206,137,.10); border-color:#2dce89; }
+
+  .o2o{ border:1px solid #2dce89; border-radius:.75rem; background:#fff; box-shadow:0 0 0 2px rgba(45,206,137,.14); }
+  .o2o-head{ display:flex; align-items:center; gap:.8rem; padding:.85rem 1rem; }
+  .o2o-ic{ flex:0 0 40px; width:40px; height:40px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; background:#eaf8f1; color:#1aae6f; font-size:1.15rem; }
+  .o2o-title{ flex:1 1 auto; min-width:0; color:#3E2415; }
+  .o2o-rate{ flex:0 0 auto; font-weight:700; color:#3E2415; white-space:nowrap; }
+  .o2o-body{ padding:0 1rem 1rem; border-top:1px solid #eef1f6; padding-top:1rem; }
+  [data-bs-theme="dark"] .o2o{ background:#16213a; border-color:#2a3654; }
+  [data-bs-theme="dark"] .o2o-body{ border-top-color:#2a3654; }
+  [data-bs-theme="dark"] .o2o-ic{ background:rgba(45,206,137,.16); }
+  [data-bs-theme="dark"] .o2o-title, [data-bs-theme="dark"] .o2o-rate{ color:#e8edf7; }
+  @media (max-width: 480px){
+    .o2o-head{ flex-wrap:wrap; }
+    .o2o-rate{ margin-left:calc(40px + .8rem); }
+  }
+  .prog-opt{
+    display:flex; align-items:flex-start; gap:.7rem; width:100%; text-align:left;
+    padding:.7rem .9rem; border:1px solid #e3e6ee; border-radius:.75rem;
+    background:#fff; color:#3E2415; cursor:pointer;
+    transition:border-color .15s, background-color .15s, box-shadow .15s;
+  }
+  .prog-opt:hover{ border-color:#a8e6cf; background:#fbfffd; }
+  .prog-opt .prog-body{ flex:1 1 auto; }
+  .prog-opt.is-selected{
+    border-color:#2dce89; background:#f2fbf7;
+    box-shadow:0 0 0 2px rgba(45,206,137,.18);
+  }
+  .prog-opt.is-selected strong{ color:#1aae6f; }
+
+  .prog-check{
+    flex:0 0 20px; width:20px; height:20px; margin-top:.15rem; border-radius:50%;
+    border:1px solid #cbd3da; background:#fff; position:relative; transition:.15s;
+  }
+  .prog-opt.is-selected .prog-check{ background:#2dce89; border-color:#2dce89; }
+  .prog-opt.is-selected .prog-check::after{
+    content:""; position:absolute; left:6px; top:2.5px; width:5px; height:10px;
+    border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);
+  }
+
+  .mod-opt{ border:1px solid #e3e6ee !important; transition:border-color .15s, background-color .15s; }
+  .mod-opt:hover{ border-color:#a8e6cf !important; }
+  .mod-opt.is-selected{ border-color:#2dce89 !important; background:#f2fbf7; }
+  .mod-opt.is-selected .mod-name{ color:#1aae6f; }
+
+  .tick-green.tick-round{ border-radius:50% !important; }
+  .tick-green.tick-round:checked{
+    background-image:none !important;
+    background-color:#fff !important; border-color:#2dce89 !important;
+    box-shadow:inset 0 0 0 4px #2dce89;
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var DATA = JSON.parse(document.getElementById('instData').textContent || '[]');
+  var preProg = "{{ reg.programme_id|default:'' }}";
+  var preMods = ({{ reg.module_ids|default:'[]' }}).map(String);
+
+  var instSel   = document.getElementById('institutionSelect');
+  var progWrap  = document.getElementById('programmeWrap');
+  var progList  = document.getElementById('programmeList');
+  var modWrap   = document.getElementById('moduleWrap');
+  var modList   = document.getElementById('moduleList');
+  var totalWrap = document.getElementById('totalWrap');
+  var totalAmt  = document.getElementById('totalAmt');
+  var modCount  = document.getElementById('modCount');
+  var progInput = document.getElementById('programmeId');
+  var cohortWrap = document.getElementById('cohortWrap');
+  var cohortList = document.getElementById('cohortList');
+  var cohortInput = document.getElementById('cohortId');
+  var preCohort = "{{ reg.cohort_id|default:'' }}";
+  var RATE = {{ one_on_one_rate|floatformat:2|default:"300" }};
+  var preHours = JSON.parse(document.getElementById('regHours').textContent || '{}');
+  var trackInput = document.getElementById('trackInput');
+  function isO2O() { return trackInput.value === 'one_on_one'; }
+
+  DATA.forEach(function (inst) {
+    var o = document.createElement('option');
+    o.value = inst.id; o.textContent = inst.name;
+    instSel.appendChild(o);
+  });
+
+  function findInst(id) { return DATA.find(function (i) { return String(i.id) === String(id); }); }
+  function findProg(inst, id) { return (inst ? inst.programmes : []).find(function (p) { return String(p.id) === String(id); }); }
+  function money(n) { return (Number(n) || 0).toFixed(2); }
+
+  var currentProg = null;
+  function recalcTotal() {
+    var t = 0, c = 0, ticked = [];
+    var o2o = isO2O();
+    modList.querySelectorAll('input[name=module_ids]:checked').forEach(function (cb) {
+      if (o2o) {
+        var sel = modList.querySelector('select[name="hours_' + cb.value + '"]');
+        t += RATE * (parseInt(sel && sel.value, 10) || 0);
+      } else {
+        t += parseFloat(cb.dataset.price || 0);
+      }
+      c += 1; ticked.push(String(cb.value));
+    });
+    document.getElementById('totalUnit').textContent = o2o ? 'now' : '/ month';
+    if (o2o) {
+      document.getElementById('bundleLine').classList.add('d-none');
+      totalAmt.textContent = money(t); modCount.textContent = c;
+      return;
+    }
+    var off = 0, label = '';
+    ((currentProg && currentProg.bundles) || []).forEach(function (b) {
+      var all = b.modules.every(function (id) { return ticked.indexOf(String(id)) >= 0; });
+      if (all && b.off > off) { off = Math.min(b.off, t); label = b.label; }
+    });
+    document.getElementById('bundleLine').classList.toggle('d-none', !off);
+    document.getElementById('bundleLabel').textContent = label;
+    document.getElementById('bundleOff').textContent = money(off);
+    totalAmt.textContent = money(t - off);
+    modCount.textContent = c;
+  }
+
+  function showBundleHint(prog) {
+    var hint = document.getElementById('bundleHint');
+    var b = isO2O() ? null : (prog.bundles || [])[0];
+    if (!b) { hint.classList.add('d-none'); return; }
+    var full = 0;
+    (prog.modules || []).forEach(function (m) {
+      if (b.modules.indexOf(m.id) >= 0) full += Number(m.price) || 0;
+    });
+    document.getElementById('bundleHintText').textContent =
+      'Take all ' + b.modules.length + ' modules for R ' + money(full - b.off) + ' a month (R ' + money(b.off) + ' off).';
+    hint.classList.remove('d-none');
+  }
+
+  function paintModuleRow(cb) {
+    var row = cb.closest('.mod-opt');
+    if (row) row.classList.toggle('is-selected', cb.checked);
+  }
+
+  function renderModules(prog) {
+    modList.innerHTML = '';
+    var o2o = isO2O();
+    var mandatory = !!prog.mandatory && !o2o;
+    var mandatoryNote = document.getElementById('modMandatoryNote');
+    if (mandatoryNote) mandatoryNote.classList.toggle('d-none', !mandatory);
+    (prog.modules || []).forEach(function (m) {
+      var checked = (mandatory || preMods.indexOf(String(m.id)) >= 0) ? 'checked' : '';
+      var price = m.free ? '<span class="badge bg-gradient-success">Free</span>'
+                         : ('R ' + money(m.price) + ' <span class="text-muted fw-normal">/mo</span>');
+      if (o2o) {
+        var want = preHours[String(m.id)];
+        if (want === undefined) want = 1;
+        var opts = '';
+        for (var h = 0; h <= 20; h++) {
+          opts += '<option value="' + h + '"' + (h === Number(want) ? ' selected' : '') + '>' + (h ? h + ' h' : 'later') + '</option>';
+        }
+        price = '<span class="d-inline-flex align-items-center gap-2">R ' + money(RATE) + ' <span class="text-muted fw-normal">/h</span>' +
+                '<select class="form-select form-select-sm w-auto" name="hours_' + m.id + '" aria-label="Hours for ' + m.code + '">' + opts + '</select></span>';
+      }
+      var el = document.createElement(o2o ? 'div' : 'label');
+      el.className = 'mod-opt d-flex flex-wrap gap-2 justify-content-between align-items-center p-2 px-3 border rounded-3 mb-0';
+      el.style.cursor = 'pointer';
+      var tag = o2o ? 'label class="mb-0" style="cursor:pointer"' : 'span';
+      el.innerHTML = '<' + tag + '><input type="checkbox" class="form-check-input tick-green me-2" name="module_ids" value="' + m.id +
+                     '" data-price="' + m.price + '" ' + checked + '><strong class="mod-name">' + m.code + '</strong> — ' + m.name +
+                     '</' + (o2o ? 'label' : 'span') + '><span class="text-sm">' + price + '</span>';
+      modList.appendChild(el);
+    });
+    modList.querySelectorAll('select[name^="hours_"]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var cb = modList.querySelector('input[name=module_ids][value="' + sel.name.slice(6) + '"]');
+        if (cb && Number(sel.value) > 0 && !cb.checked) { cb.checked = true; paintModuleRow(cb); }
+        recalcTotal();
+      });
+    });
+    modList.querySelectorAll('input[name=module_ids]').forEach(function (cb) {
+      paintModuleRow(cb);
+      cb.addEventListener('change', function () {
+        if (mandatory) cb.checked = true;
+        paintModuleRow(cb); recalcTotal();
+      });
+    });
+    modWrap.classList.remove('d-none');
+    totalWrap.classList.remove('d-none');
+    recalcTotal();
+  }
+
+  function renderCohorts(prog) {
+    cohortList.innerHTML = '';
+    var cohorts = prog.cohorts || [];
+    if (!cohorts.length) { cohortWrap.classList.add('d-none'); cohortInput.value = ''; return; }
+    cohorts.forEach(function (c) {
+      var checked = String(c.id) === String(preCohort) ? 'checked' : '';
+      var el = document.createElement('label');
+      el.className = 'mod-opt d-flex align-items-center p-2 px-3 border rounded-3 mb-0';
+      el.style.cursor = 'pointer';
+      el.innerHTML = '<input type="radio" class="form-check-input tick-green tick-round me-2" name="cohort_pick" value="' + c.id + '" ' + checked + '>' +
+                     '<strong class="mod-name">' + c.code + '</strong>' + (c.name ? ' — ' + c.name : '');
+      cohortList.appendChild(el);
+    });
+    cohortList.querySelectorAll('input[name=cohort_pick]').forEach(function (r) {
+      var paint = function () {
+        cohortList.querySelectorAll('.mod-opt').forEach(function (row) {
+          var input = row.querySelector('input[name=cohort_pick]');
+          row.classList.toggle('is-selected', !!(input && input.checked));
+        });
+      };
+      paint();
+      r.addEventListener('change', function () { cohortInput.value = r.value; paint(); });
+    });
+    var checkedRadio = cohortList.querySelector('input[name=cohort_pick]:checked');
+    cohortInput.value = checkedRadio ? checkedRadio.value : '';
+    cohortWrap.classList.remove('d-none');
+  }
+
+  function selectProg(prog) {
+    progInput.value = prog.id;
+    progList.querySelectorAll('.prog-opt').forEach(function (b) {
+      var on = String(b.dataset.id) === String(prog.id);
+      b.classList.toggle('is-selected', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    currentProg = prog;
+    renderCohorts(prog);
+    renderModules(prog);
+    showBundleHint(prog);
+  }
+
+  function showInstitution(inst) {
+    document.getElementById('institutionName').textContent = inst.name;
+    document.getElementById('institutionDesc').textContent = inst.description || '';
+    var logo = document.getElementById('institutionLogo');
+    if (inst.logo) { logo.src = inst.logo; logo.alt = inst.name; logo.classList.remove('d-none'); }
+    else { logo.classList.add('d-none'); }
+    var card = document.getElementById('institutionCardInner');
+    card.style.borderColor = inst.accent || '#1F3864';
+    document.getElementById('institutionCard').classList.remove('d-none');
+  }
+
+  function renderProgrammes(inst) {
+    showInstitution(inst);
+    progList.innerHTML = '';
+    (inst.programmes || []).forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'prog-opt'; b.dataset.id = p.id;
+      b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = '<span class="prog-check" aria-hidden="true"></span>' +
+                    '<span class="prog-body"><strong>' + p.name + '</strong>' +
+                    '<span class="d-block text-muted small">' + p.modules.length +
+                    ' module' + (p.modules.length === 1 ? '' : 's') + ' offered</span></span>';
+      b.addEventListener('click', function () { selectProg(p); });
+      progList.appendChild(b);
+    });
+    progWrap.classList.remove('d-none');
+    cohortWrap.classList.add('d-none'); modWrap.classList.add('d-none'); totalWrap.classList.add('d-none');
+    document.getElementById('bundleHint').classList.add('d-none');
+    progInput.value = '';
+  }
+
+  var otherWrap = document.getElementById('otherWrap');
+  function toggleOther(inst) {
+    var isOther = !!(inst && inst.other);
+    otherWrap.hidden = !isOther;
+    ['otherInstitution', 'otherCohort'].forEach(function (id) {
+      document.getElementById(id).required = isOther;
+    });
+    document.getElementById('otherNoProgrammes').classList.toggle(
+      'd-none', !(isOther && !(inst.programmes || []).length));
+  }
+  var baseRenderCohorts = renderCohorts;
+  renderCohorts = function (prog) {
+    var inst = findInst(instSel.value);
+    if (inst && inst.other) {
+      cohortWrap.classList.add('d-none');
+      cohortInput.value = 'year';
+      return;
+    }
+    baseRenderCohorts(prog);
+  };
+
+  instSel.addEventListener('change', function () {
+    var inst = findInst(instSel.value);
+    toggleOther(inst);
+    if (inst) { renderProgrammes(inst); }
+    else {
+      document.getElementById('institutionCard').classList.add('d-none');
+      progWrap.classList.add('d-none'); cohortWrap.classList.add('d-none');
+      modWrap.classList.add('d-none'); totalWrap.classList.add('d-none');
+    }
+  });
+
+  var restored = false;
+  if (preProg) {
+    for (var i = 0; i < DATA.length; i++) {
+      var p = findProg(DATA[i], preProg);
+      if (p) { instSel.value = DATA[i].id; toggleOther(DATA[i]); renderProgrammes(DATA[i]); selectProg(p); restored = true; break; }
+    }
+  }
+  var postedInst = "{{ posted_institution|escapejs }}";
+  if (!restored && postedInst && findInst(postedInst)) {
+    instSel.value = postedInst; toggleOther(findInst(postedInst)); renderProgrammes(findInst(postedInst));
+  }
+
+  function showPath(path) {
+    var o2o = path === 'oneonone';
+    trackInput.value = o2o ? 'one_on_one' : 'class';
+    document.getElementById('oneOnOne').hidden = !o2o;
+    document.getElementById('o2oIntro').hidden = !o2o;
+    if (currentProg) { renderModules(currentProg); showBundleHint(currentProg); }
+    document.querySelectorAll('.reg-path').forEach(function (a) {
+      var on = a.dataset.path === path;
+      a.classList.toggle('is-selected', on);
+      a.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('[data-path], [data-path-link]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      showPath(a.dataset.path || a.dataset.pathLink);
+    });
+  });
+
+  var o2oSel = document.querySelector('[data-o2o-institution]');
+  var o2oOther = document.querySelector('[data-o2o-other]');
+  if (o2oSel && o2oOther) {
+    var o2oToggle = function () {
+      var opt = o2oSel.options[o2oSel.selectedIndex];
+      var isOther = !!(opt && opt.getAttribute('data-other'));
+      o2oOther.hidden = !isOther;
+      o2oOther.querySelectorAll('input').forEach(function (i) { i.required = isOther; });
+    };
+    o2oSel.addEventListener('change', o2oToggle);
+    o2oToggle();
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'layouts/auth.html' %}
+{% comment %}Parent/guardian sign-up (apps.accounts.parent_views): ``invite`` = e-mail shown
+only; ``shared_link`` = e-mail typed in. Also uses `student_name`, `max_parents`, `email`
+and `form`. Overrides `title`, `grid_class`, `card_col`, `auth_intro` and `auth_card`.{% endcomment %}
+{% block title %}Parent / guardian sign-up · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+
+{% block grid_class %}t-auth__grid--split{% endblock %}
+{% block card_col %}col-12{% endblock %}
+
+{% block auth_intro %}
+<div class="t-auth__intro">
+  <span class="t-label">Parents &amp; guardians</span>
+  <h1 class="t-h1 mt-2"><span class="t-rise"><span style="--i:0">Follow</span></span><span class="t-rise"><span style="--i:1"><em>{{ student_name }}</em><span class="t-dot">.</span></span></span></h1>
+  <p class="t-lead">{{ student_name }} asked us to link you to their Metanoia Group account. Once you are in you can follow their progress and results, see and pay their fees, and take part in the Metanoia Community.</p>
+  <p class="t-lead mb-0">Up to {{ max_parents }} parents or guardians can be linked to each student.</p>
+</div>
+{% endblock %}
+
+{% block auth_card %}
+<div class="t-card">
+  <h2 class="t-card-title">Create your parent account</h2>
+
+  {% if full %}
+    <div class="alert alert-warning text-sm py-2" role="alert">
+      {{ student_name }} already has the maximum of {{ max_parents }} parents or guardians linked,
+      so this link cannot add another. Ask {{ student_name }} or the Metanoia team if someone needs to be swapped.
+    </div>
+    <a class="t-btn" href="{% url 'myhub:page-login' %}">Go to sign in{% include 'partials/_t_chip.html' %}</a>
+  {% elif link_only %}
+    <p class="t-card-sub">You are signed in as <strong>{{ request.user.email }}</strong>.</p>
+    <form method="post">{% csrf_token %}
+      <button type="submit" class="t-btn">Link me to {{ student_name }}{% include 'partials/_t_chip.html' %}</button>
+    </form>
+  {% else %}
+  <p class="t-card-sub">Confirm your details and choose a password — that is all.</p>
+  {% if existing %}
+    <div class="alert alert-warning text-sm py-2">
+      There is already an account for that e-mail address.
+      <a class="t-link fw-semibold" href="{% url 'myhub:page-login' %}?next={{ request.path|urlencode }}">Sign in</a>, then open this link again.
+    </div>
+  {% endif %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger text-white text-sm py-2">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>
+  {% endif %}
+
+  <form class="t-form" method="post" novalidate>
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-12">
+        <label for="id_email">Email address{% if shared_link %}<span class="req">*</span>{% endif %}</label>
+        {% if shared_link %}
+        <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}" autocomplete="email"
+               placeholder="you@example.com" class="form-control{% if form.email.errors %} is-invalid{% endif %}" required>
+        {% for e in form.email.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+        {% else %}
+        <input type="email" id="id_email" value="{{ email }}" class="form-control" readonly disabled aria-describedby="emailHelp">
+        <small id="emailHelp" class="text-muted">The address your invitation was sent to — you sign in with it.</small>
+        {% endif %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_first_name">First name<span class="req">*</span></label>
+        <input type="text" name="first_name" id="id_first_name" value="{{ form.first_name.value|default:'' }}" autocomplete="given-name"
+               class="form-control{% if form.first_name.errors %} is-invalid{% endif %}" required>
+        {% for e in form.first_name.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_last_name">Surname<span class="req">*</span></label>
+        <input type="text" name="last_name" id="id_last_name" value="{{ form.last_name.value|default:'' }}" autocomplete="family-name"
+               class="form-control{% if form.last_name.errors %} is-invalid{% endif %}" required>
+        {% for e in form.last_name.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_phone">Cell number<span class="req">*</span></label>
+        <input type="tel" name="phone" id="id_phone" value="{{ form.phone.value|default:'' }}" autocomplete="tel"
+               placeholder="082 123 4567" class="form-control{% if form.phone.errors %} is-invalid{% endif %}" required>
+        {% for e in form.phone.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_relationship">You are their<span class="req">*</span></label>
+        <select name="relationship" id="id_relationship" class="form-select{% if form.relationship.errors %} is-invalid{% endif %}" required>
+          {% for value, label in form.fields.relationship.choices %}
+          <option value="{{ value }}" {% if form.relationship.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% for e in form.relationship.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_password1">Password<span class="req">*</span></label>
+        <div class="pw-field">
+          <input type="password" name="password1" id="id_password1" autocomplete="new-password"
+                 class="form-control{% if form.password1.errors %} is-invalid{% endif %}" placeholder="Choose a password" required>
+          <button type="button" class="pw-toggle" data-target="id_password1" aria-label="Show password" title="Show password">
+            <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></svg>
+            <svg class="icon-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="m13.646 14.354-12-12 .708-.708 12 12z"/><path d="M8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5S4.121 11.332 2.832 10.043A13 13 0 0 1 1.172 8c.335-.48.83-1.12 1.465-1.755C3.879 4.668 5.881 3.5 8 3.5"/></svg>
+          </button>
+        </div>
+        {% for e in form.password1.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_password2">Confirm password<span class="req">*</span></label>
+        <input type="password" name="password2" id="id_password2" autocomplete="new-password"
+               class="form-control{% if form.password2.errors %} is-invalid{% endif %}" placeholder="Type it again" required>
+        {% for e in form.password2.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-12"><small class="text-muted">At least 8 characters, not all numbers, and not too close to your name or e-mail.</small></div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 text-start mt-3">
+      <input class="form-check-input tick-green mt-0{% if form.terms.errors %} is-invalid{% endif %}"
+             type="checkbox" name="terms" id="id_terms" {% if form.terms.value %}checked{% endif %}>
+      <label class="form-check-label mb-0" for="id_terms">I agree to the
+        <a href="{% url 'pages:privacy-and-terms' %}#terms" class="t-link" target="_blank" rel="noopener">Terms &amp; Conditions</a>
+        and <a href="{% url 'pages:privacy-and-terms' %}#privacy" class="t-link" target="_blank" rel="noopener">privacy policy</a></label>
+    </div>
+    {% for e in form.terms.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+
+    <hr class="t-divider">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <span class="small text-muted">Already have an account? <a class="t-link" href="{% url 'myhub:page-login' %}?next={{ request.path|urlencode }}">Sign in</a></span>
+      <button type="submit" class="t-btn">Create my account{% include 'partials/_t_chip.html' %}</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

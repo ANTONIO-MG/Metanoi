@@ -1,0 +1,45 @@
+/**
+ * metanoia-auth.css — sign-in, sign-up and registration pages
+ * (templates/layouts/auth.html).
+ *
+ * These pages sit on plain Bootstrap 5 plus the Metanoia brand sheets. This file
+ * carries the few utilities they use that Bootstrap does not ship, and the
+ * card / field / button finish the registration wizard expects.
+ *
+ * Sections: utilities Bootstrap does not have · type · cards (soft, rounded,
+ * lifted) · fields · buttons.
+ */
+
+.bg-gray-100{ background-color:#f4f4f5 !important; }
+.font-weight-bold{ font-weight:600 !important; }
+.font-weight-bolder{ font-weight:700 !important; }
+.mt-7{ margin-top:6rem !important; }
+.mt-8{ margin-top:8rem !important; }
+.text-lg{ font-size:1.125rem !important; }
+.text-sm{ font-size:.875rem !important; line-height:1.5; }
+.text-xs{ font-size:.75rem !important; line-height:1.25; }
+.icon-shape{ width:48px; height:48px; border-radius:.75rem; display:inline-flex;
+  align-items:center; justify-content:center; background-position:50%; }
+.icon-shape i{ color:#fff; opacity:.85; }
+
+body{ font-family:"Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#3B4660; }
+h1, h2, h3, h4, h5, h6{ color:#3E2415; font-weight:700; }
+
+.card{ border:0; border-radius:1rem; box-shadow:0 20px 27px 0 rgba(0,0,0,.05); }
+.card.shadow-lg{ box-shadow:0 8px 26px -4px rgba(20,20,20,.15), 0 8px 9px -5px rgba(20,20,20,.06) !important; }
+
+.form-control, .form-select{ border-radius:.5rem; border-color:#d2d6da; font-size:.875rem; color:#495057; }
+.form-control:focus, .form-select:focus{ border-color:#6ec1e4; box-shadow:0 0 0 2px rgba(23,193,232,.2); }
+.form-control::placeholder{ color:#adb5bd; }
+.form-label, .form-check-label{ color:#3E2415; }
+
+.btn{ border-radius:.5rem; font-weight:700; font-size:.8125rem; letter-spacing:.02em;
+  padding:.65rem 1.5rem; box-shadow:0 4px 7px -1px rgba(0,0,0,.11), 0 2px 4px -1px rgba(0,0,0,.07);
+  transition:transform .15s ease, box-shadow .15s ease; }
+.btn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 7px 14px rgba(50,50,93,.1), 0 3px 6px rgba(0,0,0,.08); }
+.btn-link{ box-shadow:none; }
+.btn-link:hover:not(:disabled){ transform:none; box-shadow:none; }
+.bg-gradient-info{ background-image:linear-gradient(310deg, #0B5FC6 0%, #2a8bf2 100%); color:#fff; border:0; }
+.bg-gradient-info:hover{ color:#fff; }
+.text-gradient.text-info{ background-image:linear-gradient(310deg, #0B5FC6 0%, #2a8bf2 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }

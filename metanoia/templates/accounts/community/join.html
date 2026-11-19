@@ -1,0 +1,184 @@
+{% extends 'layouts/auth.html' %}
+{% comment %}/join/ — no e-mail check; the member is signed straight in
+(apps.accounts.community_views.join).
+
+Context: `form` (name, surname, e-mail, phone, institution, other_institution,
+other_cohort, programme, password, terms, captcha) and `existing` (an account already
+uses the address). Overrides `title`, `grid_class`, `card_col`, `auth_intro`,
+`auth_card` and `extra_js` of layouts/auth.html.
+
+The script shows only the programmes of the institution picked. Picking "Other
+institution" (`data-other`) opens the institution + cohort/year boxes (required then,
+checked again on the server) and drops the programme list, which only holds the
+programmes Metanoia runs.{% endcomment %}
+{% load static %}
+{% block title %}Join the Metanoia Community · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+
+{% block grid_class %}t-auth__grid--split{% endblock %}
+{% block card_col %}col-12{% endblock %}
+
+{% block auth_intro %}
+<div class="t-auth__intro">
+  <span class="t-label">Metanoia Community</span>
+  <h1 class="t-h1 mt-2"><span class="t-rise"><span style="--i:0">Join the</span></span><span class="t-rise"><span style="--i:1">Metanoia <em>Community</em><span class="t-dot">.</span></span></span></h1>
+  <p class="t-lead">Free, and straight in. Talk to other CA candidates at your institution and programme, hear about classes and deals first, message the Metanoia team and shop for study material.</p>
+  <p class="t-lead mb-0">Want modules, live classes and mock exams? You can become a full student any time from inside the community.</p>
+</div>
+{% endblock %}
+
+{% block auth_card %}
+<div class="t-card">
+  <h2 class="t-card-title">Join the community</h2>
+  <p class="t-card-sub">It takes a minute — no confirmation e-mail.</p>
+  {% if existing %}
+    <div class="alert alert-warning text-sm py-2">
+      There is already an account for that e-mail address.
+      <a class="t-link fw-semibold" href="{% url 'myhub:page-login' %}">Sign in instead</a>
+      — or <a class="t-link" href="{% url 'myhub:page-forgot-password' %}">reset your password</a>.
+    </div>
+  {% endif %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger text-white text-sm py-2">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>
+  {% endif %}
+
+  <form class="t-form" method="post" action="{% url 'community-join' %}" novalidate>
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-sm-6">
+        <label for="id_first_name">Name<span class="req">*</span></label>
+        <input type="text" name="first_name" id="id_first_name" value="{{ form.first_name.value|default:'' }}" autocomplete="given-name"
+               class="form-control{% if form.first_name.errors %} is-invalid{% endif %}" required>
+        {% for e in form.first_name.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_last_name">Surname<span class="req">*</span></label>
+        <input type="text" name="last_name" id="id_last_name" value="{{ form.last_name.value|default:'' }}" autocomplete="family-name"
+               class="form-control{% if form.last_name.errors %} is-invalid{% endif %}" required>
+        {% for e in form.last_name.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_email">Email address<span class="req">*</span></label>
+        <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}" autocomplete="email"
+               placeholder="hello@example.com" class="form-control{% if form.email.errors %} is-invalid{% endif %}" required>
+        {% for e in form.email.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_phone">Cell number<span class="req">*</span></label>
+        <input type="tel" name="phone" id="id_phone" value="{{ form.phone.value|default:'' }}" autocomplete="tel"
+               placeholder="082 123 4567" class="form-control{% if form.phone.errors %} is-invalid{% endif %}" required>
+        {% for e in form.phone.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6">
+        <label for="id_institution">Institution you study at<span class="req">*</span></label>
+        <select name="institution" id="id_institution" class="form-select{% if form.institution.errors %} is-invalid{% endif %}" required>
+          <option value="">Choose your institution</option>
+          {% for i in form.fields.institution.queryset %}
+          <option value="{{ i.pk }}" {% if i.is_other %}data-other="1"{% endif %} {% if form.institution.value|stringformat:"s" == i.pk|stringformat:"s" %}selected{% endif %}>{{ i.name }}</option>
+          {% endfor %}
+        </select>
+        {% for e in form.institution.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6" data-other-box hidden>
+        <label for="id_other_institution">Your institution<span class="req">*</span></label>
+        <input type="text" name="other_institution" id="id_other_institution" maxlength="160"
+               value="{{ form.other_institution.value|default:'' }}" autocomplete="organization"
+               placeholder="e.g. University of Johannesburg"
+               class="form-control{% if form.other_institution.errors %} is-invalid{% endif %}"
+               {% if form.other_institution.errors %}aria-invalid="true" aria-describedby="err_other_institution"{% endif %}>
+        {% for e in form.other_institution.errors %}<div class="invalid-feedback d-block text-xs" id="err_other_institution" data-persist>{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6" data-other-box hidden>
+        <label for="id_other_cohort">Cohort or year<span class="req">*</span></label>
+        <input type="text" name="other_cohort" id="id_other_cohort" maxlength="60"
+               value="{{ form.other_cohort.value|default:'' }}" placeholder="e.g. 2027 intake, or 3rd year"
+               class="form-control{% if form.other_cohort.errors %} is-invalid{% endif %}"
+               {% if form.other_cohort.errors %}aria-invalid="true" aria-describedby="err_other_cohort"{% endif %}>
+        {% for e in form.other_cohort.errors %}<div class="invalid-feedback d-block text-xs" id="err_other_cohort" data-persist>{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-sm-6" data-programme-box>
+        <label for="id_programme">CA programme<span class="req" data-programme-req>*</span></label>
+        <select name="programme" id="id_programme" class="form-select{% if form.programme.errors %} is-invalid{% endif %}" required>
+          <option value="">Choose your programme</option>
+          {% for p in form.fields.programme.queryset %}
+          <option value="{{ p.pk }}" data-institution="{{ p.institution_id }}" {% if form.programme.value|stringformat:"s" == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.full_name|default:p.name }}</option>
+          {% endfor %}
+        </select>
+        {% for e in form.programme.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="col-12">
+        <label for="id_password">Password<span class="req">*</span></label>
+        <div class="pw-field">
+          <input type="password" name="password" id="id_password" autocomplete="new-password"
+                 class="form-control{% if form.password.errors %} is-invalid{% endif %}" placeholder="Choose a password" required>
+          <button type="button" class="pw-toggle" data-target="id_password" aria-label="Show password" title="Show password">
+            <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></svg>
+            <svg class="icon-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="m13.646 14.354-12-12 .708-.708 12 12z"/><path d="M8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5S4.121 11.332 2.832 10.043A13 13 0 0 1 1.172 8c.335-.48.83-1.12 1.465-1.755C3.879 4.668 5.881 3.5 8 3.5"/></svg>
+          </button>
+        </div>
+        <small class="text-muted">You use this with your e-mail address to sign in again.</small>
+        {% for e in form.password.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 text-start mt-3">
+      <input class="form-check-input tick-green mt-0{% if form.terms.errors %} is-invalid{% endif %}"
+             type="checkbox" name="terms" id="id_terms" {% if form.terms.value %}checked{% endif %}>
+      <label class="form-check-label mb-0" for="id_terms">I agree to the
+        <a href="{% url 'pages:privacy-and-terms' %}#terms" class="t-link" target="_blank" rel="noopener">Terms &amp; Conditions</a>
+        and <a href="{% url 'pages:privacy-and-terms' %}#privacy" class="t-link" target="_blank" rel="noopener">privacy policy</a></label>
+    </div>
+    {% for e in form.terms.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+
+    <div class="mt-3 text-start">
+      <label class="form-label text-sm mb-1" for="id_captcha_1">Prove you're human — solve the sum</label>
+      <div class="captcha-field d-flex align-items-center gap-2">{{ form.captcha }}</div>
+      {% for e in form.captcha.errors %}<div class="invalid-feedback d-block text-xs">{{ e }}</div>{% endfor %}
+    </div>
+
+    <hr class="t-divider">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <span class="small text-muted">Already a member? <a class="t-link" href="{% url 'myhub:page-login' %}">Sign in</a></span>
+      <button type="submit" class="t-btn">Join the community{% include 'partials/_t_chip.html' %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var inst = document.getElementById('id_institution'), prog = document.getElementById('id_programme');
+  if (!inst || !prog) return;
+  function filter() {
+    var id = inst.value;
+    Array.prototype.forEach.call(prog.options, function (o) {
+      if (!o.value) return;
+      var show = !id || o.getAttribute('data-institution') === id;
+      o.hidden = !show; o.disabled = !show;
+    });
+    var sel = prog.options[prog.selectedIndex];
+    if (sel && sel.value && sel.disabled) prog.value = '';
+  }
+  inst.addEventListener('change', filter);
+  filter();
+
+  var progBox = document.querySelector('[data-programme-box]');
+  function other() {
+    var opt = inst.options[inst.selectedIndex];
+    var isOther = !!(opt && opt.getAttribute('data-other'));
+    document.querySelectorAll('[data-other-box]').forEach(function (box) {
+      box.hidden = !isOther;
+      var input = box.querySelector('input');
+      if (input) input.required = isOther;
+    });
+    if (progBox) {
+      progBox.hidden = isOther;
+      prog.required = !isOther;
+      if (isOther) prog.value = '';
+    }
+  }
+  inst.addEventListener('change', other);
+  other();
+})();
+</script>
+{% endblock %}

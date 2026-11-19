@@ -1,0 +1,51 @@
+{% load mailbox_tags %}
+{% if offset == 0 %}
+  {% for d in local_drafts %}
+  <a class="mb-row mb-row--draft{% if draft and draft.pk == d.pk %} is-on{% endif %}" href="?draft={{ d.pk }}" data-draft="{{ d.pk }}">
+    <span class="mb-ava mb-ava--draft"><i class="bi bi-pencil"></i></span>
+    <span class="mb-row__main">
+      <span class="mb-row__line1"><span class="mb-row__from mb-draftlabel">[Draft]</span>
+        <span class="mb-row__when">{{ d.updated_at|mail_when }}</span></span>
+      <span class="mb-row__subject">{{ d.subject|default:"(no subject)" }}</span>
+      <span class="mb-row__snippet">{% if d.to %}To: {{ d.to|truncatechars:60 }}{% else %}{{ d.snippet|default:"No recipients yet" }}{% endif %}</span>
+    </span>
+  </a>
+  {% endfor %}
+{% endif %}
+
+{% for row in rows %}
+  {% if row.group %}<div class="mb-group">{{ row.group }}</div>{% endif %}
+  {% with m=row.item %}
+  <div class="mb-row{% if not m.is_read %} is-unread{% endif %}{% if m.is_flagged %} is-flagged{% endif %}{% if selected and selected.pk == m.pk %} is-on{% endif %}"
+       data-id="{{ m.pk }}" data-read="{{ m.is_read|yesno:'1,0' }}" data-flagged="{{ m.is_flagged|yesno:'1,0' }}"
+       tabindex="0" role="button" aria-label="{{ m.sender_display }}: {{ m.subject }}">
+    <label class="mb-check" onclick="event.stopPropagation()"><input type="checkbox" class="mb-sel" value="{{ m.pk }}"><span></span></label>
+    <span class="mb-ava" style="--ava: {{ m.from_address|mail_colour }}">{{ m.initials }}</span>
+    <span class="mb-row__main">
+      <span class="mb-row__line1">
+        <span class="mb-row__from">{% if m.folder.role == 'sent' or m.folder.role == 'drafts' %}{{ m.to_display|default:"(no recipients)" }}{% else %}{{ m.sender_display }}{% endif %}</span>
+        <span class="mb-row__icons">
+          {% if m.is_answered %}<i class="bi bi-reply" title="Replied"></i>{% endif %}
+          {% if m.has_attachments %}<i class="bi bi-paperclip" title="Has attachments"></i>{% endif %}
+        </span>
+        <span class="mb-row__when">{{ m.date|mail_when }}</span>
+      </span>
+      <span class="mb-row__subject">{% if search_all %}<span class="mb-row__in">{{ m.folder.label }}</span>{% endif %}{{ m.subject|default:"(no subject)" }}</span>
+      <span class="mb-row__snippet">{{ m.snippet|default:"" }}</span>
+    </span>
+    <span class="mb-row__hover">
+      <button type="button" class="mb-hov" data-mb="row-delete" title="Delete"><i class="bi bi-trash3"></i></button>
+      <button type="button" class="mb-hov" data-mb="row-read" title="{% if m.is_read %}Mark as unread{% else %}Mark as read{% endif %}"><i class="bi {% if m.is_read %}bi-envelope{% else %}bi-envelope-open{% endif %}"></i></button>
+      <button type="button" class="mb-hov mb-hov--flag" data-mb="row-flag" title="{% if m.is_flagged %}Clear flag{% else %}Flag this message{% endif %}"><i class="bi {% if m.is_flagged %}bi-flag-fill{% else %}bi-flag{% endif %}"></i></button>
+    </span>
+  </div>
+  {% endwith %}
+{% empty %}
+  {% if offset == 0 and not local_drafts %}
+  <div class="mb-nothing">
+    <i class="bi {% if q %}bi-search{% else %}bi-inbox{% endif %}"></i>
+    <p>{% if q %}No results for “{{ q }}”.{% elif filter != 'all' %}Nothing matches this filter.{% else %}All caught up — nothing here.{% endif %}</p>
+  </div>
+  {% endif %}
+{% endfor %}
+{% if more %}<button type="button" class="mb-more" data-mb="more" data-offset="{{ next_offset }}">Load more messages</button>{% endif %}

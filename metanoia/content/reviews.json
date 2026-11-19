@@ -1,0 +1,9 @@
+{
+  "_about": "The landing page's testimonial wall (templates/pages/landing.html, #testimonials). TO REPLACE THESE WITH THE REAL GOOGLE REVIEWS: open the Google profile at `profile_url`, and for each review add an object to `items` with `name` (the reviewer, as Google shows it), `rating` (1-5), `text` (the review, verbatim), `when` (what Google prints under the name, e.g. \"2 months ago\"), and `source`: \"google\". Set `rating` and `count` at the top level to the overall score and the number of reviews so the header can quote them; leave them null and the header quotes nothing. Anything with `source` other than \"google\" renders as an unattributed testimonial with no Google mark on it. `manage.py sync_google_reviews` rewrites this whole file from the Google Places API when GOOGLE_PLACES_API_KEY and GOOGLE_PLACE_ID are set; anything you type here by hand is overwritten by that command.",
+  "source": "Google",
+  "profile_url": "",
+  "rating": null,
+  "count": null,
+  "synced_at": "",
+  "items": []
+}

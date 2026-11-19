@@ -1,0 +1,17 @@
+{% comment %}"Add a reminder" — a personal date on your own calendar. POSTs to
+myhub:add-reminder, which returns you to this calendar.{% endcomment %}
+<div class="card" id="add-reminder"><div class="card-body">
+  <h6 class="mb-3"><i class="bi bi-bell me-1"></i>Add a reminder</h6>
+  <form method="post" action="{% url 'myhub:add-reminder' %}">
+    {% csrf_token %}
+    <div class="mb-2">
+      <label class="form-label small mb-1" for="reminderTitle">What is it?</label>
+      <input class="form-control form-control-sm" id="reminderTitle" name="title" placeholder="e.g. Draft submission" required>
+    </div>
+    <div class="mb-2">
+      <label class="form-label small mb-1" for="reminderStart">When?</label>
+      <input class="form-control form-control-sm" id="reminderStart" type="datetime-local" name="start" required>
+    </div>
+    <button class="btn btn-primary btn-sm w-100">Remind me</button>
+  </form>
+</div></div>

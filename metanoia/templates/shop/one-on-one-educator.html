@@ -1,0 +1,128 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load static commerce people %}
+{% comment %}
+One coach's week for 1-on-1s: Mon–Sun columns × one-hour rows, in the
+viewer's own time zone (shop.booking.week_grid). "Hold" holds the chosen hour
+(shop.booking.hold_slot) and opens the cart. On a one-on-one plan (``o2o``)
+the hour comes off the module's prepaid hours instead of being charged.
+
+Context: person, grid, week, monday, sunday, today, zone, can_prev, can_next,
+rate, rates, price, is_self, o2o.
+
+Blocks: overrides ``additional_css`` and ``content``.
+{% endcomment %}
+
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/commerce.css' %}"><link rel="stylesheet" href="{% static 'css/metanoia-shop.css' %}?v=2">{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-2 ts">
+  <nav class="to-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop:storefront' %}">Shop</a><span aria-hidden="true">/</span><a href="{% url 'shop:one-on-one' %}">One-on-one sessions</a><span aria-hidden="true">/</span><span>{{ person|person_name }}</span></nav>
+
+  <section class="to-head">
+    <div class="to-head__who">
+      {% person_chip person size='lg' subtitle=rate.product.name %}
+    </div>
+    <div class="to-head__price">
+      <span class="ts-price"><b>{{ price|rand }}</b><small>per hour</small></span>
+      <small>VAT included where it applies</small>
+    </div>
+  </section>
+
+  {% if rates|length > 1 %}
+  <nav class="ts-pills" aria-label="Session type">
+    {% for r in rates %}<a class="ts-pill {% if r == rate %}is-active{% endif %}" href="?service={{ r.pk }}&week={{ week }}">{{ r.product.name }}<span>{{ r.hourly_rate|rand }}</span></a>{% endfor %}
+  </nav>
+  {% endif %}
+
+  <form method="post" class="t-card to-week-card" id="book">
+    {% csrf_token %}
+    <input type="hidden" name="rate" value="{{ rate.pk }}">
+    <input type="hidden" name="week" value="{{ week }}">
+
+    <div class="to-week-bar">
+      <div>
+        <h2 class="t-h3 mb-0"><span>{{ monday|date:"j M" }}</span> – <span>{{ sunday|date:"j M Y" }}</span></h2>
+        <small class="to-zone"><i class="bi bi-globe2" aria-hidden="true"></i><span>Times are in your time zone</span> <span>({{ zone }})</span></small>
+      </div>
+      <div class="to-week-nav">
+        {% if can_prev %}<a class="ts-btn ts-btn--line" href="?service={{ rate.pk }}&week={{ week|add:'-1' }}{% if o2o %}&module={{ o2o.selected }}{% endif %}#book" aria-label="Previous week"><i class="bi bi-chevron-left"></i></a>{% else %}<span class="ts-btn ts-btn--line is-disabled" aria-hidden="true"><i class="bi bi-chevron-left"></i></span>{% endif %}
+        {% if week %}<a class="ts-btn ts-btn--line" href="?service={{ rate.pk }}{% if o2o %}&module={{ o2o.selected }}{% endif %}#book">This week</a>{% endif %}
+        {% if can_next %}<a class="ts-btn ts-btn--line" href="?service={{ rate.pk }}&week={{ week|add:'1' }}{% if o2o %}&module={{ o2o.selected }}{% endif %}#book" aria-label="Next week"><i class="bi bi-chevron-right"></i></a>{% else %}<span class="ts-btn ts-btn--line is-disabled" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>{% endif %}
+      </div>
+    </div>
+
+    <ul class="to-legend" aria-label="Key">
+      <li><span class="to-key to-key--free"></span><span>Free</span></li>
+      <li><span class="to-key to-key--booked"></span><span>Booked</span></li>
+      <li><span class="to-key to-key--off"></span><span>Not available</span></li>
+    </ul>
+
+    {% if grid.rows %}
+    <div class="to-scroll">
+      <table class="to-week">
+        <thead><tr><th scope="col" class="to-week__corner"><span class="visually-hidden">Time</span></th>
+          {% for d in grid.days %}<th scope="col" class="{% if d == today %}is-today{% endif %}"><small>{{ d|date:"D" }}</small><b>{{ d|date:"j" }}</b><small>{{ d|date:"M" }}</small></th>{% endfor %}
+        </tr></thead>
+        <tbody>
+        {% for row in grid.rows %}
+          <tr>
+            <th scope="row" class="to-week__time">{{ row.time|time:"H:i" }}</th>
+            {% for c in row.cells %}
+              <td>
+                {% if c.state == 'free' and not is_self %}
+                  <input class="to-radio" type="radio" name="start" id="slot{{ forloop.parentloop.counter }}-{{ forloop.counter }}" value="{{ c.start|date:'c' }}">
+                  <label class="to-slot to-slot--free" for="slot{{ forloop.parentloop.counter }}-{{ forloop.counter }}"><span>{{ c.start|time:"H:i" }}</span></label>
+                {% elif c.state == 'free' %}
+                  <span class="to-slot to-slot--free is-static"><span>Free</span></span>
+                {% elif c.state == 'booked' %}
+                  <span class="to-slot to-slot--booked" title="{% if c.mine %}Your booking{% else %}Booked{% endif %}"><span>{% if c.mine %}Yours{% else %}Booked{% endif %}</span></span>
+                {% elif c.state == 'busy' %}
+                  <span class="to-slot to-slot--off" title="Not available"><span class="visually-hidden">Not available</span></span>
+                {% elif c.state == 'closed' %}
+                  <span class="to-slot to-slot--off" title="Not bookable"><span class="visually-hidden">Not bookable</span></span>
+                {% else %}
+                  <span class="to-slot to-slot--off to-slot--none"></span>
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="ts-empty"><i class="bi bi-calendar-x"></i><p>{{ person|person_name }} has no hours set for this week.</p></div>
+    {% endif %}
+
+    {% if is_self %}
+      <p class="to-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>This is your own booking calendar, as students see it. Red hours are booked with you; they are listed under Online sessions.</span></p>
+    {% else %}
+      <div class="to-book">
+        <div class="to-book__note">
+          <label class="form-label" for="bookNote">What would you like to cover? <span class="text-muted fw-normal">(optional)</span></label>
+          <textarea id="bookNote" name="note" rows="2" class="form-control" placeholder="e.g. Deferred tax on the 2024 paper, question 3"></textarea>
+        </div>
+        {% if o2o %}
+        <div class="to-book__go">
+          <label class="form-label" for="bookModule">Module</label>
+          <select id="bookModule" name="module" class="form-select mb-2" required>
+            <option value="">Choose the module…</option>
+            {% for row in o2o.modules %}<option value="{{ row.module.pk }}" {% if row.module.pk|stringformat:"s" == o2o.selected %}selected{% endif %} {% if not row.hours %}disabled{% endif %}>{{ row.module.code }} — {{ row.hours|floatformat:"-2" }} h left</option>{% endfor %}
+          </select>
+          <button class="t-btn" type="submit" {% if not grid.free or not o2o.settled %}disabled{% endif %}>Book with my hours{% include 'partials/_t_chip.html' %}</button>
+        </div>
+      </div>
+      {% if not o2o.settled %}<p class="to-fine text-danger"><i class="bi bi-exclamation-circle me-1"></i>R {{ o2o.owed|floatformat:2 }} is outstanding on earlier sessions. Settle it on <a href="{% url 'shop:o2o-hours' %}">your one-on-one page</a> to book again.</p>{% endif %}
+      <p class="to-fine">Need more hours? <a href="{% url 'shop:o2o-hours' %}">Buy hours</a>. Cancel at least 24 hours before and the hour comes back to you.</p>
+        {% else %}
+        <div class="to-book__go">
+          <span class="ts-price"><b>{{ price|rand }}</b><small>1 hour with {{ person|person_name }}</small></span>
+          <button class="t-btn" type="submit" {% if not grid.free %}disabled{% endif %}>Hold &amp; add to cart{% include 'partials/_t_chip.html' %}</button>
+        </div>
+      </div>
+      <p class="to-fine">{% if grid.free %}Choose a free hour above. It is held for you for 15 minutes while you check out.{% else %}No free hours this week. Try the next week.{% endif %} Sessions can be moved up to {{ rate.product.reschedule_cutoff_hours }} hours before; they are not refundable.</p>
+        {% endif %}
+    {% endif %}
+  </form>
+</div></div>
+{% endblock %}

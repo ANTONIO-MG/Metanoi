@@ -1,0 +1,31 @@
+{% comment %}
+The Metanoia Mail signature (apps/mailbox/signatures.py): the same block as the
+automated e-mails' signature and banner (communication/email/base_email.html),
+with absolute picture links so it can also be pasted into other mail apps.
+{% endcomment %}<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;max-width:600px;border-collapse:separate;font-family:Montserrat,'Helvetica Neue',Helvetica,Arial,sans-serif"><tbody>
+<tr><td style="padding:0">
+  <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FFFFFF;border-radius:20px;border:1px solid #DFE5EF;overflow:hidden;border-collapse:separate"><tbody>
+    <tr><td style="padding:20px 22px 18px">
+      <table border="0" cellpadding="0" cellspacing="0" role="presentation"><tbody><tr>
+        <td valign="middle" style="padding-right:18px;border-right:1px solid #DFE5EF"><img src="{{ avatar_url }}" width="78" height="78" alt="{{ signature.name }}" style="display:block;border:0;width:78px;height:78px"></td>
+        <td valign="middle" style="padding-left:18px;font-family:Montserrat,'Helvetica Neue',Helvetica,Arial,sans-serif">
+          <div style="color:#3E2415;font-size:19px;line-height:1.2;font-weight:800;letter-spacing:-.3px">{{ signature.name }}<span style="color:#F2A900">.</span></div>
+          <div style="color:#0B5FC6;font-size:10px;line-height:1.5;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;margin-top:3px">{{ signature.role }}</div>
+          <div style="color:#6B5E55;font-size:13px;line-height:1.5;margin-top:6px">{% if signature.whatsapp %}WhatsApp {% if signature.whatsapp_url %}<a href="{{ signature.whatsapp_url }}" style="color:#6B5E55;text-decoration:none">{{ signature.whatsapp }}</a>{% else %}{{ signature.whatsapp }}{% endif %} &nbsp;·&nbsp; {% endif %}<a href="mailto:{{ signature.email }}" style="color:#6B5E55;text-decoration:none">{{ signature.email }}</a></div>
+          <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:9px"><tbody><tr>
+            <td valign="middle" style="padding-right:12px"><img src="{{ logo_url }}" width="96" alt="Metanoia" style="display:block;border:0;width:96px;height:auto"></td>
+            <td valign="middle" style="font-size:9px;line-height:1;font-weight:700;letter-spacing:1.6px;white-space:nowrap"><span style="color:#3E2415">EMPOWERING</span>&nbsp; <span style="color:#0B5FC6">THROUGH</span>&nbsp; <span style="color:#4F7F12">TRANSFORMATION.</span></td>
+          </tr></tbody></table>
+        </td>
+      </tr></tbody></table>
+    </td></tr>
+    <tr><td style="font-size:0;line-height:0;padding:0"><table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation"><tbody><tr>
+      <td width="45%" height="5" style="background-color:#3E2415;font-size:0;line-height:0">&nbsp;</td>
+      <td width="25%" height="5" style="background-color:#0B5FC6;font-size:0;line-height:0">&nbsp;</td>
+      <td width="20%" height="5" style="background-color:#F2A900;font-size:0;line-height:0">&nbsp;</td>
+      <td width="10%" height="5" style="background-color:#FFC20E;font-size:0;line-height:0">&nbsp;</td>
+    </tr></tbody></table></td></tr>
+  </tbody></table>
+</td></tr>
+<tr><td style="padding:14px 0 0">{% if website %}<a href="{{ website }}" target="_blank" style="text-decoration:none">{% endif %}<img src="{{ banner_url }}" width="600" alt="Metanoia Group. Empowering through transformation." style="display:block;border:0;width:100%;max-width:600px;height:auto;border-radius:16px">{% if website %}</a>{% endif %}</td></tr>
+</tbody></table>

@@ -1,0 +1,65 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}
+Shown instead of the live-session room when a student in the session's
+audience has not paid. They were invited and reminded like everybody else — the
+class is on their calendar and the e-mail is in their inbox — so this page says
+what is owed and where to pay it, rather than pretending the session is not
+there. See apps.livesessions.audience.can_join.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``content``.
+{% endcomment %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+      <div class="card shadow-lg">
+        <div class="card-body p-4 text-center">
+          <div class="icon-shape bg-gradient-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:56px;height:56px">
+            <i class="bi bi-lock-fill" style="font-size:1.4rem"></i>
+          </div>
+
+          <h4 class="mb-1">This class is waiting for your payment</h4>
+          <p class="text-sm text-muted mb-1">{{ meeting.title }}</p>
+          {% if meeting.scheduled_start %}
+          <p class="text-sm text-muted mb-3">
+            {{ meeting.scheduled_start|date:"l d F, H:i" }} · {{ meeting.audience_label }}
+          </p>
+          {% endif %}
+
+          <p class="text-sm text-muted">
+            Your place is held and the session stays on your calendar — the join link opens
+            as soon as your payment is recorded.
+          </p>
+
+          {% if invoice %}
+          <div class="d-inline-block bg-gray-100 rounded-3 px-4 py-3 my-3">
+            <span class="text-lg fw-bold">R {{ invoice.balance|floatformat:2 }}</span>
+            <span class="text-sm text-muted d-block">outstanding on invoice {{ invoice.number|default:invoice.public_id }}</span>
+          </div>
+          <div class="d-grid gap-2">
+            <a href="{{ invoice.get_pay_url }}" class="btn bg-gradient-info btn-lg mb-0">
+              <i class="bi bi-credit-card-2-front me-1"></i> Pay now
+            </a>
+            <a href="{% url 'finance:invoices' %}" class="btn btn-outline-secondary mb-0">
+              <i class="bi bi-receipt me-1"></i> See my invoices
+            </a>
+          </div>
+          {% else %}
+          <div class="d-grid gap-2 mt-3">
+            <a href="{% url 'finance:invoices' %}" class="btn bg-gradient-info btn-lg mb-0">
+              <i class="bi bi-receipt me-1"></i> See what is outstanding
+            </a>
+          </div>
+          {% endif %}
+
+          <p class="text-xs text-muted mt-3 mb-0">
+            Already paid? It can take a moment to reflect — if it does not, contact us and we
+            will open it straight away.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

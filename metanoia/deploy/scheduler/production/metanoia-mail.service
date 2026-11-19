@@ -1,0 +1,23 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Metanoia Group new-mail check
+After=network-online.target postgresql@16-main.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/projects/Metanoia/metanoia
+ExecStart=/home/ubuntu/projects/Metanoia/metanoia/.environment/bin/python manage.py run_scheduled_jobs --job mail-inbox
+TimeoutStartSec=110
+Nice=10
+CPUWeight=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,35 @@
+{
+  "_about": "The landing page's Frequently asked questions section (templates/pages/landing.html, #faq). Add an object to `items` and it appears on the page and in the search box — nothing else to change. `q` is the question, `a` is the answer (PLAIN TEXT, no HTML — it is escaped), and `tags` are extra words the search should match that do not appear in the question or answer itself (synonyms, misspellings, the words people actually type). Order here is the order on the page, so keep the questions people ask most near the top.",
+  "items": [
+    {
+      "q": "How do I create an account?",
+      "a": "Choose Register on the sign-in page and complete the steps. Once your details are confirmed you can sign in and see the programmes you are enrolled on.",
+      "tags": "sign up register account join login create profile"
+    },
+    {
+      "q": "I have forgotten my password. What now?",
+      "a": "Use Forgot password on the sign-in page and we will e-mail you a link to set a new one. If the e-mail does not arrive, check your spam folder or contact us.",
+      "tags": "reset password forgot login locked out cannot sign in"
+    },
+    {
+      "q": "What programmes does Metanoia Group offer?",
+      "a": "Metanoia Group works in B-BBEE verification, transformation and skills development. The programmes open to you are listed once you sign in; for anything not listed, contact us and we will point you in the right direction.",
+      "tags": "programme course training skills development bbbee b-bbee transformation verification learnership"
+    },
+    {
+      "q": "How do I pay?",
+      "a": "Payment options are shown at checkout and on each invoice. Once a payment is received it is recorded against your account and you can download the invoice from your profile.",
+      "tags": "payment pay invoice eft card fees cost price billing receipt"
+    },
+    {
+      "q": "Can I get an invoice or a receipt?",
+      "a": "Yes. Every order and invoice is available under your account, and you can download a PDF copy at any time.",
+      "tags": "invoice receipt statement proof of payment pdf tax"
+    },
+    {
+      "q": "How do I contact Metanoia Group?",
+      "a": "Call +27 11 027 8720, e-mail info@metanoiagroup.co.za, or visit us at Metanoia House, 86 Fleet Street, Ferndale, Randburg 2194.",
+      "tags": "contact support help phone email address office telephone"
+    }
+  ]
+}

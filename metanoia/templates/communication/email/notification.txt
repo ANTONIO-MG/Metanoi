@@ -1,0 +1,13 @@
+{% load org_branding %}{% org_brand as brand %}{{ notification.title|default:notification.verb }}
+{% if notification.actor %}From: {{ notification.actor|greeting_name:"" }}
+{% endif %}
+{{ notification.body }}
+{% if notification.url %}
+Open: {{ notification.url|email_url }}
+{% endif %}
+--
+{{ brand.copyright|default:"Metanoia Group" }}
+{% if footer.unsubscribe_url %}
+Unsubscribe: {{ footer.unsubscribe_url }}
+E-mail preferences: {{ footer.preferences_url }}{% endif %}{% if brand.terms_url %}
+Terms: {{ brand.terms_url }}{% endif %}{% if brand.privacy_url %} · Privacy: {{ brand.privacy_url }}{% endif %}

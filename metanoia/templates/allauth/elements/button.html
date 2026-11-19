@@ -1,0 +1,19 @@
+{% load allauth %}
+{% comment %} djlint:off {% endcomment %}{% comment %}allauth's ``button`` element in the hub's button styles. Rendered by
+``{% templatetag openblock %} element button {% templatetag closeblock %}``; `attrs` carries
+``href`` (render a link instead of a button), ``tags`` (``link``, ``danger``, ``outline``,
+``secondary``, ``login`` for full width, ``tool`` for small), ``form``, ``id``, ``name``,
+``value`` and ``type``. The slot is the label. djlint is off because the tag is assembled
+from template logic.{% endcomment %}
+{% with t=attrs.tags|default_if_none:"" %}
+<{% if attrs.href %}a href="{{ attrs.href }}"{% else %}button{% endif %}
+ class="btn {% if 'link' in t %}btn-link px-0{% elif 'danger' in t %}{% if 'outline' in t %}btn-outline-danger{% else %}btn-danger{% endif %}{% elif 'outline' in t or 'secondary' in t %}btn-outline-primary{% else %}bg-gradient-info text-white{% endif %}{% if 'login' in t %} w-100{% endif %}{% if 'tool' in t %} btn-sm{% endif %}"
+{% if attrs.form %}form="{{ attrs.form }}"{% endif %}
+{% if attrs.id %}id="{{ attrs.id }}"{% endif %}
+{% if attrs.name %}name="{{ attrs.name }}"{% endif %}
+{% if attrs.value %}value="{{ attrs.value }}"{% endif %}
+{% if attrs.type %}type="{{ attrs.type }}"{% endif %}>
+{% slot %}
+{% endslot %}
+</{% if attrs.href %}a{% else %}button{% endif %}>
+{% endwith %}

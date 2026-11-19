@@ -1,0 +1,15 @@
+{
+  "format": "metanoia-upload/1",
+  "doc_type": "mock_exam",
+  "title": "MACF B26S Test 2 — Integration Mock (Khanya Power Solutions)",
+  "institution": "MILPARK",
+  "programme": "BCTA",
+  "module": "MACF",
+  "cohort": "B26S",
+  "assessment": {"kind": "test", "sequence": 2},
+  "audience": "students",
+  "used_on": "2026-10-02",
+  "marks": 20,
+  "minutes": 36,
+  "notes": "Sample, cut down to two parts. Upload the question PDF and the solution workbook with it."
+}

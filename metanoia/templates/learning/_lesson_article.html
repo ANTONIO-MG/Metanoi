@@ -1,0 +1,73 @@
+{% load static %}
+{% comment %}
+A reading lesson as an article (apps/learning/article.py). Each part keeps its
+section id and an end marker ticks it off, so progress works as in the player.
+
+Includes ``learning/_lesson_blocks.html``.
+{% endcomment %}
+<div class="ar-hero">
+  <div class="ar-hero__text">
+    <div class="ar-eyebrow">
+      <span class="ar-tag">{{ article_kind }}</span>
+      {% for c in article_crumbs %}<span class="ar-crumb">{{ c }}</span>{% endfor %}
+    </div>
+    <h1 class="ar-title">{{ lesson.title }}<span class="ar-dot">.</span></h1>
+    {% if lesson.subtitle %}<p class="ar-lede">{{ lesson.subtitle }}</p>{% endif %}
+    <div class="ar-byline">
+      <span class="ar-byline__mark">
+        {% if lesson.author_avatar %}<img src="{{ lesson.author_avatar.url }}" alt="">
+        {% else %}<img src="{% static 'images/brand/avatar-tick-navy.png' %}" alt="">{% endif %}
+      </span>
+      <span>
+        <strong>{{ lesson.author_display|default:"Metanoia Group" }}</strong>
+        <span class="ar-byline__meta">{{ total_minutes }} min read · Updated {{ lesson.updated_at|date:"j M Y" }}</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="ar-panel">
+    <div class="ar-panel__tabs">
+      <span class="is-on">In this {{ article_kind|lower }}</span>
+      <span><span id="lpPct">{{ completion }}%</span> read</span>
+    </div>
+    <div class="ar-panel__body">
+      <p class="ar-panel__title">What's inside<span class="ar-dot">.</span></p>
+      <ul class="ar-checks">
+        {% for h in article_toc|slice:":4" %}
+          <li><i class="bi bi-check-lg"></i><a href="#{{ h.id }}">{{ h.label }}</a></li>
+        {% empty %}
+          <li><i class="bi bi-check-lg"></i>{{ section_count }} part{{ section_count|pluralize }}, about {{ total_minutes }} minutes</li>
+        {% endfor %}
+      </ul>
+      <div class="ar-panel__actions">
+        <a class="ar-btn ar-btn--navy" href="#ar-start">Start reading<span class="ar-btn__icon ar-btn__icon--green"><i class="bi bi-arrow-down"></i></span></a>
+        {% with first=attachments|first %}{% if first %}
+          <a class="ar-btn ar-btn--ghost" href="{% if first.file %}{{ first.file.url }}{% else %}{{ first.url }}{% endif %}" target="_blank" rel="noopener">Download<span class="ar-btn__icon ar-btn__icon--navy"><i class="bi bi-arrow-right"></i></span></a>
+        {% endif %}{% endwith %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ar-progress" title="{{ completion }}% read"><i id="lpBar" style="width: {{ completion }}%"></i></div>
+<span id="lpDone" hidden>{{ completed_count }}</span>
+
+<article class="ar-body" id="ar-start">
+  {% for row in rows %}
+    {% if row.kind == 'section' %}
+    <section class="ar-part lp-sec{% if row.completed %} sec-done{% endif %}" id="sec-{{ row.section.id }}"
+             data-section="{{ row.section.id }}">
+    {% endif %}
+      {% for item in row.items %}
+        {% if item.html %}
+          <div class="ar-prose" data-block-id="{{ item.block.id }}" data-bookmarkable>{{ item.html|safe }}</div>
+        {% else %}
+          {% include 'learning/_lesson_blocks.html' with blocks=item.blocks %}
+        {% endif %}
+      {% endfor %}
+    {% if row.kind == 'section' %}
+      <span class="ar-sentinel" data-read-section="{{ row.section.id }}"{% if row.completed %} data-done="1"{% endif %}></span>
+    </section>
+    {% endif %}
+  {% endfor %}
+</article>

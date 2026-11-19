@@ -1,0 +1,14 @@
+{% load org_branding %}{% org_brand as brand %}Hi,
+
+Someone — possibly you — asked to reset the password for {{ email }} at {{ brand.name|default:"Metanoia Group" }}.
+We don't have an account registered with that address, so there's no password to reset.
+
+If that was you, you may have signed up with a different e-mail address — or you can
+create an account here:
+
+{{ signup_url }}
+
+Wasn't you? You can safely ignore this e-mail — no account exists and nothing has changed.
+
+--
+{{ brand.copyright|default:"Metanoia Group" }}

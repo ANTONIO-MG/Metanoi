@@ -1,0 +1,29 @@
+{% extends is_popup|yesno:"layouts/admin_popup.html,myhub/elements/layouts/admin.html" %}
+{% load static %}
+{% comment %}
+The Django admin rendered inside the hub shell, reusing the hub layout's blocks.
+additional_css sits INSIDE #appContentCol, which is where admin media (widgets,
+select2, jQuery) goes too; `message` carries the admin header
+(admin/_metanoia_header.html). Pop-ups get layouts/admin_popup.html instead.
+
+Defines blocks ``head_title``, ``additional_css``, ``extrastyle``, ``extrahead``,
+``message``, ``additional_js``, ``extra_js``. Includes ``admin/_metanoia_header.html``.
+{% endcomment %}
+
+{% block head_title %}{% if title %}{{ title|striptags }} &middot; {% endif %}Admin &middot; {{ brand.name|default:'Metanoia Group' }}{% endblock %}
+
+{% block additional_css %}
+<link rel="stylesheet" href="{% static 'css/admin-forms.css' %}?v=1">
+<link rel="stylesheet" href="{% static 'css/admin-metanoia.css' %}?v=2">
+{% block extrastyle %}{% endblock extrastyle %}
+{% block extrahead %}{% endblock extrahead %}
+{% endblock additional_css %}
+
+{% block message %}
+{% if not is_popup %}{% include 'admin/_metanoia_header.html' %}{% endif %}
+{% endblock message %}
+
+{% block additional_js %}
+<script src="{% static 'js/admin-metanoia.js' %}?v=1"></script>
+{% block extra_js %}{% endblock extra_js %}
+{% endblock additional_js %}

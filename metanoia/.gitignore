@@ -1,0 +1,57 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets
+# Since 2026-11-03 the secrets live in OCI Vault and reach the app through
+# metanoia-secrets.service (/run/metanoia/secrets.env); .env holds only
+# non-secret settings and stays on the server, out of git.
+.env
+.env.*
+# ...but the template that documents them is meant to be committed.
+!.env.example
+
+# Django runtime
+*.sqlite3
+/media/
+/staticfiles/
+
+# The archive park: real people's purged accounts. It is a backup location on
+# the server, never source. (apps.accounts.archiving)
+/backups/archived_accounts/
+
+# Database dumps. Full copies of live data — names, e-mail addresses, dates of
+# birth, payment records. Never source, never in a repository.
+/backups/db/
+/backups/.env*
+# Ad-hoc copies of files taken before an edit (backups/<name>.bak-<date>).
+/backups/*.bak*
+# Copies of the systemd units taken before a deploy edits them.
+/backups/systemd-*/
+*.dump
+*.sql.gz
+
+# Local logs / coverage
+*.log
+.coverage
+htmlcov/
+
+# macOS Finder junk
+.DS_Store
+**/.DS_Store
+.environment/
+
+# Local copies of .env taken before edits — they hold credentials.
+.env.backup*
+# The raw 2026 teaching-material archive (≈300 MB) is seeded from the server's
+# working tree by `seed_2026_materials`; tests skip when it is absent.
+/Metanoia Material/
+# Records which rows one database's seed run created — server-specific.
+/backups/seed_2026_manifest.json

@@ -1,0 +1,56 @@
+{% comment %}
+One material row — the only place lock state is rendered. A money lock offers
+"unlock" / buy-this-item; a sequence lock is an instruction, shown in the
+module's accent rather than as a paywall (not a padlock: they own the item, they
+simply have not reached it yet). A locked item that is also sold on its own gets
+the shop route out of the lock. "Free preview" is not shown on General, which is
+free and open to all anyway.
+
+Context:
+  row      an apps.learning.access.MaterialState
+  next_step_id  optional pk — the row to mark "Start here"
+  show_where  optional bool — prefix the meta with which block/week it sits in
+  phase / week  used only when show_where is on
+{% endcomment %}
+{% with m=row.material %}
+{% with broken=row.file_broken %}
+{% if row.open and row.url and not broken %}<a class="mf-item{% if next_step_id == m.pk %} mf-item--next{% endif %}" id="mat-{{ m.pk }}" href="{{ row.url }}"{% if m.file %} target="_blank" rel="noopener"{% endif %}>{% else %}<div class="mf-item mf-item--locked{% if row.is_sequence_lock or broken %} mf-item--waiting{% endif %}" id="mat-{{ m.pk }}">{% endif %}
+
+  <span class="mf-item__ico"><i class="bi {{ m.icon }}"></i></span>
+
+  <span class="mf-item__main">
+    <p class="mf-item__title">{{ m.title }}</p>
+    <p class="mf-item__meta">
+      {% if show_where %}{% if week %}{{ week.display_title }}{% else %}{{ phase.display_title }}{% endif %} · {% endif %}
+      {{ m.get_kind_display }}
+      {% if m.meeting and m.meeting.scheduled_start %} · {{ m.meeting.scheduled_start|date:"D j M, H:i" }}{% endif %}
+      {% if m.description %} · {{ m.description|truncatechars:70 }}{% endif %}
+      {% if row.locked and row.reason_label %} · {{ row.reason_label }}{% elif broken %} · This file is being re-uploaded — check back soon{% endif %}
+    </p>
+  </span>
+
+  <span class="mf-item__side">
+    {% if m.is_preview and not offering.is_general %}<span class="mf-tag mf-tag--success">Free preview</span>{% endif %}
+    {% if next_step_id == m.pk %}<span class="mf-tag mf-tag--primary">Start here</span>{% endif %}
+    <span class="mf-tag mf-tag--{{ m.tone }}">{{ m.get_kind_display|truncatechars:14 }}</span>
+    {% if broken and not row.locked %}
+      <i class="bi bi-cloud-upload" style="color:var(--mf-muted)" title="Being re-uploaded"></i>
+    {% elif row.is_sequence_lock %}
+      <i class="bi bi-hourglass-split" style="color:var(--mf-muted)" title="{{ row.reason_label }}"></i>
+    {% elif row.locked %}
+      <i class="bi bi-lock-fill" style="color:var(--mf-lock)" title="{{ row.reason_label }}"></i>
+    {% else %}
+      <i class="bi bi-chevron-right small" style="color:var(--mf-muted)"></i>
+    {% endif %}
+  </span>
+
+{% if row.open and row.url and not broken %}</a>{% else %}</div>{% endif %}
+{% endwith %}
+
+{% if row.can_buy_single %}
+<div class="d-flex justify-content-end pe-2 pb-1">
+  <a class="mf-buy" href="{% url 'shop:product-detail' m.product.pk %}">
+    <i class="bi bi-bag me-1"></i>Buy just this — R{{ m.product.price|floatformat:2 }}</a>
+</div>
+{% endif %}
+{% endwith %}

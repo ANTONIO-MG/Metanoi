@@ -1,0 +1,20 @@
+{% load i18n admin_urls %}
+{% comment %}Save buttons — OVERRIDES the old admin theme's rainbow (blue / green / cyan /
+orange). One brown pill for Save, quiet pills for the alternatives, Delete set
+apart on the right. The bar sticks to the bottom of the screen on a long form.{% endcomment %}
+<div class="submit-row ta-submit">
+{% block submit-row %}
+  {% if show_save %}<button type="submit" class="t-btn t-btn--sm" name="_save">{% translate 'Save' %}{% include 'partials/_t_chip.html' %}</button>{% endif %}
+  {% if show_save_and_continue %}<button type="submit" class="ta-ghost" name="_continue">{% if can_change %}{% translate 'Save and keep editing' %}{% else %}{% translate 'Save and view' %}{% endif %}</button>{% endif %}
+  {% if show_save_and_add_another %}<button type="submit" class="ta-ghost" name="_addanother">{% translate 'Save and add another' %}</button>{% endif %}
+  {% if show_save_as_new %}<button type="submit" class="ta-ghost" name="_saveasnew">{% translate 'Save as new' %}</button>{% endif %}
+  {% if show_close %}
+    {% url opts|admin_urlname:'changelist' as changelist_url %}
+    <a role="button" href="{% add_preserved_filters changelist_url %}" class="ta-ghost closelink">{% translate 'Close' %}</a>
+  {% endif %}
+  {% if show_delete_link and original %}
+    {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+    <a role="button" href="{% add_preserved_filters delete_url %}" class="ta-danger deletelink"><i class="bi bi-trash3"></i>{% translate "Delete" %}</a>
+  {% endif %}
+{% endblock %}
+</div>

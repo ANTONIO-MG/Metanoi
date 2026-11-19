@@ -1,0 +1,11 @@
+{% load allauth %}
+<section class="card allauth-panel">
+  <div class="card-body">
+    <h6 class="allauth-sub mt-0">{% slot title %}{% endslot %}</h6>
+    {% slot body %}
+    {% endslot %}
+    {% if slots.actions %}
+    <div class="allauth-actions">{% for action in slots.actions %}{{ action }}{% endfor %}</div>
+    {% endif %}
+  </div>
+</section>

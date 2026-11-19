@@ -1,0 +1,51 @@
+/**
+ * links.css — links in shared text and their preview cards
+ * (static/js/link-preview.js).
+ *
+ * Tokens follow the app theme; dark values are redefined under the dark theme
+ * selector. On a dark chat bubble (your own messages) the card is kept readable.
+ */
+
+:root{
+  --lc-surface: rgba(11, 95, 198, .05);
+  --lc-border: rgba(11, 95, 198, .18);
+  --lc-ink: var(--bs-body-color, #212529);
+  --lc-dim: var(--bs-secondary-color, #6c757d);
+  --lc-accent: #0B5FC6;
+  --lc-teams: #5b5fc7;
+}
+[data-bs-theme="dark"]{
+  --lc-surface: rgba(255, 255, 255, .06);
+  --lc-border: rgba(255, 255, 255, .14);
+  --lc-ink: #e9ecef;
+  --lc-dim: #a3abb8;
+  --lc-accent: #8ab4ff;
+}
+
+a.lms-link{ overflow-wrap:anywhere; word-break:break-word; text-decoration:underline; text-underline-offset:2px; }
+
+.link-card{
+  display:flex; gap:.6rem; align-items:stretch; margin-top:.45rem; max-width:420px;
+  border:1px solid var(--lc-border); border-left:3px solid var(--lc-accent); border-radius:10px;
+  background:var(--lc-surface); color:var(--lc-ink) !important; text-decoration:none !important;
+  overflow:hidden; white-space:normal; line-height:1.3;
+}
+a.link-card:hover, a.link-card:focus-visible{ background:rgba(11, 95, 198, .09); }
+a.link-card:focus-visible{ outline:2px solid var(--lc-accent); outline-offset:2px; }
+.link-card__img{ flex:0 0 88px; width:88px; min-height:72px; max-height:120px; object-fit:cover; display:block; background:rgba(0,0,0,.05); }
+.link-card__icon{ flex:0 0 56px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;
+  color:#fff; background:var(--lc-teams); }
+.link-card__body{ display:flex; flex-direction:column; gap:.15rem; padding:.5rem .65rem .5rem 0; min-width:0; }
+.link-card > .link-card__body:first-child{ padding-left:.65rem; }
+.link-card__site{ font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--lc-dim);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.link-card__title{ font-weight:700; font-size:.86rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.link-card__desc{ font-size:.78rem; color:var(--lc-dim); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.link-card--teams, .link-card--session{ border-left-color:var(--lc-teams); }
+
+.msg.me .bubble .link-card{ --lc-ink:#fff; --lc-dim:rgba(255,255,255,.75); --lc-surface:rgba(255,255,255,.10); --lc-border:rgba(255,255,255,.22); }
+
+@media (max-width: 575.98px){
+  .link-card{ max-width:100%; }
+  .link-card__img{ flex-basis:72px; width:72px; }
+}

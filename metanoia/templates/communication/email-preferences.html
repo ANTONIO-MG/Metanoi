@@ -1,0 +1,62 @@
+{% extends 'layouts/auth.html' %}
+{% comment %}
+The page behind the Unsubscribe / E-mail preferences links at the foot of every
+automated e-mail (apps.communication.email_prefs). Reached with a signed token,
+so it works signed out. Context: person, token, switches [(field, label, help,
+on)], asking_to_unsubscribe, done ('' / 'saved' / 'unsubscribed'), all_off.
+
+Extends ``layouts/auth.html``; fills ``title``, ``card_col``, ``oblique``,
+``auth_card``. Includes ``partials/_t_chip.html``.
+{% endcomment %}
+{% block title %}E-mail preferences · {{ brand.name|default:"Metanoia Group" }}{% endblock %}
+{% block card_col %}col-xl-6 col-lg-7 col-md-9{% endblock %}
+{% block oblique %}{% endblock %}
+
+{% block auth_card %}
+<div class="card mt-7 mb-4 shadow-lg">
+  <div class="card-body p-4">
+    <h4 class="font-weight-bolder text-dark mb-1">E-mail preferences</h4>
+    <p class="text-sm text-muted mb-3">For {{ person.get_full_name|default:person.email }}</p>
+
+    {% if done == 'unsubscribed' %}
+      <div class="alert alert-success text-sm" role="status">You're unsubscribed. We won't send you reminders, updates or copies of team messages by e-mail. Everything still appears in your notifications on Metanoia.</div>
+    {% elif done == 'saved' %}
+      <div class="alert alert-success text-sm" role="status">Saved.</div>
+    {% endif %}
+
+    {% if asking_to_unsubscribe %}
+      <div class="border rounded-3 p-3 mb-4">
+        <p class="text-sm mb-3"><strong>Unsubscribe from optional e-mails?</strong> Reminders, updates and copies of team messages stop arriving by e-mail. You'll still see all of them in your notifications on Metanoia.</p>
+        <form method="post" action="{% url 'communication:email-preferences' token %}">{% csrf_token %}
+          <input type="hidden" name="action" value="unsubscribe">
+          <button type="submit" class="t-btn">Unsubscribe{% include 'partials/_t_chip.html' %}</button>
+        </form>
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'communication:email-preferences' token %}">{% csrf_token %}
+      <p class="text-sm mb-2">Send me these by e-mail:</p>
+      {% for field, label, help, on in switches %}
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="{{ field }}" id="id_{{ field }}" {% if on %}checked{% endif %}>
+          <label class="form-check-label" for="id_{{ field }}"><strong>{{ label }}</strong><br><span class="text-muted text-sm">{{ help }}</span></label>
+        </div>
+      {% endfor %}
+      <p class="text-xs text-muted mt-3 mb-3">Invoices, receipts, sign-in links and other e-mails about your account are always sent. They're not marketing, and we need them to run your account.</p>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <button type="submit" class="btn btn-primary mb-0">Save preferences</button>
+        {% if not all_off and not asking_to_unsubscribe %}
+          <button type="submit" name="action" value="unsubscribe" class="btn btn-link text-sm mb-0">Unsubscribe from all of these</button>
+        {% endif %}
+      </div>
+    </form>
+
+    <hr>
+    <p class="text-xs text-muted mb-0">
+      <a href="{% url 'communication:notification-preferences' %}">All notification settings</a> (sign-in needed)
+      {% if brand.terms_url %} · <a href="{{ brand.terms_url }}">Terms &amp; conditions</a>{% endif %}
+      {% if brand.privacy_url %} · <a href="{{ brand.privacy_url }}">Privacy policy</a>{% endif %}
+    </p>
+  </div>
+</div>
+{% endblock %}

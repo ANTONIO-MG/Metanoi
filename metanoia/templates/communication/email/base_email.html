@@ -1,0 +1,118 @@
+{% load org_branding %}{% org_brand as brand %}<!DOCTYPE html>
+{% comment %}
+Branded HTML e-mail layout used by every outbound e-mail, including allauth's.
+Body card, then the sending mailbox's ``signature`` (senders.signature, the Metanoia
+Brand Studio signature), the banner, the unsubscribe ``footer``
+(emails._footer_for — automated e-mail to a known person only) and small print.
+
+Images are inline (``cid:``) parts attached by send_branded_email and the
+allauth adapter: ``inline.sig_avatar``, ``inline.sig_logo``, ``inline.banner``.
+No {% templatetag openblock %} url {% templatetag closeblock %} tags here on purpose — this template must render
+whoever calls it, including allauth with no request in context.
+
+Children provide:
+  • email_heading  — big title            (context var, or override block "heading")
+  • block "content" — the body paragraphs
+  • cta_url / cta_label  — the button      (or override block "cta")
+  • block "disclaimer"  — small print under the body (e.g. "didn't request this?")
+  • block "expiry_note" — grey small-print note (e.g. link-expiry line)
+  • preheader      — hidden inbox-preview text (context var, or override block "preheader")
+
+Montserrat is named first everywhere; clients without it fall back to
+Helvetica/Arial. Outlook's Word engine ignores border-radius, so the pill and the
+card simply square off there; the ``<!--[if mso]>`` conditionals are code.
+
+Head styles: label/value tables (``.kv``) use table-layout:fixed so the declared
+42/58 split binds at every width and a long module name or URL wraps instead of
+pushing the value column off the card; numbered "what to do next" rows; and on
+narrow windows the layout resizes, never re-flows.
+
+Defines blocks ``preheader``, ``heading``, ``content``, ``cta``, ``help_line``,
+``disclaimer``, ``expiry_note``. Includes ``communication/email/_button.html``.
+{% endcomment %}
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en"><head><title>{{ subject|default:brand.name }}</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><!--[if !mso]><!-- --><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet"><!--<![endif]--><!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch><o:AllowPNG/></o:OfficeDocumentSettings></xml><![endif]--><style>
+*{box-sizing:border-box}body{margin:0;padding:0}a[x-apple-data-detectors]{color:inherit!important;text-decoration:inherit!important}#MessageViewBody a{color:inherit;text-decoration:none}p{line-height:inherit}
+
+.kv{width:100%;border-collapse:collapse;table-layout:fixed}
+.kv td{vertical-align:top;word-break:break-word;overflow-wrap:break-word}
+.kv .kv-label{width:42%;padding:7px 10px 7px 0;color:#6B5E55}
+.kv .kv-value{width:58%;padding:7px 0;text-align:right;color:#5E4335}
+.kv .kv-rule{border-top:1px solid #DFE5EF}
+
+.steps{width:100%;border-collapse:collapse;table-layout:fixed}
+.steps td{padding:5px 0;color:#5E4335;word-break:break-word;overflow-wrap:break-word}
+
+@media (max-width:640px){
+  .shell{width:100%!important}
+  .card-pad{padding-left:22px!important;padding-right:22px!important}
+  .h1{font-size:24px!important}
+  .sig-avatar{width:64px!important;height:64px!important}
+}
+@media (max-width:480px){
+  .card-pad{padding-left:16px!important;padding-right:16px!important}
+  .kv .kv-label{width:50%}
+  .kv .kv-value{width:50%}
+}
+</style></head><body style="background-color:#FAF7F2;margin:0;padding:0;-webkit-text-size-adjust:none;text-size-adjust:none">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#FAF7F2">{% block preheader %}{{ preheader|default:subject }}{% endblock %}</div>
+<table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FAF7F2"><tbody><tr><td align="center" style="padding:28px 12px 32px">
+
+<table class="shell" width="600" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:600px;max-width:100%"><tbody>
+
+<tr><td class="card-pad" style="background-color:#FFFFFF;border-radius:24px;border:1px solid #DFE5EF;padding:34px 38px 26px;font-family:Montserrat,Helvetica Neue,Helvetica,Arial,sans-serif">
+
+  <div class="h1" style="color:#3E2415;font-size:28px;line-height:1.15;font-weight:800;letter-spacing:-.5px;margin:0 0 18px">{% block heading %}{{ email_heading|default:subject }}{% endblock %}</div>
+
+  <div style="color:#5E4335;font-size:15px;line-height:1.6">{% block content %}{% endblock %}</div>
+
+  {% block cta %}{% include 'communication/email/_button.html' with url=cta_url label=cta_label %}{% endblock %}
+
+  {% block help_line %}{% endblock %}
+
+  {% block disclaimer %}{% endblock %}
+
+  <div style="color:#6B5E55;font-size:13px;line-height:1.4;margin-top:6px">{% block expiry_note %}{% endblock %}</div>
+
+</td></tr>
+
+{% if signature %}
+<tr><td style="padding:18px 0 0">
+  <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FFFFFF;border-radius:20px;border:1px solid #DFE5EF;overflow:hidden"><tbody>
+    <tr><td style="padding:20px 22px 18px">
+      <table border="0" cellpadding="0" cellspacing="0" role="presentation"><tbody><tr>
+        <td valign="middle" style="padding-right:18px;border-right:1px solid #DFE5EF"><img class="sig-avatar" src="{{ inline.sig_avatar }}" width="78" height="78" alt="" style="display:block;border:0;width:78px;height:78px"></td>
+        <td valign="middle" style="padding-left:18px;font-family:Montserrat,Helvetica Neue,Helvetica,Arial,sans-serif">
+          <div style="color:#3E2415;font-size:19px;line-height:1.2;font-weight:800;letter-spacing:-.3px">{{ signature.name }}<span style="color:#F2A900">.</span></div>
+          <div style="color:#0B5FC6;font-size:10px;line-height:1.5;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;margin-top:3px">{{ signature.role }}</div>
+          <div style="color:#6B5E55;font-size:13px;line-height:1.5;margin-top:6px">{% if signature.whatsapp %}WhatsApp {% if signature.whatsapp_url %}<a href="{{ signature.whatsapp_url }}" style="color:#6B5E55;text-decoration:none">{{ signature.whatsapp }}</a>{% else %}{{ signature.whatsapp }}{% endif %} &nbsp;·&nbsp; {% endif %}<a href="mailto:{{ signature.email }}" style="color:#6B5E55;text-decoration:none">{{ signature.email }}</a></div>
+          <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:9px"><tbody><tr>
+            <td valign="middle" style="padding-right:12px"><img src="{{ inline.sig_logo }}" width="96" alt="Metanoia" style="display:block;border:0;width:96px;height:auto"></td>
+            <td valign="middle" style="font-size:9px;line-height:1;font-weight:700;letter-spacing:1.6px;white-space:nowrap"><span style="color:#3E2415">EMPOWERING</span>&nbsp; <span style="color:#0B5FC6">THROUGH</span>&nbsp; <span style="color:#4F7F12">TRANSFORMATION.</span></td>
+          </tr></tbody></table>
+        </td>
+      </tr></tbody></table>
+    </td></tr>
+    <tr><td style="font-size:0;line-height:0"><table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation"><tbody><tr>
+      <td width="45%" height="5" style="background-color:#3E2415;font-size:0;line-height:0">&nbsp;</td>
+      <td width="25%" height="5" style="background-color:#0B5FC6;font-size:0;line-height:0">&nbsp;</td>
+      <td width="20%" height="5" style="background-color:#F2A900;font-size:0;line-height:0">&nbsp;</td>
+      <td width="10%" height="5" style="background-color:#FFC20E;font-size:0;line-height:0">&nbsp;</td>
+    </tr></tbody></table></td></tr>
+  </tbody></table>
+</td></tr>
+{% endif %}
+
+<tr><td style="padding:18px 0 0">{% if brand.website %}<a href="{{ brand.website }}" target="_blank" style="text-decoration:none">{% endif %}<img src="{{ inline.banner }}" width="600" alt="Metanoia Group. Empowering through transformation." style="display:block;border:0;width:600px;max-width:100%;height:auto;border-radius:16px">{% if brand.website %}</a>{% endif %}</td></tr>
+
+{% if footer.unsubscribe_url %}
+<tr><td style="padding:20px 8px 0;text-align:center;font-family:Montserrat,Helvetica Neue,Helvetica,Arial,sans-serif">
+  <a href="{{ footer.unsubscribe_url }}" target="_blank" style="display:inline-block;text-decoration:none;border:1px solid #C6D1E2;background-color:#FFFFFF;border-radius:999px;padding:8px 20px;color:#3E2415;font-size:12px;font-weight:700;letter-spacing:.4px">Unsubscribe</a>
+  <div style="color:#A48E80;font-size:11px;line-height:1.5;margin-top:8px">This is an automated e-mail from your {{ brand.name|default:"Metanoia Group" }} account. <a href="{{ footer.preferences_url }}" target="_blank" style="color:#6B5E55;text-decoration:underline">Choose which e-mails you get</a>. Invoices, receipts and account e-mails are always sent.</div>
+</td></tr>
+{% endif %}
+
+<tr><td style="padding:16px 8px 0;text-align:center;font-family:Montserrat,Helvetica Neue,Helvetica,Arial,sans-serif;color:#A48E80;font-size:11px;line-height:1.5">{{ brand.copyright|default:brand.name }}{% if brand.terms_url or brand.privacy_url %}<br>{% if brand.terms_url %}<a href="{{ brand.terms_url }}" target="_blank" style="color:#A48E80;text-decoration:underline">Terms &amp; conditions</a>{% endif %}{% if brand.terms_url and brand.privacy_url %} &nbsp;·&nbsp; {% endif %}{% if brand.privacy_url %}<a href="{{ brand.privacy_url }}" target="_blank" style="color:#A48E80;text-decoration:underline">Privacy policy</a>{% endif %}{% endif %}</td></tr>
+
+</tbody></table>
+
+</td></tr></tbody></table></body></html>

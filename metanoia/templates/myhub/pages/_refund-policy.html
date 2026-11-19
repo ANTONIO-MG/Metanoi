@@ -1,0 +1,82 @@
+{% comment %}
+   REFUND POLICY — one wording, included by both the Terms & Conditions
+   (_terms-body.html, as clause 13) and the Terms of Service (_tos-body.html).
+   Pass the clause number:  {% include 'myhub/pages/_refund-policy.html' with n="13" %}
+   Cross-references to other clauses point at the Terms & Conditions, so they
+   read correctly in either document. Needs `contact_email` and `co` in context
+   (both documents set them with {% with %}).
+{% endcomment %}
+<div class="terms-key">
+<h3 id="refund-policy">{{ n }}. Refund Policy</h3>
+<p>{{ n }}.1 <strong>Scope.</strong> This Refund Policy applies to everything you buy from {{ brand.name }}: on the Learning Hub, through an invoice or pay link, by EFT, or through a third-party store that sells our products. It explains when fees are final, the refunds the law guarantees you, and how to ask for one. It forms part of our Terms &amp; Conditions and our Terms of Service.</p>
+
+<p>{{ n }}.2 <strong>The general rule: all fees are final.</strong> Once paid, fees are <strong>not refundable</strong>, in whole or in part, whether or not you use what you bought, attend, finish the Programme or write the exam. This applies to:</p>
+<ul>
+  <li>programme, course and module fees, including monthly fees;</li>
+  <li>live classes, class series and recordings;</li>
+  <li>1-on-1 sessions (subject to clause {{ n }}.6);</li>
+  <li>mock exams, marking and feedback;</li>
+  <li>study guides, blueprints, summaries, templates and other digital downloads; and</li>
+  <li>printed study materials (subject to clauses {{ n }}.9 and {{ n }}.10).</li>
+</ul>
+
+<p>{{ n }}.3 <strong>Why digital purchases are final: immediate access.</strong> Access to Programmes, recordings and digital Materials is opened as soon as your payment is confirmed. When you buy them, you ask us to start immediately, and you confirm this by ticking the refund-policy box before you pay. You therefore acknowledge that, as allowed by section 42(2) of the Electronic Communications and Transactions Act 25 of 2002 (ECTA), the seven-day cooling-off right in section 44 of ECTA does not apply to services that began with your consent before the cooling-off period ended, or to recordings and software that have been opened (unsealed).</p>
+
+<p>{{ n }}.4 <strong>Situations that do not qualify for a refund or credit</strong> include:</p>
+<ul>
+  <li>a change of mind or of study plans, or finding the Programme harder or easier than expected;</li>
+  <li>missing classes, not watching recordings, or not using Materials (see clause 8.7 of the Terms &amp; Conditions);</li>
+  <li>failing, missing or deferring a test or exam, or achieving a lower mark than you hoped (we do not guarantee results — clause 5 of the Terms &amp; Conditions);</li>
+  <li>the cancellation or withdrawal of your registration with your university, institution or examining body;</li>
+  <li>your device, internet connection, data or power supply not working, or load-shedding at your location;</li>
+  <li>suspension or closure of your account because you breached our terms, for example by sharing Materials or your login; and</li>
+  <li>a lower price, discount or promotion offered after you paid.</li>
+</ul>
+
+<p>{{ n }}.5 <strong>Monthly fees and recurring payments.</strong> You may cancel future monthly or recurring payments at any time before the next billing date, through your account, your PayFast account or by e-mailing {{ contact_email }}. We then stop billing you. You keep access until the end of the period already paid for; that period is not refunded. Where the Consumer Protection Act applies to a <strong>fixed-term agreement</strong> (for example, an instalment plan for a full Programme), you may cancel on 20 business days' written notice under section 14 of that Act. You then pay what is owed up to the cancellation date plus a reasonable cancellation charge, and we refund anything you paid in advance for the period after cancellation, less that charge.</p>
+
+<p>{{ n }}.6 <strong>1-on-1 sessions.</strong></p>
+<ul>
+  <li>You may reschedule a confirmed session through the Learning Hub until the cut-off shown when you booked (usually 24 hours before it starts).</li>
+  <li>If you cannot reschedule and cancel before the session starts, we add its value to your account as credit, less a reasonable cancellation charge that reflects how much notice you gave and whether the educator's time could be booked again, as section 17 of the Consumer Protection Act allows. No charge applies if you cancel because of the death or hospitalisation of the person for whom the session was booked.</li>
+  <li>If you do not attend without telling us, the session is forfeited.</li>
+  <li>If we or the educator cancel, you may choose a new time or receive the full value as account credit.</li>
+</ul>
+
+<p>{{ n }}.7 <strong>When we cannot deliver what you paid for.</strong> If we cancel a Programme as a whole, or fail to provide a service you paid for (for example, we do not mark a mock exam you submitted on time), we will first offer to provide the service, a reasonable alternative or account credit. If none is reasonable for you, we will refund the proportionate amount for the part not provided, as section 54 of the Consumer Protection Act requires. Classes we reschedule, educator changes and content updates under clause 7.3 of the Terms &amp; Conditions are not a failure to deliver.</p>
+
+<p>{{ n }}.8 <strong>Payment errors.</strong> If you were charged twice, charged the wrong amount, or charged without your authorisation, we refund the amount charged in error in full, once we have confirmed it with our records or with PayFast.</p>
+
+<p>{{ n }}.9 <strong>Printed and physical goods: your 7-day cooling-off right.</strong> If you bought printed or physical goods online, you may cancel the purchase of those goods, without giving a reason, within <strong>7 days after receiving them</strong>, under section 44 of ECTA, unless an exclusion in section 42(2) of ECTA applies (for example, goods made or printed to your specification). To use this right:</p>
+<ul>
+  <li>tell us within the 7 days, quoting your order or invoice number;</li>
+  <li>return the goods unused, complete and in their original condition and packaging, to the address we give you; and</li>
+  <li>pay the direct cost of returning them.</li>
+</ul>
+<p>We refund the price of the returned goods and the original delivery fee, if any, within 30 days of the cancellation.</p>
+
+<p>{{ n }}.10 <strong>Defective, damaged or incorrect goods.</strong> If printed or physical goods are defective, were damaged in transit, or are not what you ordered, you may return them <strong>within six months of delivery</strong>, at our cost, and choose a repair, replacement or refund, as sections 55 and 56 of the Consumer Protection Act provide. Please tell us as soon as possible, ideally within 3 business days of delivery, and send photos of the problem and the packaging, so that we can also claim from the courier. Goods damaged after delivery by misuse, accident or normal wear and tear are not defective.</p>
+
+<p>{{ n }}.11 <strong>Moving to another intake or Programme.</strong> Fees cannot be refunded or moved to another person. At our discretion, and if you ask before the Programme starts, we may move your enrolment to a later intake or another Programme. An administration fee may apply, and any price difference is payable by you.</p>
+
+<p>{{ n }}.12 <strong>How to ask for a refund.</strong> E-mail {{ contact_email }} with the subject “Refund request” and include:</p>
+<ul>
+  <li>your full name and the e-mail address on your account;</li>
+  <li>your order or invoice number and the date of payment;</li>
+  <li>what you are asking for and why, with the clause of this policy that applies; and</li>
+  <li>for goods, photos of the item and its packaging.</li>
+</ul>
+<p>We acknowledge your request within 2 business days and give you our decision, with reasons, within 10 business days.</p>
+
+<p>{{ n }}.13 <strong>How refunds are paid.</strong> An approved refund is paid within 10 business days of our decision, and always within the period the law requires (30 days for an ECTA cooling-off cancellation):</p>
+<ul>
+  <li><strong>Card and other PayFast payments:</strong> refunded through PayFast to the card or account you paid with. Your bank may take a further 5 to 10 business days to show it.</li>
+  <li><strong>EFT payments:</strong> paid by EFT into a South African bank account in the payer's name, after you confirm the banking details in writing.</li>
+  <li><strong>Third-party store purchases</strong> (such as Payhip): refunded through that store.</li>
+</ul>
+<p>Refunds are paid in South African rand, to the person or organisation that paid (for example, a sponsor), and never in cash. Bank charges and currency differences charged by your own bank are for your account. Account credit has no cash value and cannot be withdrawn or transferred.</p>
+
+<p>{{ n }}.14 <strong>Chargebacks.</strong> Please contact us before disputing a charge with your bank; most problems are resolved faster that way. If you reverse a valid payment, we may suspend access to what it paid for while the dispute is open, and recover the amount if the dispute is decided in our favour.</p>
+
+<p>{{ n }}.15 <strong>Your statutory rights.</strong> Nothing in this Refund Policy takes away any right you have under the Consumer Protection Act 68 of 2008, ECTA or any other law that cannot lawfully be excluded. If this policy and the law conflict, the law applies.</p>
+</div>

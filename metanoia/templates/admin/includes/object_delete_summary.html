@@ -1,0 +1,6 @@
+{% load i18n %}
+<div class="ta-delete__summary">
+  {% for model_name, object_count in model_count %}
+  <span class="ta-chip"><b>{{ object_count }}</b> {{ model_name|capfirst }}</span>
+  {% endfor %}
+</div>

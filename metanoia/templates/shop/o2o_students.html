@@ -1,0 +1,35 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% load commerce %}
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-2">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h3 class="mb-0">One-on-one students</h3>
+      <small class="text-muted">{% if is_staff %}Everyone on the one-on-one plan.{% else %}One-on-one students on the modules you teach.{% endif %}
+        Open a student to schedule a session, send an invoice or adjust hours.</small>
+    </div>
+    <form method="get" class="d-flex gap-2" role="search">
+      <input type="search" name="q" value="{{ search }}" class="form-control form-control-sm" placeholder="Search by name or e-mail" aria-label="Search">
+      <button class="btn btn-sm btn-outline-secondary mb-0">Search</button>
+    </form>
+  </div>
+  <div class="card"><div class="card-body">
+    <div class="table-responsive"><table class="table align-middle mb-0">
+      <thead><tr class="text-xs text-uppercase text-muted"><th>Student</th><th class="text-end">Hours left</th><th class="text-end">Owed</th><th>Next session</th><th></th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr class="text-sm">
+          <td><strong>{{ r.user.get_full_name|default:r.user.username }}</strong><span class="d-block text-xs text-muted">{{ r.user.email }}</span></td>
+          <td class="text-end">{{ r.hours|floatformat:"-2" }}</td>
+          <td class="text-end">{% if r.owed %}<span class="text-danger fw-bold">{{ r.owed|rand }}</span>{% else %}—{% endif %}</td>
+          <td>{% if r.next %}{{ r.next.label }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td class="text-end"><a class="btn btn-sm btn-primary mb-0" href="{% url 'shop:o2o-student' r.user.pk %}">Open</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No one-on-one students{% if search %} match “{{ search }}”{% endif %}.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div></div>
+</div></div>
+{% endblock %}

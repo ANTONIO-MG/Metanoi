@@ -1,0 +1,38 @@
+{% load i18n %}
+{% comment %}The result table — OVERRIDES the old admin theme's (which wrapped each <td> in a
+<span>, invalid HTML). Django's own markup with Bootstrap's table classes; the
+sort controls are drawn as Metanoia chevrons in css/admin-metanoia.css.{% endcomment %}
+{% if result_hidden_fields %}
+<div class="hiddenfields">{% for item in result_hidden_fields %}{{ item }}{% endfor %}</div>
+{% endif %}
+{% if results %}
+<div class="results table-responsive">
+<table id="result_list" class="table ta-table mb-0">
+<thead>
+<tr>
+{% for header in result_headers %}
+<th scope="col"{{ header.class_attrib }}>
+  {% if header.sortable and header.sort_priority > 0 %}
+    <div class="sortoptions">
+      <a class="sortremove" href="{{ header.url_remove }}" title="{% translate "Remove from sorting" %}"><i class="bi bi-x"></i></a>
+      {% if num_sorted_fields > 1 %}<span class="sortpriority" title="{% blocktranslate with priority_number=header.sort_priority %}Sorting priority: {{ priority_number }}{% endblocktranslate %}">{{ header.sort_priority }}</span>{% endif %}
+      <a href="{{ header.url_toggle }}" class="toggle" title="{% translate "Toggle sorting" %}"><i class="bi {{ header.ascending|yesno:'bi-chevron-up,bi-chevron-down' }}"></i></a>
+    </div>
+  {% endif %}
+  <div class="text">{% if header.sortable %}<a role="button" href="{{ header.url_primary }}">{{ header.text|capfirst }}</a>{% else %}<span>{{ header.text|capfirst }}</span>{% endif %}</div>
+</th>{% endfor %}
+</tr>
+</thead>
+<tbody>
+{% for result in results %}
+{% if result.form and result.form.non_field_errors %}
+  <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
+{% endif %}
+<tr>{% for item in result %}{{ item }}{% endfor %}</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% else %}
+<div class="ta-empty"><i class="bi bi-inbox"></i><p>{% translate "Nothing here yet" %}{% if cl.query or cl.has_active_filters %} — {% translate "try clearing the search or filters" %}{% endif %}.</p></div>
+{% endif %}

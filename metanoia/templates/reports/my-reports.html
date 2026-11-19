@@ -1,0 +1,219 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load people %}
+{% load static %}
+{% comment %}
+Reports: the assessment report, the module report card and "What you have
+completed" (apps.reports.completions → CompletionRecord). Certificates are no
+longer listed here; their own pages still work.
+
+Context: target / students / picker_label (picker), is_own, is_parent,
+show_student, summary (tiles), attempt_rows (assessment report), grades
+(module report card), records (completions timeline).
+
+The timeline filter script is inline so it runs on a boosted swap too. It
+hides items of other kinds and any month heading left with nothing under it.
+
+Blocks: overrides ``additional_css`` and ``content``.
+{% endcomment %}
+
+{% block additional_css %}
+<link href="{% static 'css/reports.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="rp vstack gap-4">
+
+  <div class="rp-card rp-head">
+    <div class="min-w-0">
+      <h1>Reports</h1>
+      {% if target and not is_own %}<p><span>Results and completed work for</span> {{ target|person_name }}.</p>
+      {% elif target %}<p>Your assessment results and everything you have completed.</p>
+      {% else %}<p>Latest results and completions across your students. Pick a student for their full report.</p>{% endif %}
+    </div>
+    <div class="rp-head__tools">
+      {% if students and not is_parent or students|length > 1 %}
+      <form method="get" class="rp-picker">
+        <label for="rpStudent">{% if picker_label == 'Child' %}View child{% else %}View student{% endif %}</label>
+        <select id="rpStudent" name="student" class="form-select form-select-sm" onchange="this.form.submit()">
+          {% if not is_parent %}<option value="">All students</option>{% endif %}
+          {% for s in students %}
+            <option value="{{ s.pk }}" {% if s == target %}selected{% endif %}>{{ s|person_name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+      {% if target %}
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'reports:my-progress' %}{% if not is_own %}?student={{ target.pk }}{% endif %}">
+        <i class="bi bi-graph-up me-1"></i><span>Progress</span></a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="rp-tiles">
+    <div class="rp-card rp-tile">
+      <span class="rp-tile__label">Papers sat</span>
+      <span class="rp-tile__value">{{ summary.sat }}</span>
+      <span class="rp-tile__note">{% if summary.awaiting %}{{ summary.awaiting }} <span>awaiting marking</span>{% else %}All marked{% endif %}</span>
+    </div>
+    <div class="rp-card rp-tile">
+      <span class="rp-tile__label">Average</span>
+      <span class="rp-tile__value">{% if summary.avg is None %}—{% else %}{{ summary.avg }}%{% endif %}</span>
+      <span class="rp-tile__note">{% if summary.marked %}<span>Over</span> {{ summary.marked }} <span>marked</span>{% else %}Nothing marked yet{% endif %}</span>
+    </div>
+    <div class="rp-card rp-tile">
+      <span class="rp-tile__label">Passed</span>
+      <span class="rp-tile__value">{{ summary.passed }}<small> / {{ summary.marked }}</small></span>
+      <span class="rp-tile__note">Marked papers passed</span>
+    </div>
+    <div class="rp-card rp-tile">
+      <span class="rp-tile__label">Completed</span>
+      <span class="rp-tile__value">{{ summary.completed }}</span>
+      <span class="rp-tile__note">{{ summary.milestones }} <span>block{{ summary.milestones|pluralize }} or module{{ summary.milestones|pluralize }}</span></span>
+    </div>
+  </div>
+
+  <div class="rp-split rp-split--7-5">
+    <div class="min-w-0 vstack gap-4">
+      <div class="rp-card">
+        <div class="rp-card__head">
+          <span class="rp-glyph"><i class="bi bi-ui-checks"></i></span>
+          <h2>Assessment report</h2>
+        </div>
+        {% if attempt_rows %}
+        <div class="rp-scroll">
+          <table class="table rp-table">
+            <thead><tr>
+              {% if show_student %}<th>Student</th>{% endif %}
+              <th>Assessment</th><th>Date</th><th class="text-end">Score</th><th>Result</th><th></th>
+            </tr></thead>
+            <tbody>
+            {% for row in attempt_rows %}
+              <tr>
+                {% if show_student %}<td>{% person_chip row.attempt.student %}</td>{% endif %}
+                <td>
+                  <div class="rp-table__title">{{ row.attempt.assessment.title }}</div>
+                  <div class="rp-small rp-muted">{{ row.attempt.assessment.get_kind_display }}{% if row.attempt.assessment.module %} · {{ row.attempt.assessment.module.display_name }}{% endif %}{% if row.attempt.attempt_no > 1 %} · <span>attempt</span> {{ row.attempt.attempt_no }}{% endif %}</div>
+                </td>
+                <td class="text-nowrap">{{ row.attempt.submitted_at|date:'j M Y' }}</td>
+                <td class="text-end text-nowrap">
+                  {% if row.is_marked %}<strong>{{ row.pct }}%</strong><div class="rp-small rp-muted">{{ row.attempt.score|floatformat:-1 }} / {{ row.attempt.assessment.total_marks|floatformat:-1 }}</div>
+                  {% else %}<span class="rp-muted">—</span>{% endif %}
+                </td>
+                <td>
+                  {% if not row.is_marked %}<span class="rp-chip rp-chip--info">Awaiting marking</span>
+                  {% elif row.attempt.passed %}<span class="rp-chip rp-chip--success">Pass</span>
+                  {% else %}<span class="rp-chip rp-chip--danger">Not yet</span>{% endif %}
+                </td>
+                <td class="text-end"><a class="rp-link" href="{{ row.url }}">View</a></td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="rp-empty"><i class="bi bi-ui-checks"></i><span>No quizzes, tests or mock exams handed in yet.</span></div>
+        {% endif %}
+      </div>
+
+      <div class="rp-card">
+        <div class="rp-card__head">
+          <span class="rp-glyph"><i class="bi bi-journal-bookmark"></i></span>
+          <h2>Module report card</h2>
+        </div>
+        {% if grades %}
+        <div class="rp-scroll">
+          <table class="table rp-table">
+            <thead><tr>
+              {% if show_student %}<th>Student</th>{% endif %}
+              <th>Module</th><th class="text-end">Final</th><th>Grade</th><th>Standing</th>
+            </tr></thead>
+            <tbody>
+            {% for g in grades %}
+              <tr>
+                {% if show_student %}<td>{% person_chip g.student %}</td>{% endif %}
+                <td class="rp-table__title">{{ g.module.display_name|default:g.module }}</td>
+                <td class="text-end"><strong>{{ g.final_pct|floatformat:0 }}%</strong></td>
+                <td>
+                  {% if g.passed %}<span class="rp-chip rp-chip--success">{{ g.letter|default:'Pass' }}</span>
+                  {% else %}<span class="rp-chip rp-chip--warning">{{ g.letter|default:'In progress' }}</span>{% endif %}
+                </td>
+                <td class="rp-small rp-muted text-nowrap">{% if g.class_position and g.cohort_size > 1 %}{{ g.class_position }} <span>of</span> {{ g.cohort_size }} · <span>class average</span> {{ g.cohort_average|floatformat:0 }}%{% else %}—{% endif %}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="rp-empty"><i class="bi bi-journal-bookmark"></i><span>No module grades yet. A grade is worked out once marked work comes in.</span></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="min-w-0">
+      <div class="rp-card">
+        <div class="rp-card__head">
+          <span class="rp-glyph"><i class="bi bi-check2-all"></i></span>
+          <h2>{% if is_own %}What you have completed{% else %}Completed{% endif %}</h2>
+        </div>
+        {% if records %}
+        <div class="rp-card__body pb-0">
+          <div class="rp-filter" role="group" aria-label="Filter completions" data-rp-filter>
+            <button type="button" aria-pressed="true" data-kind="">All</button>
+            <button type="button" aria-pressed="false" data-kind="milestone">Blocks &amp; modules</button>
+            <button type="button" aria-pressed="false" data-kind="assessment">Assessments</button>
+            <button type="button" aria-pressed="false" data-kind="class">Classes</button>
+            <button type="button" aria-pressed="false" data-kind="lesson">Lessons</button>
+          </div>
+        </div>
+        <ol class="rp-timeline" data-rp-timeline>
+          {% for r in records %}
+            {% ifchanged r.completed_at|date:'Y-m' %}<li class="rp-timeline__month" data-month>{{ r.completed_at|date:'F Y' }}</li>{% endifchanged %}
+            <li class="rp-timeline__item{% if r.is_milestone %} rp-timeline__item--milestone{% elif r.passed is True %} rp-timeline__item--pass{% elif r.passed is False %} rp-timeline__item--fail{% endif %}"
+                data-kind="{% if r.is_milestone %}milestone{% elif r.kind == 'assignment' %}assessment{% else %}{{ r.kind }}{% endif %}">
+              <span class="rp-timeline__dot"><i class="bi {{ r.icon }}"></i></span>
+              <div class="rp-timeline__main">
+                <p class="rp-timeline__title">{% if r.url and is_own %}<a href="{{ r.url }}">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}</p>
+                <p class="rp-timeline__meta">
+                  <span>{{ r.completed_at|date:'j M Y' }}</span>
+                  <span>{{ r.get_kind_display }}</span>
+                  {% if r.detail %}<span>{{ r.detail }}</span>{% endif %}
+                  {% if r.score_pct is not None %}<span><strong>{{ r.score_pct|floatformat:0 }}%</strong></span>{% endif %}
+                  {% if show_student %}<span>{{ r.student|person_name }}</span>{% endif %}
+                </p>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <div class="rp-empty"><i class="bi bi-check2-all"></i>
+          <span>Nothing completed yet. Hand in a paper, join a live class or finish a session pack and it is recorded here.</span></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var bar = document.querySelector('[data-rp-filter]');
+  var list = document.querySelector('[data-rp-timeline]');
+  if (!bar || !list) return;
+  bar.addEventListener('click', function (event) {
+    var button = event.target.closest('button[data-kind]');
+    if (!button) return;
+    var kind = button.getAttribute('data-kind');
+    bar.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b === button ? 'true' : 'false'); });
+    var month = null, shown = 0;
+    Array.prototype.forEach.call(list.children, function (li) {
+      if (li.hasAttribute('data-month')) {
+        if (month) month.hidden = !shown;
+        month = li; shown = 0; return;
+      }
+      var match = !kind || li.getAttribute('data-kind') === kind;
+      li.hidden = !match;
+      if (match) shown++;
+    });
+    if (month) month.hidden = !shown;
+  });
+})();
+</script>
+{% endblock %}

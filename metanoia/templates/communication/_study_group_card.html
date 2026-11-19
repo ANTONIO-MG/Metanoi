@@ -1,0 +1,35 @@
+{% load people %}
+{% comment %}
+One study group as a card: module accent down the edge, module chip, the
+faces in it, files / notes and when it was last active. Expects `ws` from
+views._study_group_cards (file_count, note_count, prefetched members).
+{% endcomment %}
+<a class="sg-card" href="{% url 'communication:workspace-detail' ws.pk %}" data-sg-card
+   data-search="{{ ws.name|lower }} {{ ws.description|lower|truncatewords:40 }}{% if ws.module %} {{ ws.module.display_name|lower }} {{ ws.module.code|lower }}{% endif %}"
+   {% if ws.module %}style="--sg-accent: {{ ws.module.accent }}"{% endif %}>
+  <div class="sg-card__top">
+    <h3 class="sg-card__name">{{ ws.name }}</h3>
+    {% if ws.created_by_id == request.user.id %}<span class="sg-badge">Yours</span>{% endif %}
+  </div>
+  {% if ws.module %}
+    <span class="sg-chip" title="{{ ws.module.label }}"><span class="sg-chip__dot"></span><span class="sg-chip__text">{{ ws.module.code }} · {{ ws.module.display_name }}</span></span>
+  {% else %}
+    <span class="sg-chip sg-chip--muted"><span class="sg-chip__text">No particular module</span></span>
+  {% endif %}
+  {% if ws.description %}<p class="sg-card__desc">{{ ws.description|truncatewords:24 }}</p>{% endif %}
+  <div class="sg-faces">
+    {% with people=ws.members.all %}
+      {% if ws.created_by %}<img src="{{ ws.created_by|person_avatar }}" alt="{{ ws.created_by|person_name }}" title="{{ ws.created_by|person_name }}" loading="lazy">{% endif %}
+      {% for m in people|slice:":5" %}{% if m.pk != ws.created_by_id %}<img src="{{ m|person_avatar }}" alt="{{ m|person_name }}" title="{{ m|person_name }}" loading="lazy">{% endif %}{% endfor %}
+      {% if people|length > 5 %}<span class="sg-faces__more">+{{ people|length|add:"-5" }}</span>{% endif %}
+      <span class="sg-faces__label">{{ ws.people_count }} <span>{% if ws.people_count == 1 %}member{% else %}members{% endif %}</span></span>
+    {% endwith %}
+  </div>
+  <div class="sg-card__foot">
+    <span class="sg-stats">
+      <span title="Files"><i class="bi bi-paperclip" aria-hidden="true"></i>{{ ws.file_count }}</span>
+      <span title="Notes"><i class="bi bi-journal-text" aria-hidden="true"></i>{{ ws.note_count }}</span>
+    </span>
+    <span><span>Active</span> {{ ws.updated_at|timesince }} <span>ago</span></span>
+  </div>
+</a>

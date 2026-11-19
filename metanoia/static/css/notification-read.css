@@ -1,0 +1,167 @@
+/**
+ * notification-read.css — the notification detail page.
+ *
+ * Styled like the e-mail it would have been (communication/email/base_email.html): a white letter card with the subject, From / To and the
+ * body, then the sender's signature with the four-colour strip. It is still a
+ * notification — the kicker, the progress bar and the star / unread actions
+ * stay. Loaded by templates/communication/notification-detail.html.
+ *
+ * Sections: reading progress pinned under the header · page fill (the letter
+ * card stretches to the full content column and down to the facts bar, however
+ * short the notice) · masthead · the letter card (base_email.html's body card)
+ * with the From / To mail header · the brown pill with the gold arrow chip
+ * (email/_button.html) · the signature (base_email.html's signature card) ·
+ * hero band (the notification's own icon, not a stock photo) · the prose ·
+ * callout boxes the system can drop into a body · context card for a linked
+ * announcement / meeting / message · facts + actions in one white card on a
+ * single row.
+ */
+
+:root{
+  --nr-ink:#3E2415;    --nr-soft:#6B5E55;   --nr-line:#DFE5EF;
+  --nr-accent:#0B5FC6; --nr-bg:#FAF7F2;     --nr-green:#F2A900;
+}
+
+.nr-progress{ position:sticky; top:70px; z-index:6; height:3px; background:#eef1f6;
+  border-radius:3px; overflow:hidden; margin-bottom:1.5rem; }
+.nr-progress > i{ display:block; height:100%; width:0;
+  background:linear-gradient(90deg,var(--nr-accent),#2dce89); transition:width .2s; }
+
+.nr-wrap{ width:100%; margin:0; }
+#nrArticle{ display:flex; flex-direction:column; min-height:calc(100vh - 150px); }
+#nrArticle .nr-letter{ flex:1 0 auto; }
+.nr-body{ max-width:none; }
+
+.nr-kicker{ display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--nr-soft); margin-bottom:.75rem; }
+.nr-kicker .nr-chip{ display:inline-flex; align-items:center; gap:.3rem; padding:.22rem .6rem;
+  border-radius:2rem; background:rgba(23,193,232,.12); color:#0b7f97; letter-spacing:.04em; }
+.nr-kicker .nr-chip--unread{ background:rgba(245,54,92,.1); color:#c31d43; }
+
+.nr-title{ font-size:clamp(1.4rem,2.7vw,1.85rem); font-weight:800; line-height:1.15;
+  letter-spacing:-.03em; color:var(--nr-ink); margin:0 0 1.1rem; }
+.nr-green{ color:var(--nr-green); }
+.nr-standfirst{ font-size:1.08rem; line-height:1.55; color:var(--nr-soft); margin:0 0 1.25rem; }
+
+.nr-wrap{ font-family:Montserrat,'Helvetica Neue',Helvetica,Arial,sans-serif; }
+.nr-letter{ background:#fff; border:1px solid var(--nr-line); border-radius:24px;
+  padding:2rem 2.25rem 1.75rem; box-shadow:0 10px 30px rgba(62,36,21,.05); }
+
+.nr-head{ border-top:1px solid var(--nr-line); border-bottom:1px solid var(--nr-line);
+  padding:.55rem 0; margin-bottom:1.6rem; }
+.nr-head__row{ display:flex; align-items:center; gap:.7rem; padding:.45rem 0; min-width:0; }
+.nr-head__row--to{ border-top:1px dashed var(--nr-line); }
+.nr-head__label{ flex:0 0 2.6rem; font-size:.68rem; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--nr-soft); }
+.nr-ava{ width:42px; height:42px; flex:0 0 42px; border-radius:50%; object-fit:cover;
+  box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--nr-accent); background:#fff; }
+.nr-ava--tick{ box-shadow:none; }
+.nr-ava--sm{ width:30px; height:30px; flex-basis:30px; box-shadow:none; }
+.nr-head__who{ display:flex; flex-direction:column; min-width:0; line-height:1.25; }
+.nr-head__who strong, .nr-head__who > a{ font-weight:700; color:var(--nr-ink); font-size:.95rem; }
+.nr-head__who small{ color:var(--nr-soft); font-size:.78rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nr-head__date{ margin-left:auto; text-align:right; font-size:.8rem; font-weight:600; color:var(--nr-ink);
+  display:flex; flex-direction:column; white-space:nowrap; }
+.nr-head__date small{ color:var(--nr-soft); font-weight:500; }
+.nr-head__row--to .nr-head__date{ flex-direction:row; align-items:center; color:var(--nr-soft); font-weight:500; }
+
+.nr-cta{ display:inline-flex; align-items:center; gap:.75rem; margin-top:.4rem;
+  background:var(--nr-ink); color:#fff; border-radius:999px; padding:.4rem .45rem .4rem 1.4rem;
+  font-weight:700; font-size:.8rem; letter-spacing:.08em; text-decoration:none;
+  transition:transform .15s, box-shadow .15s; }
+.nr-cta:hover{ color:#fff; transform:translateY(-1px); box-shadow:0 8px 20px rgba(62,36,21,.18); }
+.nr-cta__icon{ width:34px; height:34px; border-radius:50%; background:var(--nr-green); color:var(--nr-ink);
+  display:inline-flex; align-items:center; justify-content:center; font-size:1rem; }
+
+.nr-sig{ background:#fff; border:1px solid var(--nr-line); border-radius:20px; overflow:hidden; margin-top:1.1rem; }
+.nr-sig__main{ display:flex; align-items:center; padding:1.2rem 1.4rem 1.1rem; }
+.nr-sig__ring{ flex:none; padding-right:1.1rem; margin-right:1.1rem; border-right:1px solid var(--nr-line); }
+.nr-sig__ring img{ display:block; width:72px; height:72px; border-radius:50%; object-fit:cover; }
+.nr-sig__text{ min-width:0; }
+.nr-sig__name{ color:var(--nr-ink); font-size:1.15rem; font-weight:800; letter-spacing:-.02em; line-height:1.2; }
+.nr-sig__role{ color:var(--nr-accent); font-size:.63rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; margin-top:.2rem; }
+.nr-sig__contact{ color:var(--nr-soft); font-size:.8rem; margin-top:.35rem; display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; }
+.nr-sig__contact a{ color:var(--nr-soft); text-decoration:none; }
+.nr-sig__contact a:hover{ color:var(--nr-accent); }
+.nr-sig__contact .bi-whatsapp{ color:#25D366; }
+.nr-sig__brand{ display:flex; align-items:center; gap:.75rem; margin-top:.55rem; flex-wrap:wrap; }
+.nr-sig__brand img{ width:90px; height:auto; }
+.nr-sig__brand span{ font-size:.56rem; letter-spacing:.16em; white-space:nowrap; }
+.nr-sig__brand b{ font-weight:700; } .nr-sig__brand .n{ color:#3E2415; } .nr-sig__brand .b{ color:#0B5FC6; } .nr-sig__brand .g{ color:#4F7F12; }
+.nr-sig__strip{ display:flex; height:5px; }
+.nr-sig__strip i:nth-child(1){ flex:45; background:#3E2415; } .nr-sig__strip i:nth-child(2){ flex:25; background:#0B5FC6; }
+.nr-sig__strip i:nth-child(3){ flex:20; background:#F2A900; } .nr-sig__strip i:nth-child(4){ flex:10; background:#FFC20E; }
+
+.nr-byline{ display:flex; align-items:center; gap:.7rem; flex-wrap:wrap;
+  padding:.9rem 0; border-top:1px solid var(--nr-line); border-bottom:1px solid var(--nr-line);
+  margin-bottom:2rem; font-size:.82rem; color:var(--nr-soft); }
+.nr-byline .nr-ava{ width:38px; height:38px; flex:0 0 38px; border-radius:50%; object-fit:cover;
+  display:flex; align-items:center; justify-content:center; background:var(--nr-accent);
+  color:#fff; font-weight:700; font-size:.85rem; }
+.nr-byline .nr-who{ font-weight:600; color:var(--nr-ink); }
+.nr-byline .nr-dot{ opacity:.4; }
+.nr-byline .nr-right{ margin-left:auto; display:flex; align-items:center; gap:.75rem; }
+
+.nr-hero{ display:flex; align-items:center; justify-content:center; height:150px;
+  border-radius:1rem; margin-bottom:2rem; }
+.nr-hero i{ font-size:3.4rem; }
+
+.nr-body{ font-size:1rem; line-height:1.7; color:#5E4335; margin-bottom:1.25rem; }
+.nr-body > *:first-child{ margin-top:0; }
+.nr-body p{ margin:0 0 1.15rem; }
+.nr-body h2{ font-size:1.4rem; font-weight:750; color:var(--nr-ink); letter-spacing:-.012em;
+  margin:2.4rem 0 .8rem; }
+.nr-body h3{ font-size:1.13rem; font-weight:700; color:var(--nr-ink); margin:1.9rem 0 .6rem; }
+.nr-body h4{ font-size:1rem; font-weight:700; color:var(--nr-ink); margin:1.5rem 0 .5rem; }
+.nr-body ul, .nr-body ol{ margin:0 0 1.2rem; padding-left:1.4rem; }
+.nr-body li{ margin-bottom:.5rem; }
+.nr-body li > strong:first-child{ color:var(--nr-ink); }
+.nr-body a{ color:var(--nr-accent); text-underline-offset:2px; }
+.nr-body strong{ color:var(--nr-ink); }
+.nr-body hr{ border:0; border-top:1px solid var(--nr-line); margin:2.2rem 0; }
+.nr-body img{ max-width:100%; border-radius:.9rem; margin:1.2rem 0; }
+.nr-body blockquote{ margin:1.5rem 0; padding:.2rem 0 .2rem 1.1rem;
+  border-left:3px solid var(--nr-accent); color:var(--nr-soft); font-style:italic; }
+.nr-body code{ background:#f2f4f9; padding:.1rem .35rem; border-radius:.3rem;
+  font-size:.9em; color:#c31d43; }
+.nr-body table{ width:100%; border-collapse:collapse; margin:1.3rem 0; font-size:.93rem; }
+.nr-body th, .nr-body td{ border:1px solid var(--nr-line); padding:.55rem .7rem; text-align:left;
+  vertical-align:top; }
+.nr-body thead th{ background:var(--nr-bg); font-weight:650; color:var(--nr-ink); }
+
+.nr-body .note{ border-radius:.85rem; padding:1rem 1.15rem; margin:1.5rem 0;
+  border-left:4px solid var(--nr-accent); background:#eefaff; }
+.nr-body .note--tip{ border-color:#2dce89; background:#effaf4; }
+.nr-body .note--warn{ border-color:#fb8c00; background:#fff8ef; }
+.nr-body .note > *:last-child{ margin-bottom:0; }
+.nr-body .note strong:first-child{ display:block; margin-bottom:.25rem; }
+
+.nr-context{ border:1px solid var(--nr-line); border-radius:1rem; background:var(--nr-bg);
+  padding:1.1rem 1.25rem; margin:2rem 0; }
+.nr-context__head{ display:flex; align-items:center; gap:.5rem; font-size:.72rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.05em; color:var(--nr-soft); margin-bottom:.5rem; }
+.nr-context p{ margin:0; }
+.nr-context .nr-context__title{ font-weight:650; color:var(--nr-ink); margin-bottom:.3rem; }
+
+.nr-meta{ display:flex; align-items:center; flex-wrap:wrap; gap:.6rem 1.5rem;
+  margin-top:2rem; padding:.9rem 1.25rem; border-radius:1rem; background:var(--nr-bg);
+  border:1px solid var(--nr-line); }
+.nr-meta__facts{ display:flex; align-items:center; gap:1.5rem; }
+.nr-meta__facts div span{ display:block; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--nr-soft); margin-bottom:.15rem; }
+.nr-meta__facts div strong{ font-size:.88rem; color:var(--nr-ink); font-weight:650; white-space:nowrap; }
+.nr-meta__actions{ display:flex; align-items:center; gap:.5rem; margin-left:auto; }
+
+@media (max-width:575px){
+  .nr-letter{ padding:1.4rem 1.1rem 1.25rem; border-radius:18px; }
+  .nr-head__row--to .nr-head__date{ display:none; }
+  .nr-sig__main{ padding:1rem; }
+  .nr-sig__ring img{ width:56px; height:56px; }
+  .nr-sig__ring{ padding-right:.8rem; margin-right:.8rem; }
+  .nr-meta{ flex-wrap:wrap !important; }
+  .nr-meta__actions{ flex-wrap:wrap; flex-shrink:1 !important; margin-left:0 !important; width:100%; }
+  .nr-body{ font-size:.97rem; }
+  .nr-hero{ height:110px; }
+  .nr-hero i{ font-size:2.6rem; }
+}

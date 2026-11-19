@@ -1,0 +1,27 @@
+{% comment %}
+The bell dropdown's header and list. Drawn with the navbar, and redrawn in
+place by chrome.js (communication:alerts-bell) whenever an alert arrives, so
+a new email or message shows up without reloading the page.
+{% endcomment %}
+            <div class="d-flex justify-content-between align-items-center px-2 pb-2">
+              <h6 class="mb-0">Notifications &amp; messages</h6>
+              {% if comm_stats.alerts_total %}
+              <span class="badge bg-danger bg-opacity-10 text-danger">{{ comm_stats.alerts_total }} new</span>
+              {% endif %}
+            </div>
+
+            <div class="su-alert-list">
+              {% for a in comm_stats.alerts %}
+              <a class="su-alert-row{% if a.unread %} is-unread{% endif %}" href="{{ a.url }}">
+                <span class="su-alert-ico su-alert-ico--{{ a.kind }}"><i class="bi {{ a.icon }}"></i></span>
+                <span class="su-alert-main">
+                  <span class="su-alert-title">{{ a.title }}</span>
+                  <span class="su-alert-body">{{ a.body }}</span>
+                </span>
+                <span class="su-alert-when">{{ a.when|timesince|truncatewords:1 }}</span>
+              </a>
+              {% empty %}
+              <p class="text-center small text-muted my-3">Nothing new.</p>
+              {% endfor %}
+            </div>
+

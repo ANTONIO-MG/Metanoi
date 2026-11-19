@@ -1,0 +1,218 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load people %}
+{% comment %}
+WhatsApp inbox: conversations on the left, the open one on the right.
+
+Context: rows (conversations), tab / tabs, counts, search, thread,
+conversation (its messages, rendered by staffdesk/whatsapp/_bubbles.html),
+last_id, people, team, shared, configured, number / display_number, title.
+
+The inline poll script appends new bubbles; because the day header repeats in
+a fresh fragment it keeps only new days. Boosted navigation swaps the page
+without unloading it, so the timer stops itself once this conversation is no
+longer on screen.
+
+Blocks: overrides ``additional_css`` and ``content``.
+{% endcomment %}
+{% block additional_css %}{% include 'staffdesk/ops/_head.html' %}
+<style>
+  .wa-inbox{ display:grid; grid-template-columns:minmax(260px,340px) 1fr; gap:1rem; align-items:start; }
+  .wa-list{ max-height:calc(100vh - 220px); overflow:auto; padding:0; }
+  .wa-row{ display:flex; gap:.6rem; padding:.65rem .8rem; border-bottom:1px solid rgba(var(--metanoia-brown-rgb),.08); color:inherit; text-decoration:none; }
+  .wa-row:hover{ background:rgba(var(--metanoia-blue-rgb),.05); }
+  .wa-row.is-active{ background:rgba(var(--metanoia-blue-rgb),.1); }
+  .wa-row img{ width:38px; height:38px; border-radius:50%; object-fit:cover; flex:none; }
+  .wa-row__glyph{ width:38px; height:38px; border-radius:50%; flex:none; display:grid; place-items:center; background:rgba(var(--metanoia-slate-rgb),.15); }
+  .wa-row__main{ min-width:0; flex:1; }
+  .wa-row__top{ display:flex; gap:.4rem; align-items:baseline; }
+  .wa-row__name{ font-weight:600; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; }
+  .wa-row__when{ font-size:.7rem; color:#6b7280; flex:none; }
+  .wa-row__preview{ font-size:.78rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wa-unread{ background:var(--metanoia-gold); color:#fff; border-radius:1rem; font-size:.65rem; padding:0 .4rem; font-weight:700; }
+  .wa-pane{ display:flex; flex-direction:column; min-height:calc(100vh - 220px); }
+  .wa-pane__head{ display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-start; justify-content:space-between; padding:.8rem 1rem; border-bottom:1px solid rgba(var(--metanoia-brown-rgb),.08); }
+  .wa-pane__people{ display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.3rem; }
+  .wa-pane__tools{ display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+  .wa-pane__tools form{ display:flex; gap:.3rem; align-items:center; }
+  .wa-pane__tools .form-select{ padding-right:2.1rem; min-width:9rem; }
+  .wa-thread{ flex:1; overflow:auto; padding:1rem; max-height:calc(100vh - 430px); min-height:260px; background:rgba(var(--metanoia-slate-rgb),.06); }
+  .wa-day{ text-align:center; margin:.6rem 0; }
+  .wa-day span{ font-size:.7rem; background:rgba(var(--metanoia-slate-rgb),.15); border-radius:1rem; padding:.1rem .6rem; }
+  .wa-msg{ max-width:min(560px,85%); border-radius:.75rem; padding:.45rem .7rem; margin-bottom:.45rem; font-size:.86rem; box-shadow:0 1px 1px rgba(0,0,0,.05); }
+  .wa-msg--in{ background:#fff; margin-right:auto; border-top-left-radius:.2rem; }
+  .wa-msg--out{ background:#e2f7d4; margin-left:auto; border-top-right-radius:.2rem; }
+  .wa-msg--auto{ background:#eef2f7; }
+  .wa-msg__who{ font-size:.72rem; font-weight:600; margin-bottom:.15rem; }
+  .wa-msg__body{ white-space:normal; overflow-wrap:anywhere; }
+  .wa-msg__meta{ font-size:.68rem; color:#6b7280; margin-top:.2rem; display:flex; flex-wrap:wrap; gap:.25rem; justify-content:flex-end; }
+  .wa-msg__error{ font-size:.72rem; color:#b42318; margin-top:.15rem; }
+  .wa-msg__media img{ max-width:100%; max-height:320px; border-radius:.5rem; display:block; }
+  .wa-msg audio, .wa-msg video{ max-width:100%; }
+  .wa-msg__file{ display:flex; gap:.4rem; align-items:center; padding:.35rem .5rem; border-radius:.4rem; background:rgba(0,0,0,.04); text-decoration:none; }
+  .wa-tick--read{ color:#1d7fd1; } .wa-tick--failed{ color:#b42318; } .wa-tick--queued{ color:#a15c00; }
+  .wa-compose{ border-top:1px solid rgba(var(--metanoia-brown-rgb),.08); padding:.75rem 1rem; }
+  .wa-compose textarea{ resize:vertical; min-height:70px; }
+  .wa-window{ font-size:.75rem; margin-bottom:.45rem; display:flex; gap:.35rem; align-items:flex-start; }
+  .wa-window--open{ color:#1a7f43; } .wa-window--shut{ color:#a15c00; }
+  .wa-empty-pane{ display:grid; place-items:center; text-align:center; color:#6b7280; min-height:300px; padding:2rem; }
+  @media (max-width: 991.98px){
+    .wa-inbox{ grid-template-columns:1fr; }
+    .wa-inbox.has-thread .wa-list-card{ display:none; }
+    .wa-inbox:not(.has-thread) .wa-pane{ display:none; }
+    .wa-thread{ max-height:none; }
+  }
+</style>{% endblock %}
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3 tc">
+  <div class="tc-head">
+    <div><span class="tc-eyebrow">Staff desk</span><h3>WhatsApp</h3>
+      <p>Every conversation on {{ display_number|default:"the Metanoia WhatsApp number" }}. The bot answers its commands; anything else lands here for the team.</p></div>
+  </div>
+
+  {% if not configured %}
+  <div class="tc-alert tc-alert--info mb-3"><i class="bi bi-plug me-1" aria-hidden="true"></i>WhatsApp is not connected yet. Replies are saved here but not sent, and nothing arrives until the Meta setup in <code>docs/whatsapp/SETUP.md</code> is done.</div>
+  {% endif %}
+
+  <div class="wa-inbox{% if thread %} has-thread{% endif %}">
+    <div class="wa-list-card">
+      <nav class="tc-aisles mb-2" aria-label="Conversations">
+        {% for key, label in tabs %}<a class="tc-aisle {% if tab == key %}is-active{% endif %}" href="{% url 'staffdesk:whatsapp' %}?tab={{ key }}">{{ label }}<span class="tc-count">{% if key == 'open' %}{{ counts.open }}{% elif key == 'mine' %}{{ counts.mine }}{% else %}{{ counts.all }}{% endif %}</span></a>{% endfor %}
+      </nav>
+      <form method="get" action="{% url 'staffdesk:whatsapp' %}" class="tc-toolbar mb-2"><input type="hidden" name="tab" value="{{ tab }}">
+        <label class="visually-hidden" for="waSearch">Search conversations</label>
+        <input id="waSearch" class="form-control form-control-sm tc-search" type="search" name="q" value="{{ search }}" placeholder="Name, number or message text">
+        <button class="btn btn-sm btn-primary"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">Search</span></button>
+      </form>
+      <div class="tc-card wa-list">
+        {% for row in rows %}{% with t=row.thread %}
+        <a class="wa-row{% if thread and thread.pk == t.pk %} is-active{% endif %}" href="{% url 'staffdesk:whatsapp-thread' t.pk %}?tab={{ tab }}{% if search %}&q={{ search|urlencode }}{% endif %}">
+          {% if row.people %}<img src="{{ row.people.0|person_avatar }}" alt="">{% else %}<span class="wa-row__glyph"><i class="bi bi-person" aria-hidden="true"></i></span>{% endif %}
+          <span class="wa-row__main">
+            <span class="wa-row__top">
+              <span class="wa-row__name">{{ row.title }}</span>
+              <span class="wa-row__when">{{ t.last_message_at|date:"j M H:i" }}</span>
+            </span>
+            <span class="wa-row__top">
+              <span class="wa-row__preview">{{ t.last_preview }}</span>
+              {% if t.unread %}<span class="wa-unread" title="Unread">{{ t.unread }}</span>{% endif %}
+            </span>
+            <span class="wa-row__preview">{% if t.status == 'open' %}<span class="tc-chip tc-chip--warning">Open</span>{% endif %}{% if not row.people %} <span class="tc-chip">Not registered</span>{% elif row.people|length > 1 %} <span class="tc-chip tc-chip--cyan">{{ row.people|length }} accounts</span>{% endif %}{% if t.assigned_to %} · {{ t.assigned_to|person_name }}{% endif %}</span>
+          </span>
+        </a>
+        {% endwith %}{% empty %}
+        <div class="tc-empty p-4"><i class="bi bi-whatsapp" aria-hidden="true"></i><h5>{% if search %}Nothing matches{% elif tab == 'open' %}Nothing waiting{% else %}No conversations yet{% endif %}</h5><p class="small text-muted mb-0">{% if tab == 'open' %}Messages the bot cannot answer appear here.{% endif %}</p></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="tc-card wa-pane">
+      {% if thread %}
+      <div class="wa-pane__head">
+        <div>
+          <a class="d-lg-none small" href="{% url 'staffdesk:whatsapp' %}?tab={{ tab }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Conversations</a>
+          <h5 class="mb-0">{{ title }}</h5>
+          <div class="small text-muted">{{ number }}{% if thread.contact_name %} · WhatsApp name “{{ thread.contact_name }}”{% endif %}</div>
+          <div class="wa-pane__people">
+            {% for p in people %}{% person_chip p subtitle=p.get_user_type_display %}{% if not p.whatsapp_number %}<span class="tc-chip" title="Number typed at registration, not verified">unverified</span>{% endif %}{% empty %}<span class="small text-muted">No account uses this number.</span>{% endfor %}
+          </div>
+        </div>
+        <div class="wa-pane__tools">
+          {% if shared %}
+          <form method="post" action="{% url 'staffdesk:whatsapp-action' thread.pk %}">{% csrf_token %}<input type="hidden" name="action" value="person">
+            <label class="small text-muted" for="waPerson">Talking about</label>
+            <select id="waPerson" name="person" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+              <option value="">Not chosen</option>
+              {% for p in people %}<option value="{{ p.pk }}" {% if thread.active_person_id == p.pk %}selected{% endif %}>{{ p|person_name }}</option>{% endfor %}
+            </select>
+          </form>
+          {% endif %}
+          <form method="post" action="{% url 'staffdesk:whatsapp-action' thread.pk %}">{% csrf_token %}<input type="hidden" name="action" value="assign">
+            <label class="visually-hidden" for="waAssign">Assigned to</label>
+            <select id="waAssign" name="user" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+              <option value="">Unassigned</option>
+              {% for u in team %}<option value="{{ u.pk }}" {% if thread.assigned_to_id == u.pk %}selected{% endif %}>{{ u|person_name }}</option>{% endfor %}
+            </select>
+          </form>
+          <form method="post" action="{% url 'staffdesk:whatsapp-action' thread.pk %}">{% csrf_token %}
+            {% if thread.status == 'open' %}<button class="btn btn-sm tc-btn-soft" name="action" value="close" title="Done: the bot answers this number again"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Close</button>
+            {% else %}<button class="btn btn-sm btn-outline-secondary" name="action" value="reopen"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Reopen</button>{% endif %}
+          </form>
+        </div>
+      </div>
+
+      <div class="wa-thread" id="waThread" data-poll="{% url 'staffdesk:whatsapp-poll' thread.pk %}" data-last="{{ last_id }}">
+        {% include 'staffdesk/whatsapp/_bubbles.html' %}
+        {% if not conversation %}<p class="text-center small text-muted" data-empty>No messages yet. Write the first one below.</p>{% endif %}
+      </div>
+
+      <form class="wa-compose" method="post" enctype="multipart/form-data" action="{% url 'staffdesk:whatsapp-send' thread.pk %}">{% csrf_token %}
+        <div class="wa-window {% if thread.window_open %}wa-window--open{% else %}wa-window--shut{% endif %}" id="waWindow">
+          {% if thread.window_open %}<i class="bi bi-chat-dots" aria-hidden="true"></i><span>Reply window open for another {{ thread.window_closes_at|timeuntil }}: your message goes straight to them.</span>
+          {% else %}<i class="bi bi-hourglass-split" aria-hidden="true"></i><span>No message from them in the last 24 hours. WhatsApp only lets us send an approved template now, so they get “the team has replied” and your message is delivered as soon as they answer.</span>{% endif %}
+        </div>
+        <label class="visually-hidden" for="waText">Message</label>
+        <textarea id="waText" name="text" class="form-control mb-2" rows="2" data-autosize maxlength="4000" placeholder="Write a reply… (Ctrl+Enter to send)"></textarea>
+        <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+          <div><label class="visually-hidden" for="waFile">Attach a file</label>
+            <input id="waFile" type="file" name="file" class="form-control form-control-sm" accept="image/jpeg,image/png,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,video/mp4,audio/*"></div>
+          <div class="small text-muted">Signed with your first name. {% if shared %}This number is shared: say whose account you mean.{% endif %}</div>
+          <button class="btn btn-sm btn-success"><i class="bi bi-send me-1" aria-hidden="true"></i>Send</button>
+        </div>
+      </form>
+      {% else %}
+      <div class="wa-empty-pane"><div><i class="bi bi-whatsapp fs-1" aria-hidden="true"></i><p class="mt-2 mb-0">Choose a conversation.</p>
+        <p class="small">To message someone first, open their profile in the staff desk and choose <b>WhatsApp</b>.</p></div></div>
+      {% endif %}
+    </div>
+  </div>
+</div></div>
+{% if thread %}
+<script>
+(function () {
+  var box = document.getElementById('waThread');
+  var text = document.getElementById('waText');
+  function bottom() { box.scrollTop = box.scrollHeight; }
+  bottom();
+  text.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); text.form.requestSubmit(); }
+  });
+  var busy = false;
+  function poll() {
+    if (busy || document.hidden) return;
+    busy = true;
+    fetch(box.dataset.poll + '?after=' + box.dataset.last, { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        busy = false;
+        if (!data) return;
+        (data.statuses || []).forEach(function (s) {
+          var tick = document.querySelector('#wa-m' + s.id + ' [data-status]');
+          if (tick && s.status && !tick.classList.contains('wa-tick--' + s.status)) {
+            tick.className = 'wa-tick wa-tick--' + s.status;
+            tick.textContent = s.label;
+            tick.title = s.label + (s.error ? ': ' + s.error : '');
+          }
+        });
+        if (data.html && data.html.trim()) {
+          var near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+          var empty = box.querySelector('[data-empty]'); if (empty) empty.remove();
+          var tmp = document.createElement('div'); tmp.innerHTML = data.html;
+          tmp.querySelectorAll('.wa-day').forEach(function (d) {
+            var label = d.textContent.trim();
+            var days = box.querySelectorAll('.wa-day');
+            if (days.length && days[days.length - 1].textContent.trim() === label) d.remove();
+          });
+          while (tmp.firstChild) box.appendChild(tmp.firstChild);
+          box.dataset.last = data.last_id;
+          if (near) bottom();
+        }
+      })
+      .catch(function () { busy = false; });
+  }
+  var timer = setInterval(function () {
+    if (!document.body.contains(box)) { clearInterval(timer); return; }
+    poll();
+  }, 6000);
+})();
+</script>
+{% endif %}
+{% endblock %}

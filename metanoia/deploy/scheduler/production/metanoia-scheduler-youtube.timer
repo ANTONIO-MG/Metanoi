@@ -1,0 +1,13 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Nightly Metanoia Group YouTube backup (00:00 SAST)
+
+[Timer]
+OnCalendar=*-*-* 00:00:00 Africa/Johannesburg
+AccuracySec=1min
+Persistent=true
+Unit=metanoia-scheduler-youtube.service
+
+[Install]
+WantedBy=timers.target

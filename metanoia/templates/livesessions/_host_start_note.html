@@ -1,0 +1,19 @@
+{% comment %}
+For whoever runs the class (host, the module's educators, staff). Teams only
+starts a meeting when someone signed in to the organiser's tenant joins; guests
+who arrive first wait on "the meeting hasn't started". So the person teaching
+has to open the link signed in — then the lobby is bypassed and every student
+already waiting is let in.
+
+Context: meeting (MeetingRoom)
+{% endcomment %}
+<div class="alert alert-info text-start small mt-3 mb-0" role="note">
+  <p class="mb-1"><strong>You are running this class.</strong>
+    Open it signed in to Microsoft Teams as
+    <strong>{{ meeting.organizer_upn|default:"the organiser account" }}</strong>
+    (the Teams app, or teams.microsoft.com in this browser).
+    That starts the meeting, and the students who are waiting come straight in.</p>
+  <p class="mb-0 text-muted">If you join as a guest instead, Teams keeps everyone, you included,
+    waiting for the meeting to start.
+    {% if meeting.record_automatically %}Recording starts by itself when you join.{% endif %}</p>
+</div>

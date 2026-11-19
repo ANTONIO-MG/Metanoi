@@ -1,0 +1,1 @@
+{% load org_branding %}{% org_brand as brand %}Welcome to {{ brand.name|default:"Metanoia Group" }} — confirm your e-mail

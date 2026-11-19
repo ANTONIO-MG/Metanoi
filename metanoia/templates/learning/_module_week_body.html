@@ -1,0 +1,48 @@
+{% comment %}
+The body of one Schedule week. A locked week (apps.learning.week_access) shows
+"pay to unlock" and only rows open anyway or sold on their own — never the
+week's material.
+
+Context: wk (apps.learning.module_feed._week_row), offering, gate
+
+Includes ``learning/_module_item.html``.
+{% endcomment %}
+<div class="mf-week__body" data-week-body="{{ wk.week.pk }}">
+  {% if wk.week.summary %}<p class="text-xs text-muted mb-2">{{ wk.week.summary }}</p>{% endif %}
+
+  {% if not wk.open %}
+  <div class="mf-weeklock">
+    <i class="bi bi-lock-fill"></i>
+    <div>
+      <p><strong>Locked: pay to unlock.</strong>
+        {% if wk.out_of_window %}This week falls outside the month you have paid for.
+        {% else %}Pay for {{ offering.display_name }} to open this week.{% endif %}
+        {% if wk.held_back %}{{ wk.held_back }} item{{ wk.held_back|pluralize }} waiting.{% endif %}</p>
+      <a class="btn btn-sm bg-gradient-info mb-0 mt-2" href="{% url 'learning:module-unlock' offering.pk %}{% if wk.out_of_window %}?renew=1{% endif %}">
+        <i class="bi bi-unlock me-1"></i>Pay to unlock{% if offering.price_per_month %} — R{{ offering.price_per_month|floatformat:2 }}/month{% endif %}</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% for grp in wk.topic_groups %}
+    {% if wk.open or grp.materials %}
+    <div class="mf-topic">
+      <p class="mf-topic__title">
+        <i class="bi bi-bookmark-fill me-1"></i>{{ grp.topic.code }} · {{ grp.topic.title }}
+        {% if grp.topic.reference %}<span class="mf-topic__ref">· {{ grp.topic.reference }}</span>{% endif %}
+      </p>
+      {% for row in grp.materials %}
+        {% include 'learning/_module_item.html' with row=row next_step_id=wk.next_step_id %}
+      {% empty %}
+        <p class="text-xs text-muted mb-1 ps-2">Nothing published for this topic yet.</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+  {% for row in wk.loose %}
+    {% include 'learning/_module_item.html' with row=row next_step_id=wk.next_step_id %}
+  {% endfor %}
+  {% if wk.open and not wk.topic_groups and not wk.loose %}
+    <p class="text-xs text-muted mb-0 ps-2">Nothing published for this week yet.</p>
+  {% endif %}
+</div>

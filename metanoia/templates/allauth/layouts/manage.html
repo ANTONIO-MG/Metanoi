@@ -1,0 +1,6 @@
+{% extends 'myhub/elements/layouts/admin.html' %}
+{% comment %}allauth's signed-in account pages (2FA setup, recovery codes) in the hub layout.
+Maps allauth's `extra_head` → `additional_css` (plus allauth/_hub_styles.html) and
+`extra_body` → `additional_js`; allauth's `content` block fills the hub's own.{% endcomment %}
+{% block additional_css %}{% block extra_head %}{% endblock %}{% include 'allauth/_hub_styles.html' %}{% endblock %}
+{% block additional_js %}{% block extra_body %}{% endblock %}{% endblock %}

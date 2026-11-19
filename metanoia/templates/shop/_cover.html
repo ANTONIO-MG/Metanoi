@@ -1,0 +1,60 @@
+{% load static commerce %}{% comment %}
+A product's Blueprint-style store card; every line comes from
+``product.card``.
+
+Include parameters:
+  product        the shop item (required)
+  poster_static  draw the button as a label, not a form (the hero stack, the
+                 product page, "You may also like")
+
+When the item is set to use its own artwork (``card_use_image``) that image is
+the card instead.
+{% endcomment %}
+{% with card=product.card %}
+{% if card.use_image %}
+<span class="ts-cover ts-cover--image"><img src="{{ product.image.url }}" alt="" loading="lazy"></span>
+{% else %}
+<div class="tb-poster">
+  {% if not poster_static %}<a class="tb-poster__link" href="{% url 'shop:product-detail' product.pk %}" tabindex="-1" aria-hidden="true"></a>{% endif %}
+  <span class="tb-poster__mark" aria-hidden="true">Metanoia</span>
+  <div class="tb-poster__top">
+    <img class="tb-poster__logo" src="{% static 'images/brand/metanoia-logo-reversed.svg' %}" alt="Metanoia">
+    {% if card.meta %}<span class="tb-poster__meta">{{ card.meta }}</span>{% endif %}
+  </div>
+  <div class="tb-poster__lead">
+    <div class="tb-poster__intro">
+      <span class="tb-poster__tag">{{ card.tag }}</span>
+      <p class="tb-poster__title">{{ card.headline }}</p>
+    </div>
+    <span class="tb-poster__badge">
+      <span class="tb-poster__spark" aria-hidden="true">&#10022;</span>
+      {% if card.price_label %}<small>{{ card.price_label }}</small>{% endif %}
+      <b>{% if product.price %}{{ product.sale_price|rand_short }}{% else %}Free{% endif %}</b>
+      {% if product.has_discount %}<s>{{ product.price|rand_short }}</s>{% elif card.price_note %}<small>{{ card.price_note }}</small>{% endif %}
+    </span>
+  </div>
+  {% if card.blurb %}<p class="tb-poster__blurb">{{ card.blurb }}</p>{% endif %}
+  {% if card.points %}
+  <ul class="tb-poster__points">
+    {% for point in card.points %}<li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>{{ point }}</span></li>{% endfor %}
+  </ul>
+  {% endif %}
+  <div class="tb-poster__cta">
+    {% if poster_static %}
+      <span class="tb-poster__btn">{{ card.cta }}<i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i></span>
+    {% elif product.is_booking or product.active_variants or not product.in_stock %}
+      <a class="tb-poster__btn" href="{% url 'shop:product-detail' product.pk %}">{{ card.cta }}<i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i></a>
+    {% else %}
+      <form method="post" action="{% url 'shop:add-to-cart' product.pk %}">{% csrf_token %}
+        <button class="tb-poster__btn" aria-label="{{ card.cta }}: {{ product.name }}">{{ card.cta }}<i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i></button>
+      </form>
+    {% endif %}
+  </div>
+  <div class="tb-poster__foot">
+    <span class="tb-poster__pillars">Structure. <span>Strategy.</span> <span>Support.</span></span>
+    <span>Metanoia coaching</span>
+  </div>
+  <span class="tb-poster__bar" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+</div>
+{% endif %}
+{% endwith %}

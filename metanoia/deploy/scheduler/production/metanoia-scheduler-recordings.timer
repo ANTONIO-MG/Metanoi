@@ -1,0 +1,13 @@
+# Documented in metanoia/docs/reference/deployment.md
+
+[Unit]
+Description=Five-minutely Metanoia Group recording check
+
+[Timer]
+OnCalendar=*:0/5:30
+AccuracySec=20s
+Persistent=false
+Unit=metanoia-scheduler-recordings.service
+
+[Install]
+WantedBy=timers.target

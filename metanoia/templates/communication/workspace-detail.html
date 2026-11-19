@@ -1,0 +1,141 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load static people links %}
+{% comment %}
+One study group (the Workspace model): files, notes, members and its chat.
+Its creator (and admin / staff) can edit it; a member can leave.
+
+Extends ``myhub/elements/layouts/admin.html``; fills ``additional_css``, ``content``,
+``additional_js``. Includes ``communication/_chat_styles.html``,
+``partials/_t_chip.html``, ``communication/_study_group_form.html``,
+``communication/_chat_thread.html``, ``communication/_chat_call_ui.html``,
+``communication/_chat_script.html``.
+{% endcomment %}
+
+{% block additional_css %}
+<link href="{% static 'css/study-groups.css' %}" rel="stylesheet">
+{% if active_group %}{% include 'communication/_chat_styles.html' %}{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3 sg">
+
+  <div class="sg-head">
+    <div class="sg-detail-head w-100">
+      <div class="min-w-0">
+        <a href="{% url 'communication:workspaces' %}" class="t-link small"><i class="bi bi-arrow-left" aria-hidden="true"></i> <span>All study groups</span></a>
+        <h1 class="sg-head__title mt-2">{{ workspace.name }}</h1>
+        {% if workspace.description %}<p class="sg-head__lead">{{ workspace.description }}</p>{% endif %}
+        <div class="sg-detail-head__meta">
+          {% if workspace.module %}
+            <span class="sg-chip" style="--sg-accent: {{ workspace.module.accent }}" title="{{ workspace.module.label }}"><span class="sg-chip__dot"></span><span class="sg-chip__text">{{ workspace.module.code }} · {{ workspace.module.display_name }}</span></span>
+          {% endif %}
+          {% if not workspace.is_active %}<span class="badge bg-secondary">Closed</span>{% endif %}
+          <span><span>Active</span> {{ workspace.updated_at|timesince }} <span>ago</span></span>
+        </div>
+      </div>
+      <div class="sg-head__actions">
+        {% if may_manage and not read_only %}
+          <button type="button" class="t-btn t-btn--sm t-btn--ghost" data-bs-toggle="collapse" data-bs-target="#sgSettings"
+                  aria-expanded="{{ open_settings|yesno:'true,false' }}" aria-controls="sgSettings">Edit group{% include 'partials/_t_chip.html' %}</button>
+        {% elif is_member and not read_only %}
+          <form method="post" class="mb-0">{% csrf_token %}<input type="hidden" name="action" value="leave">
+            <button class="btn btn-outline-secondary btn-sm mb-0" data-confirm="Leave this study group?">Leave group</button></form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if may_manage and form and not read_only %}
+  <section class="collapse{% if open_settings %} show{% endif %}" id="sgSettings">
+    <div class="sg-panel"><div class="sg-panel__body">
+      <h2 class="sg-panel__title">Edit study group</h2>
+      {% include 'communication/_study_group_form.html' with action='settings' submit_label='Save changes' cancel_target='#sgSettings' prefix='edit' %}
+      {% if workspace.is_active %}
+      <hr>
+      <form method="post" class="mb-0 d-flex align-items-center gap-2 flex-wrap">{% csrf_token %}<input type="hidden" name="action" value="close">
+        <button class="btn btn-outline-danger btn-sm mb-0" data-confirm="Close this study group? Its members will no longer see it.">Close group</button>
+        <small class="text-muted">Closing hides the group from its members. Files and notes are kept.</small>
+      </form>
+      {% endif %}
+    </div></div>
+  </section>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      {% if active_group %}
+      <section class="sg-box sg-chat" aria-labelledby="sgChatTitle">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+          <h2 class="sg-box__title mb-0" id="sgChatTitle"><i class="bi bi-chat-dots" aria-hidden="true"></i><span>Group chat</span></h2>
+          <a href="{% url 'communication:chat-room' active_group.id %}" class="t-link small"
+             title="Open this conversation on the Messages page"><i class="bi bi-arrows-angle-expand me-1" aria-hidden="true"></i>Open in Messages</a>
+        </div>
+        {% csrf_token %}
+        <div class="msgr">
+          {% include 'communication/_chat_thread.html' %}
+        </div>
+        {% include 'communication/_chat_call_ui.html' %}
+        {% include 'communication/_chat_script.html' %}
+      </section>
+      {% endif %}
+
+      <section class="sg-box">
+        <h2 class="sg-box__title"><i class="bi bi-paperclip" aria-hidden="true"></i><span>Shared files</span> <span class="sg-section__count">{{ files|length }}</span></h2>
+        <form method="post" enctype="multipart/form-data" class="sg-compose">
+          {% csrf_token %}<input type="hidden" name="action" value="file">
+          <div class="sg-upload">
+            <input type="text" name="{{ file_form.title.html_name }}" class="form-control form-control-sm" placeholder="Title (optional)" title="Upload with the same title to add a new version" aria-label="File title" maxlength="200">
+            <input type="file" name="{{ file_form.file.html_name }}" class="form-control form-control-sm" aria-label="File" required>
+            <button class="btn btn-primary btn-sm mb-0"><i class="bi bi-upload me-1" aria-hidden="true"></i>Upload</button>
+          </div>
+        </form>
+        {% for f in files %}
+          <div class="sg-file">
+            <span class="sg-file__icon"><i class="bi bi-file-earmark-text" aria-hidden="true"></i></span>
+            <div class="sg-file__main">
+              <a class="sg-file__name" href="{{ f.file.url }}" target="_blank" rel="noopener">{{ f.title|default:f.original_name }}</a>
+              {% if f.version > 1 %}<span class="badge bg-light text-dark ms-1">v{{ f.version }}</span>{% endif %}
+              <div class="sg-file__meta">{{ f.uploaded_by|person_name }} · {{ f.created_at|timesince }} <span>ago</span>{% if f.size %} · {{ f.size|filesizeformat }}{% endif %}</div>
+            </div>
+          </div>
+        {% empty %}<p class="text-muted small mb-0">No files yet. Upload notes, past papers or a draft to work on together.</p>{% endfor %}
+      </section>
+
+      <section class="sg-box">
+        <h2 class="sg-box__title"><i class="bi bi-journal-text" aria-hidden="true"></i><span>Notes</span> <span class="sg-section__count">{{ notes|length }}</span></h2>
+        <form method="post" class="sg-compose">
+          {% csrf_token %}<input type="hidden" name="action" value="note">
+          <div class="mb-2"><input type="text" name="{{ note_form.title.html_name }}" class="form-control form-control-sm" placeholder="Title" aria-label="Note title" maxlength="200" required></div>
+          <div class="mb-2"><textarea name="{{ note_form.body.html_name }}" class="form-control form-control-sm" rows="3" data-autosize placeholder="Write a note for the group" aria-label="Note"></textarea></div>
+          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+            <div class="form-check mb-0"><input type="checkbox" class="form-check-input" name="{{ note_form.pinned.html_name }}" id="sgPin"> <label class="form-check-label small sg-pin" for="sgPin">Pin to the top</label></div>
+            <button class="btn btn-primary btn-sm mb-0">Add note</button>
+          </div>
+        </form>
+        {% for n in notes %}
+          <article class="sg-note{% if n.pinned %} sg-note--pinned{% endif %}">
+            <h3 class="sg-note__title">{% if n.pinned %}<i class="bi bi-pin-angle-fill text-primary me-1" aria-hidden="true"></i>{% endif %}{{ n.title }}</h3>
+            {% if n.body %}<p class="sg-note__body" data-link-host>{{ n.body|linkify_inline }}</p>{% endif %}
+            <div class="sg-note__meta">{% person_chip n.author %} <span>· {{ n.updated_at|timesince }}</span> <span>ago</span></div>
+          </article>
+        {% empty %}<p class="text-muted small mb-0">No notes yet.</p>{% endfor %}
+      </section>
+    </div>
+
+    <div class="col-lg-4">
+      <aside class="sg-box">
+        <h2 class="sg-box__title"><i class="bi bi-people" aria-hidden="true"></i><span>Members</span></h2>
+        <ul class="sg-members">
+          {% if workspace.created_by %}<li>{% person_chip workspace.created_by subtitle='Started the group' %}</li>{% endif %}
+          {% for m in members %}{% if m.pk != workspace.created_by_id %}<li>{% person_chip m %}</li>{% endif %}{% endfor %}
+        </ul>
+        {% if workspace.module %}<p class="small text-muted mb-0 mt-2">Everyone on {{ workspace.module.display_name }} can open this group too.</p>{% endif %}
+      </aside>
+    </div>
+  </div>
+
+</div></div>
+{% endblock %}
+
+{% block additional_js %}
+<script src="{% static 'js/study-groups.js' %}" defer></script>
+{% endblock %}

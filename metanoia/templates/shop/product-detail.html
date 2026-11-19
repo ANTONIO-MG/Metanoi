@@ -1,0 +1,269 @@
+{% extends 'myhub/elements/layouts/admin.html' %}{% load people %}
+{% load static commerce %}
+{% comment %}
+Product page: gallery and description on the left, a sticky buy box on the
+right. What the buy box asks for depends on the fulfilment: a size for a
+shipped item, a slot for a 1-on-1 (shop/_booking_picker.html), nothing for a
+download.
+
+Context: product, gallery, files, variants, variant_grid, picker, owned,
+reviews, my_review, review_form, related, vat_registered, is_admin_staff.
+
+Colour × size (views._variant_grid): the buttons pick a real variant row into
+the hidden "variant" field, and a colour also shows its own photo. The inline
+script resolves the pair to its variant row and updates the headline price,
+because a size can cost more (an XXL hoodie) and the price shown must stay
+honest.
+
+Blocks: overrides ``additional_css`` and ``content``.
+{% endcomment %}
+
+{% block additional_css %}<link rel="stylesheet" href="{% static 'css/commerce.css' %}?v=2"><link rel="stylesheet" href="{% static 'css/metanoia-shop.css' %}?v=3">{% endblock %}
+
+{% block content %}
+<div class="content-body"><div class="container-fluid pt-3 tc ts tp-page">
+
+  <nav class="small mb-3" aria-label="breadcrumb">
+    <a href="{% url 'shop:storefront' %}">Shop</a>
+    {% for key, pair in product.AISLES.items %}{% if pair.0 == product.fulfilment %} <i class="bi bi-chevron-right mx-1 small"></i><a href="{% url 'shop:storefront' %}?aisle={{ key }}">{{ pair.1 }}</a>{% endif %}{% endfor %}
+    <i class="bi bi-chevron-right mx-1 small"></i><span class="text-muted">{{ product.name }}</span>
+  </nav>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="tc-gallery">
+        <div class="tc-gallery__main">
+          {% if product.image or gallery %}
+            <img id="tcMainImage" src="{% if product.image %}{{ product.image.url }}{% else %}{{ gallery.0.image.url }}{% endif %}" alt="{{ product.name }}">
+          {% else %}
+            <div class="tp-gallery">{% include 'shop/_cover.html' with poster_static=True %}</div>
+          {% endif %}
+          {% if product.has_discount %}<span class="tc-product__flags"><span class="tc-off">−{{ product.discount_percent|pct }}</span></span>{% endif %}
+        </div>
+        {% if gallery %}
+        <div class="tc-gallery__thumbs" role="list">
+          {% if product.image %}<button type="button" class="is-active" data-src="{{ product.image.url }}" aria-label="Show image 1"><img src="{{ product.image.url }}" alt=""></button>{% endif %}
+          {% for pic in gallery %}<button type="button" data-src="{{ pic.image.url }}" aria-label="Show image {{ forloop.counter|add:1 }}"><img src="{{ pic.image.url }}" alt="" loading="lazy"></button>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="tc-card mt-4">
+        <div class="tc-card__head"><h5>About this {% if product.is_booking %}session{% else %}item{% endif %}</h5></div>
+        <div class="tc-card__body">
+          {% if product.summary %}<p class="fw-semibold">{{ product.summary }}</p>{% endif %}
+          <div class="tc-prose">{{ product.description|linebreaks|default:"<p class='text-muted'>No description yet.</p>" }}</div>
+        </div>
+      </div>
+
+      {% if picker.rate %}{% include 'shop/_booking_picker.html' %}{% endif %}
+
+      {% if files %}
+      <div class="tc-card">
+        <div class="tc-card__head"><h5>What you get</h5><span class="tc-link">{{ files|length }} file{{ files|length|pluralize }}</span></div>
+        <div class="tc-card__body">
+          <ul class="tc-files">
+            {% for label, fieldfile, file_id in files %}
+            <li class="tc-file">
+              <span class="tc-file__icon"><i class="bi {{ fieldfile.name|file_icon }}"></i></span>
+              <span><span class="tc-file__name">{{ label }}</span><br><span class="tc-file__meta">{{ fieldfile.name|slice:"-4:"|upper|cut:"." }} · {{ fieldfile.size|filesizeformat }}</span></span>
+              {% if owned or request.user.is_staff %}
+                <a class="btn btn-sm tc-btn-soft" href="{% if file_id %}{% url 'shop:download-file' product.pk file_id %}{% else %}{% url 'shop:download-product' product.pk %}{% endif %}"><i class="bi bi-download"></i><span class="visually-hidden">Download {{ label }}</span></a>
+              {% else %}<i class="bi bi-lock text-muted" title="Unlocks after payment"></i>{% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          <p class="small text-muted mt-2 mb-0"><i class="bi bi-shield-check me-1"></i>Downloads unlock the moment payment clears, and stay in <a href="{% url 'shop:my-orders' %}">My orders</a> for as long as you have an account.</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="tc-card">
+        <div class="tc-card__head"><h5>Reviews</h5>{% if product.rating_count %}<span class="tc-stars ms-2"><i class="bi bi-star-fill"></i> {{ product.rating|floatformat:1 }}<small>· {{ product.rating_count }} review{{ product.rating_count|pluralize }}</small></span>{% endif %}</div>
+        <div class="tc-card__body">
+          <form method="post" class="p-3 mb-3 rounded-3" style="background:var(--tc-surface-2)">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="review">
+            <div class="row g-2 align-items-end">
+              <div class="col-sm-3"><label class="form-label" for="{{ review_form.rating.id_for_label }}">Your rating</label>{{ review_form.rating }}</div>
+              <div class="col-sm-9"><label class="form-label" for="{{ review_form.comment.id_for_label }}">{% if my_review %}Update your review{% else %}Write a review{% endif %}</label>{{ review_form.comment }}</div>
+            </div>
+            <button class="btn btn-primary btn-sm mt-2">{% if my_review %}Update review{% else %}Post review{% endif %}</button>
+          </form>
+          {% for review in reviews %}
+            <div class="d-flex gap-3 py-2 border-bottom">
+              <span class="tc-thumb" style="border-radius:50%;width:38px;height:38px;font-weight:700">{{ review.user.get_username|slice:":1"|upper }}</span>
+              <div>
+                <strong>{{ review.user|person_name }}</strong>
+                <span class="tc-stars ms-1">{% for i in "12345" %}<i class="bi bi-star{% if forloop.counter <= review.rating %}-fill{% endif %}"></i>{% endfor %}</span>
+                <div class="small text-muted">{{ review.created_at|timesince }} ago</div>
+                {% if review.comment %}<p class="mb-0">{{ review.comment }}</p>{% endif %}
+              </div>
+            </div>
+          {% empty %}<p class="text-muted mb-0">No reviews yet.</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="tc-card tc-buybox">
+        <div class="tc-card__body pt-3">
+          <span class="tc-product__type mb-1"><i class="bi {{ product.fulfilment|fulfilment_icon }}"></i>{{ product.get_fulfilment_display }}{% if product.category %} · {{ product.category.name }}{% endif %}</span>
+          <h1 class="tp-title">{{ product.name }}</h1>
+          <div class="tc-price tc-price--lg mb-1" id="tcPrice" data-base="{{ product.price }}" data-discount="{{ product.discount_percent }}">
+            {% if product.is_booking %}<b>{{ product.lowest_rate|rand }}</b><small>per hour{% if picker.rates|length > 1 %}, from{% endif %}</small>{% elif product.price %}<b>{{ product.sale_price|rand }}</b>{% if product.has_discount %}<s>{{ product.price|rand }}</s><span class="tc-chip tc-chip--danger">Save {{ product.discount_percent|pct }}</span>{% endif %}{% else %}<b>Free</b>{% endif %}
+          </div>
+          {% if vat_registered %}<p class="small text-muted mb-3">Price includes VAT.</p>{% endif %}
+
+          {% if owned %}
+            <div class="tc-applied mb-3"><span><i class="bi bi-check-circle me-1"></i>You own this — your files are ready above.</span></div>
+          {% endif %}
+
+          {% if product.is_booking %}
+            {% if picker.rate %}
+              <a class="t-btn t-btn--block mb-2" href="#book">{% if picker.moving %}Choose a new time{% else %}Choose a time{% endif %}{% include 'partials/_t_chip.html' %}</a>
+              <p class="small text-muted mb-0">From {{ product.lowest_rate|rand }} per hour · {% for m in picker.lengths %}{{ m }}{% if not forloop.last %}/{% endif %}{% endfor %} min sessions on Teams.</p>
+            {% else %}
+              <div class="tc-alert tc-alert--info mb-3"><i class="bi bi-calendar2-week"></i><span>No educator is taking bookings for this yet. Check back soon.</span></div>
+            {% endif %}
+          {% elif not product.in_stock %}
+            <div class="tc-alert tc-alert--danger mb-3"><i class="bi bi-x-circle"></i><span>Sold out for now.</span></div>
+          {% elif product.status == 'active' %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="buy">
+            {% if variant_grid %}
+              <input type="hidden" name="variant" id="tcVariant" value="">
+              <fieldset class="mb-3">
+                <legend class="form-label">Colour: <b id="tcColourName">{{ variant_grid.colours.0.name }}</b></legend>
+                <div class="tc-swatches">
+                  {% for c in variant_grid.colours %}
+                    <button type="button" class="tc-swatch{% if forloop.first %} is-on{% endif %}" data-colour="{{ c.name }}" data-image="{{ c.image }}"
+                            title="{{ c.name }}" aria-label="{{ c.name }}" aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"><img src="{{ c.image }}" alt=""></button>
+                  {% endfor %}
+                </div>
+              </fieldset>
+              <fieldset class="mb-3">
+                <legend class="form-label">Size</legend>
+                <div class="tc-variants">
+                  {% for size in variant_grid.sizes %}
+                    <input type="radio" name="tc_size" id="tcSize{{ forloop.counter }}" value="{{ size }}"{% if forloop.first %} checked{% endif %}>
+                    <label for="tcSize{{ forloop.counter }}">{{ size }}</label>
+                  {% endfor %}
+                </div>
+              </fieldset>
+              {{ variant_grid.cells|json_script:"tcVariantCells" }}
+            {% elif variants %}
+              <fieldset class="mb-3">
+                <legend class="form-label">Choose {% if product.is_shipped %}a size{% else %}an option{% endif %}</legend>
+                <div class="tc-variants">
+                  {% for v in variants %}
+                    <input type="radio" name="variant" id="variant{{ v.pk }}" value="{{ v.pk }}" data-price="{{ v.unit_price }}" {% if product.track_stock and v.stock < 1 %}disabled{% endif %} {% if forloop.first and not product.track_stock or forloop.first and v.stock > 0 %}checked{% endif %}>
+                    <label for="variant{{ v.pk }}">{{ v.name }}</label>
+                  {% endfor %}
+                </div>
+              </fieldset>
+            {% endif %}
+            <div class="d-flex gap-2 align-items-end">
+              {% if not product.max_quantity %}
+              <div><label class="form-label" for="tcQty">Qty</label>
+                <input id="tcQty" type="number" class="form-control" name="quantity" value="1" min="1" style="width:5rem"></div>
+              {% endif %}
+              <button class="t-btn flex-fill">{% if owned %}Buy again{% else %}Buy now{% endif %}{% include 'partials/_t_chip.html' %}</button>
+            </div>
+            <button class="t-btn t-btn--ghost t-btn--block t-btn--plain mt-2" name="then" value="stay">Add to cart</button>
+          </form>
+          {% endif %}
+
+          <ul class="tc-facts mt-3">
+            {% if product.is_digital %}<li><span>Delivery</span><b>Instant download</b></li>{% endif %}
+            {% if product.is_shipped %}<li><span>Delivery</span><b>Courier to your door or a locker</b></li>{% endif %}
+            {% if product.educator_name %}<li><span>Educator</span><b>{{ product.educator_name }}</b></li>{% endif %}
+            {% if product.institution %}<li><span>For</span><b>{{ product.institution.code }}{% if product.programme %} · {{ product.programme.name }}{% endif %}</b></li>{% endif %}
+            {% if product.module %}<li><span>Module</span><b>{{ product.module.code }}</b></li>{% endif %}
+            {% if product.duration %}<li><span>Duration</span><b>{{ product.duration }}</b></li>{% endif %}
+            {% if product.level %}<li><span>Level</span><b>{{ product.get_level_display }}</b></li>{% endif %}
+            {% if product.validity_days %}<li><span>Access</span><b>{{ product.validity_days }} days</b></li>{% endif %}
+            {% if product.track_stock and not variants and product.in_stock %}<li><span>In stock</span><b>{{ product.stock }}</b></li>{% endif %}
+            <li><span>SKU</span><b class="text-muted fw-normal">{{ product.sku }}</b></li>
+          </ul>
+          {% if is_admin_staff %}<a class="btn btn-link btn-sm px-0 mt-2" href="{% url 'shop:edit-product' product.pk %}"><i class="bi bi-pencil me-1"></i>Edit this item</a>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if related %}
+  <h2 class="t-h2 mt-5 mb-4">You may also <em>like</em><span class="t-dot">.</span></h2>
+  <div class="ts-grid">
+    {% for item in related %}
+      <article class="ts-card" style="--i:{{ forloop.counter0 }}">
+        <a class="ts-card__art" href="{% url 'shop:product-detail' item.pk %}" tabindex="-1" aria-hidden="true">{% include 'shop/_cover.html' with product=item poster_static=True %}</a>
+        <div class="ts-card__body">
+          <a class="ts-card__title" href="{% url 'shop:product-detail' item.pk %}">{{ item.name }}</a>
+          <span class="ts-price"><b>{{ item.sale_price|rand }}</b>{% if item.has_discount %}<s>{{ item.price|rand }}</s>{% endif %}</span>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div></div>
+
+<script>
+(function () {
+  var main = document.getElementById('tcMainImage');
+  document.querySelectorAll('.tc-gallery__thumbs button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (main) { main.src = btn.dataset.src; }
+      document.querySelectorAll('.tc-gallery__thumbs button').forEach(function (b) { b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+    });
+  });
+  var cellsEl = document.getElementById('tcVariantCells');
+  if (cellsEl) {
+    var cells = JSON.parse(cellsEl.textContent), field = document.getElementById('tcVariant');
+    var colour = (document.querySelector('.tc-swatch.is-on') || {}).dataset;
+    colour = colour ? colour.colour : '';
+    var resolve = function () {
+      var size = (document.querySelector('input[name="tc_size"]:checked') || {}).value;
+      var cell = cells[colour + '|' + size];
+      field.value = cell ? cell.pk : '';
+      var priceEl = document.getElementById('tcPrice');
+      if (cell && priceEl) {
+        var base = parseFloat(cell.price), pct = parseFloat(priceEl.dataset.discount || 0);
+        var b = priceEl.querySelector('b'), st = priceEl.querySelector('s');
+        if (b) { b.textContent = money(Math.round(base * (100 - pct)) / 100); }
+        if (st) { st.textContent = money(base); }
+      }
+      document.querySelectorAll('input[name="tc_size"]').forEach(function (r) {
+        var c = cells[colour + '|' + r.value];
+        r.disabled = !c || (c.stock !== null && c.stock < 1);
+      });
+    };
+    document.querySelectorAll('.tc-swatch').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.tc-swatch').forEach(function (b) { b.classList.remove('is-on'); b.setAttribute('aria-pressed', 'false'); });
+        btn.classList.add('is-on'); btn.setAttribute('aria-pressed', 'true');
+        colour = btn.dataset.colour;
+        document.getElementById('tcColourName').textContent = colour;
+        if (main && btn.dataset.image) { main.src = btn.dataset.image; }
+        resolve();
+      });
+    });
+    document.querySelectorAll('input[name="tc_size"]').forEach(function (r) { r.addEventListener('change', resolve); });
+    resolve();
+  }
+  var price = document.getElementById('tcPrice');
+  function money(n) { return 'R' + n.toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2}).replace(/ /g, ','); }
+  document.querySelectorAll('.tc-variants input').forEach(function (input) {
+    input.addEventListener('change', function () {
+      if (!price) { return; }
+      var base = parseFloat(input.dataset.price || price.dataset.base), pct = parseFloat(price.dataset.discount || 0);
+      var b = price.querySelector('b'), s = price.querySelector('s');
+      if (b) { b.textContent = money(Math.round(base * (100 - pct)) / 100); }
+      if (s) { s.textContent = money(base); }
+    });
+  });
+})();
+</script>
+{% endblock %}
